@@ -38,6 +38,12 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow GLOBAL APP to use the microphone to measure sound levels for science activities."
+        }
       ]
     ],
     "experiments": {

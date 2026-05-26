@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { DecibelCaptureScreen } from '@/components/activity/DecibelCaptureScreen';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -30,6 +31,10 @@ export default function ActivityCaptureScreen() {
         <Text style={{ color: Wireframe.panelBg }}>Activity not found.</Text>
       </WireScreen>
     );
+  }
+
+  if (cfg.captureKind === 'decibel') {
+    return <DecibelCaptureScreen cfg={cfg} />;
   }
 
   const done = phase === 'done';

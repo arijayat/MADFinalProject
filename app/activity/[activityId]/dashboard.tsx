@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
@@ -7,14 +8,50 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { getActivity } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useActivitySession } from '@/contexts/ActivitySessionContext';
 
 const PL_PRED = '123';
 const PL_ACT = '127';
+
+type DashboardRow = {
+  variable: string;
+  predicted: string;
+  actual: string;
+};
 
 export default function ActivityDashboardScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
+  const { getSession } = useActivitySession();
+
+  const rows = useMemo((): DashboardRow[] => {
+    if (!cfg) return [];
+    const session = getSession(cfg.id);
+
+    if (cfg.captureKind === 'decibel' && cfg.decibelActions) {
+      const actionRows: DashboardRow[] = cfg.decibelActions.map((label, i) => ({
+        variable: label,
+        predicted: session.predictions[`action${i + 1}_pred`] ?? '—',
+        actual:
+          session.decibelReadings[i] != null ? `${session.decibelReadings[i].peakDb}` : '—',
+      }));
+      actionRows.push({
+        variable: 'Location / zone',
+        predicted: session.predictions.location ?? '—',
+        actual: '—',
+      });
+      return actionRows;
+    }
+
+    return cfg.dashboardVariables.map((v) => ({
+      variable: v,
+      predicted: PL_PRED,
+      actual: PL_ACT,
+    }));
+  }, [cfg, getSession]);
+
+  const tableWidth = cfg?.captureKind === 'decibel' ? 260 + 88 + 72 : 220 + 80 + 80;
 
   if (!cfg) {
     return (
@@ -23,6 +60,9 @@ export default function ActivityDashboardScreen() {
       </WireScreen>
     );
   }
+
+  const cVariable = cfg.captureKind === 'decibel' ? styles.cVariableWide : styles.cVariable;
+  const cValue = cfg.captureKind === 'decibel' ? styles.cValueWide : styles.cValue;
 
   return (
     <WireScreen
@@ -37,34 +77,39 @@ export default function ActivityDashboardScreen() {
       />
       <Panel title="Prediction vs. Actual">
         <ScrollView horizontal>
-          <View style={styles.table}>
+          <View style={[styles.table, { width: tableWidth }]}>
             <View style={styles.row}>
-              <Text style={[styles.cell, styles.h, styles.cVariable]}>Variable</Text>
-              <Text style={[styles.cell, styles.h, styles.cValue, styles.center]}>Predicted</Text>
-              <Text style={[styles.cell, styles.h, styles.cValue, styles.center]}>Actual</Text>
+              <Text style={[styles.cell, styles.h, cVariable]}>Variable</Text>
+              <Text style={[styles.cell, styles.h, cValue, styles.center]}>Predicted</Text>
+              <Text style={[styles.cell, styles.h, cValue, styles.center]}>Actual (dB)</Text>
             </View>
-            {cfg.dashboardVariables.map((v) => (
-              <View key={v} style={styles.row}>
-                <Text style={[styles.cell, styles.var, styles.cVariable]}>{v}</Text>
-                <Text style={[styles.cell, styles.cValue, styles.center]}>{PL_PRED}</Text>
-                <Text style={[styles.cell, styles.cValue, styles.center]}>{PL_ACT}</Text>
+            {rows.map((row) => (
+              <View key={row.variable} style={styles.row}>
+                <Text style={[styles.cell, styles.var, cVariable]}>{row.variable}</Text>
+                <Text style={[styles.cell, cValue, styles.center]}>{row.predicted}</Text>
+                <Text style={[styles.cell, cValue, styles.center]}>{row.actual}</Text>
               </View>
             ))}
           </View>
         </ScrollView>
       </Panel>
+      {cfg.captureKind === 'decibel' ? (
+        <Text style={styles.note}>
+          Actual dB values come from your phone microphone. Compare which action was loudest and whether your
+          louder/softer predictions were correct.
+        </Text>
+      ) : null}
     </WireScreen>
   );
 }
 
-const TABLE_WIDTH = 220 + 80 + 80;
-
 const styles = StyleSheet.create({
   cVariable: { width: 220 },
+  cVariableWide: { width: 260 },
   cValue: { width: 80 },
+  cValueWide: { width: 88 },
   center: { textAlign: 'center' },
   table: {
-    width: TABLE_WIDTH,
     borderWidth: 1,
     borderColor: Wireframe.border,
   },
@@ -85,4 +130,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   var: { fontWeight: '600' },
+  note: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#aaa',
+    lineHeight: 17,
+  },
 });

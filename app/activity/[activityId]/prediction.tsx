@@ -10,11 +10,13 @@ import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { getActivity } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useActivitySession } from '@/contexts/ActivitySessionContext';
 
 export default function ActivityPredictionScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
+  const { setPredictions } = useActivitySession();
   const [values, setValues] = useState<Record<string, string>>({});
 
   const complete = useMemo(() => {
@@ -36,7 +38,10 @@ export default function ActivityPredictionScreen() {
         <PrimaryButton
           label="UNLOCK SENSOR"
           disabled={!complete}
-          onPress={() => router.push(`/activity/${cfg.id}/capture`)}
+          onPress={() => {
+            setPredictions(cfg.id, values);
+            router.push(`/activity/${cfg.id}/capture`);
+          }}
         />
       }>
       <ScreenHeader

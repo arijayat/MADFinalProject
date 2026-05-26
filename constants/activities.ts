@@ -44,6 +44,8 @@ export interface ActivityConfig {
   leaderboardSubtitle: string;
   showSlowMo?: boolean;
   showRecordingTimer?: boolean;
+  /** Sound Pollution Hunter: measure each classroom action with the microphone */
+  decibelActions?: string[];
 }
 
 const safetyDefault = [
@@ -91,23 +93,57 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
   'decibel-detector': {
     id: 'decibel-detector',
     title: 'Decibel Detector',
-    subtitle: 'Measure sound intensity from different sources.',
-    hubDescription: 'Measure sound intensity from different sources.',
-    requirements: ['Sound source', 'Smartphone', 'Measuring Tape'],
-    gear: ['Sound source', 'Smartphone', 'Measuring Tape'],
+    subtitle: 'Measure and compare sound levels from different classroom actions.',
+    hubDescription: 'Measure and compare sound levels from different classroom actions.',
+    requirements: ['Mobile phone with STEMM Lab app', 'Classroom sound sources'],
+    gear: ['Mobile phone with STEMM Lab app'],
     safety: safetyDefault,
-    predictionFields: [
-      { key: 'distance', label: 'Distance from source (meters)', placeholder: 'Enter distance from source (meters)', kind: 'number' },
-      { key: 'sourceType', label: 'Sound source type', placeholder: 'Enter sound source type', kind: 'text' },
-      { key: 'db', label: 'Predicted decibels (dB)', placeholder: 'Enter predicted decibels (dB)', kind: 'number' },
+    decibelActions: [
+      'Action 1 (e.g. dropping a book on the table)',
+      'Action 2 (e.g. talking)',
+      'Action 3 (e.g. stamping your feet)',
     ],
-    dashboardVariables: ['Distance from source (meters)', 'Sound source type', 'Predicted decibels (dB)'],
+    predictionFields: [
+      {
+        key: 'action1_pred',
+        label: 'Action 1 — louder or softer than quiet room?',
+        placeholder: 'Select prediction',
+        kind: 'dropdown',
+        options: ['Louder', 'Softer', 'About the same'],
+      },
+      {
+        key: 'action2_pred',
+        label: 'Action 2 — louder or softer than Action 1?',
+        placeholder: 'Select prediction',
+        kind: 'dropdown',
+        options: ['Louder', 'Softer', 'About the same'],
+      },
+      {
+        key: 'action3_pred',
+        label: 'Action 3 — louder or softer than Action 2?',
+        placeholder: 'Select prediction',
+        kind: 'dropdown',
+        options: ['Louder', 'Softer', 'About the same'],
+      },
+      {
+        key: 'location',
+        label: 'Location / zone in classroom',
+        placeholder: 'e.g. front of room, back corner',
+        kind: 'text',
+      },
+    ],
+    dashboardVariables: [
+      'Action 1 (e.g. dropping a book on the table)',
+      'Action 2 (e.g. talking)',
+      'Action 3 (e.g. stamping your feet)',
+      'Location / zone',
+    ],
     captureKind: 'decibel',
-    captureIdleLabel: '0 dB',
-    captureDoneLabel: '40 dB',
-    captureDoneStatusA: 'Decibels Captured',
-    captureDoneStatusB: 'GPS Tagged',
-    leaderboardSubtitle: 'Grade 6 Rankings - Decibel Detector',
+    captureIdleLabel: '—',
+    captureDoneLabel: '—',
+    captureDoneStatusA: 'Sound levels captured',
+    captureDoneStatusB: 'Readings saved for all actions',
+    leaderboardSubtitle: 'Grade 6 Rankings - Sound Pollution Hunter',
   },
   'catapult-launch': {
     id: 'catapult-launch',

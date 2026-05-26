@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
+import { ActivitySessionProvider } from '@/contexts/ActivitySessionContext';
 import { TeamProvider } from '@/contexts/TeamContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -11,6 +12,7 @@ export default function RootLayout() {
 
   return (
     <TeamProvider>
+      <ActivitySessionProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
@@ -26,6 +28,7 @@ export default function RootLayout() {
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>
+      </ActivitySessionProvider>
     </TeamProvider>
   );
 }
