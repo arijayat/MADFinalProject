@@ -44,7 +44,16 @@
         {
           "microphonePermission": "Allow GLOBAL APP to use the microphone to measure sound levels for science activities."
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow STEMM Lab to use the camera to record parachute drops and measure fall times.",
+          "microphonePermission": "Allow STEMM Lab to record audio with drop videos.",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true,

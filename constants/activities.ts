@@ -1,7 +1,7 @@
 export type ActivityId =
   | "parachute-drop"
   | "decibel-detector"
-  | "catapult-launch"
+  | "hand-fan-challenge"
   | "vibration-analysis"
   | "reaction-time"
   | "surface-smoothness"
@@ -51,6 +51,8 @@ export interface ActivityConfig {
   showRecordingTimer?: boolean;
   /** Sound Pollution Hunter: measure each classroom action with the microphone */
   decibelActions?: string[];
+  /** Parachute Drop: record each design drop with the phone camera */
+  parachuteDropActions?: string[];
 }
 
 const safetyDefault = [
@@ -63,49 +65,93 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
   "parachute-drop": {
     id: "parachute-drop",
     title: "Parachute Drop",
-    subtitle: "Measure the fall rate of different parachute designs.",
-    hubDescription: "Measure the fall rate of different parachute designs.",
-    requirements: ["Parachute", "Action Figure", "Measuring Tape"],
-    gear: ["Parachute", "Action Figure", "Measuring Tape", "Stopwatch"],
-    safety: safetyDefault,
+    subtitle:
+      "Design, build, and test parachutes—use your phone camera to time the fall and slow-motion landing.",
+    hubDescription:
+      "Engineering + physics: compare baseline and parachute drops, then calculate drag and g-force from video.",
+    requirements: [
+      "Mobile phone with STEMM Lab app",
+      "Small toy (e.g. army figurine)",
+      "Table or elevated drop point",
+      "Paper or plastic, string, scissors, tape",
+      "Measuring tape or ruler",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app",
+      "Small toy (army figurine or similar)",
+      "Table or elevated surface",
+      "Paper or plastic (canopy)",
+      "String, scissors, and tape",
+      "Measuring tape or ruler",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Drop only over a clear floor area with no people underneath.",
+      "Use slow-motion video only to measure times—do not throw objects at anyone.",
+    ],
+    parachuteDropActions: [
+      "Action 1: No parachute (baseline)",
+      "Action 2: Plastic canopy, four corners tied to toy",
+      "Action 3: Your best parachute design",
+    ],
     predictionFields: [
       {
+        key: "dropHeight",
+        label: "Drop height (meters)",
+        placeholder: "Measure from table edge to floor",
+        kind: "number",
+      },
+      {
         key: "mass",
-        label: "Mass of Toy (grams)",
-        placeholder: "Enter mass of toy (grams)",
+        label: "Mass of toy (grams)",
+        placeholder: "e.g. 200",
         kind: "number",
       },
       {
-        key: "diameter",
-        label: "Parachute Diameter (cm)",
-        placeholder: "Enter parachute diameter (cm)",
+        key: "action1_pred",
+        label: "Action 1 — predicted fall time (s), no parachute",
+        placeholder: "How long until first hit the ground?",
         kind: "number",
       },
       {
-        key: "material",
-        label: "Material Type",
-        placeholder: "Select Material Type",
+        key: "action2_pred",
+        label: "Action 2 — predicted fall time (s), plastic design",
+        placeholder: "How long until first hit the ground?",
+        kind: "number",
+      },
+      {
+        key: "action3_design",
+        label: "Action 3 — describe your parachute design",
+        placeholder: "e.g. larger nylon canopy, 6 strings",
+        kind: "text",
+      },
+      {
+        key: "action3_pred",
+        label: "Action 3 — predicted fall time (seconds)",
+        placeholder: "How long until first hit the ground?",
+        kind: "number",
+      },
+      {
+        key: "bounce",
+        label: "Do you expect the toy to bounce on landing?",
+        placeholder: "Select",
         kind: "dropdown",
-        options: ["Plastic", "Fabric", "Paper", "Nylon"],
-      },
-      {
-        key: "fallTime",
-        label: "Predicted fall time (seconds)",
-        placeholder: "Enter predicted fall time (seconds)",
-        kind: "number",
+        options: ["No bounce", "Bounce"],
       },
     ],
     dashboardVariables: [
-      "Mass of toy (grams)",
-      "Parachute diameter (cm)",
-      "Material type",
-      "Predicted fall time (seconds)",
+      "Drop height (m)",
+      "Mass of toy (g)",
+      "Action 1: No parachute (baseline)",
+      "Action 2: Plastic canopy design",
+      "Action 3: Your best design",
+      "Bounce on landing?",
     ],
     captureKind: "camera",
     captureIdleLabel: "READY",
     captureDoneLabel: "DONE",
-    captureDoneStatusA: "Video Captured",
-    captureDoneStatusB: "GPS Tagged",
+    captureDoneStatusA: "Drop videos captured",
+    captureDoneStatusB: "Fall & impact times saved",
     leaderboardSubtitle: "Grade 6 Rankings - Parachute Drop",
     showSlowMo: true,
     showRecordingTimer: true,
@@ -171,46 +217,79 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     captureDoneStatusB: "Readings saved for all actions",
     leaderboardSubtitle: "Grade 6 Rankings - Sound Pollution Hunter",
   },
-  "catapult-launch": {
-    id: "catapult-launch",
-    title: "Catapult Launch",
-    subtitle: "Measure projectile distance and trajectory.",
-    hubDescription: "Measure projectile distance and trajectory.",
-    requirements: ["Catapult", "Projectile", "Measuring Tape"],
-    gear: ["Catapult", "Projectile", "Measuring Tape", "Protractor"],
-    safety: safetyDefault,
+  "hand-fan-challenge": {
+    id: "hand-fan-challenge",
+    title: "Hand Fan Challenge",
+    subtitle: "Investigate how air movement affects flexible materials.",
+    hubDescription:
+      "Physics — test how fan design, material stiffness and distance affect bending using your phone camera.",
+    requirements: [
+      "Mobile phone with STEMM Lab app (camera + slow-motion)",
+      "Paper and cardboard (different stiffnesses)",
+      "Scissors",
+      "Sticky tape",
+      "Measuring tape or ruler",
+      "Marker",
+      "Hand fan (paper or cardboard) or built fan designs",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app (camera)",
+      "Various paper/cardboard samples",
+      "Scissors, sticky tape",
+      "Measuring tape or ruler",
+      "Protractor or angle app (optional)",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Do not aim fans at people's faces or eyes.",
+      "Keep fingers away from sharp edges when cutting materials.",
+    ],
     predictionFields: [
       {
-        key: "angle",
-        label: "Launch angle (degrees)",
-        placeholder: "Enter launch angle (degrees)",
-        kind: "number",
+        key: "fanDesign",
+        label: "Fan design",
+        placeholder: "Describe your fan (folds, size, holes)",
+        kind: "text",
       },
       {
-        key: "mass",
-        label: "Projectile mass (grams)",
-        placeholder: "Enter projectile mass (grams)",
-        kind: "number",
+        key: "material",
+        label: "Material",
+        placeholder: "e.g. thin printer paper, card stock",
+        kind: "dropdown",
+        options: [
+          "Thin printer paper",
+          "Standard card stock",
+          "Thin cardboard",
+          "Corrugated cardboard",
+        ],
       },
       {
         key: "distance",
-        label: "Predicted distance (meters)",
-        placeholder: "Enter predicted distance (meters)",
+        label: "Distance from fan (cm)",
+        placeholder: "Enter distance in cm",
+        kind: "number",
+      },
+      {
+        key: "predictedBend",
+        label: "Predicted bend angle (degrees)",
+        placeholder: "Enter predicted bend angle (°)",
         kind: "number",
       },
     ],
     dashboardVariables: [
-      "Launch angle (degrees)",
-      "Projectile mass (grams)",
-      "Predicted distance (meters)",
+      "Fan design",
+      "Material",
+      "Distance from fan (cm)",
+      "Predicted bend angle (°)",
     ],
     captureKind: "camera",
     captureIdleLabel: "READY",
     captureDoneLabel: "DONE",
-    captureDoneStatusA: "Video Captured",
-    captureDoneStatusB: "GPS Tagged",
-    leaderboardSubtitle: "Grade 6 Rankings - Catapult Launch",
+    captureDoneStatusA: "Video captured",
+    captureDoneStatusB: "Bend measurement saved",
+    leaderboardSubtitle: "Grade 6 Rankings - Hand Fan Challenge",
     showSlowMo: true,
+    showRecordingTimer: true,
   },
   "vibration-analysis": {
     id: "vibration-analysis",
@@ -347,7 +426,7 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
 export const HUB_ACTIVITY_ORDER: ActivityId[] = [
   "parachute-drop",
   "decibel-detector",
-  "catapult-launch",
+  "hand-fan-challenge",
   "vibration-analysis",
   "reaction-time",
   "surface-smoothness",

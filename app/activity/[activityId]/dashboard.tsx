@@ -1,17 +1,26 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useMemo } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ScreenHeader } from '@/components/wireframe/BackNav';
-import { Panel } from '@/components/wireframe/Panel';
-import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
-import { WireScreen } from '@/components/wireframe/WireScreen';
-import { getActivity } from '@/constants/activities';
-import { Wireframe } from '@/constants/wireframe-theme';
-import { useActivitySession } from '@/contexts/ActivitySessionContext';
+import { ScreenHeader } from "@/components/wireframe/BackNav";
+import { Panel } from "@/components/wireframe/Panel";
+import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
+import { WireScreen } from "@/components/wireframe/WireScreen";
+import { getActivity } from "@/constants/activities";
+import { Wireframe } from "@/constants/wireframe-theme";
+import {
+    useActivitySession,
+    type BounceObservation,
+} from "@/contexts/ActivitySessionContext";
+import {
+    computeFallPhysics,
+    computeGForceBounce,
+    computeGForceNoBounce,
+    formatPhysics,
+} from "@/utils/parachute-physics";
 
-const PL_PRED = '123';
-const PL_ACT = '127';
+const PL_PRED = "123";
+const PL_ACT = "127";
 
 type DashboardRow = {
   variable: string;
@@ -29,19 +38,55 @@ export default function ActivityDashboardScreen() {
     if (!cfg) return [];
     const session = getSession(cfg.id);
 
-    if (cfg.captureKind === 'decibel' && cfg.decibelActions) {
+    if (cfg.captureKind === "decibel" && cfg.decibelActions) {
       const actionRows: DashboardRow[] = cfg.decibelActions.map((label, i) => ({
         variable: label,
-        predicted: session.predictions[`action${i + 1}_pred`] ?? '—',
+        predicted: session.predictions[`action${i + 1}_pred`] ?? "—",
         actual:
-          session.decibelReadings[i] != null ? `${session.decibelReadings[i].peakDb}` : '—',
+          session.decibelReadings[i] != null
+            ? `${session.decibelReadings[i].peakDb}`
+            : "—",
       }));
       actionRows.push({
-        variable: 'Location / zone',
-        predicted: session.predictions.location ?? '—',
-        actual: '—',
+        variable: "Location / zone",
+        predicted: session.predictions.location ?? "—",
+        actual: "—",
       });
       return actionRows;
+    }
+
+    if (cfg.id === "parachute-drop" && cfg.parachuteDropActions) {
+      const rows: DashboardRow[] = [
+        {
+          variable: "Drop height (m)",
+          predicted: session.predictions.dropHeight ?? "—",
+          actual: session.predictions.dropHeight ?? "—",
+        },
+        {
+          variable: "Mass of toy (g)",
+          predicted: session.predictions.mass ?? "—",
+          actual: session.predictions.mass ?? "—",
+        },
+      ];
+      const predKeys = ["action1_pred", "action2_pred", "action3_pred"];
+      cfg.parachuteDropActions.forEach((label, i) => {
+        const reading = session.parachuteReadings[i];
+        rows.push({
+          variable: label,
+          predicted: session.predictions[predKeys[i]] ?? "—",
+          actual: reading != null ? `${reading.fallTimeS} s` : "—",
+        });
+      });
+      const bounceActual =
+        session.bounceActual ??
+        session.parachuteReadings[2]?.observedBounce ??
+        null;
+      rows.push({
+        variable: "Bounce on landing?",
+        predicted: session.predictions.bounce ?? "—",
+        actual: bounceActual ?? "—",
+      });
+      return rows;
     }
 
     return cfg.dashboardVariables.map((v) => ({
@@ -51,7 +96,45 @@ export default function ActivityDashboardScreen() {
     }));
   }, [cfg, getSession]);
 
-  const tableWidth = cfg?.captureKind === 'decibel' ? 260 + 88 + 72 : 220 + 80 + 80;
+  const session = cfg ? getSession(cfg.id) : null;
+  const parachutePhysics = useMemo(() => {
+    if (!cfg || cfg.id !== "parachute-drop" || !session) return null;
+    const height = parseFloat(session.predictions.dropHeight ?? "");
+    const mass = parseFloat(session.predictions.mass ?? "");
+    const readings = session.parachuteReadings;
+    if (
+      !Number.isFinite(height) ||
+      !Number.isFinite(mass) ||
+      readings.length === 0
+    )
+      return null;
+
+    return readings.map((r, i) => {
+      const fall = computeFallPhysics(height, r.fallTimeS, mass);
+      const observedBounce: BounceObservation | null =
+        r.observedBounce ??
+        (i === readings.length - 1 ? session.bounceActual : null);
+      const didBounce = observedBounce === "Bounce";
+      let gForce: number | null = null;
+      if (fall && r.contactTimeS != null && r.contactTimeS > 0) {
+        if (didBounce && r.reboundTimeS != null && r.reboundTimeS > 0) {
+          gForce = computeGForceBounce(
+            fall.finalVelocityMs,
+            r.contactTimeS,
+            r.reboundTimeS,
+          );
+        } else if (!didBounce) {
+          gForce = computeGForceNoBounce(fall.finalVelocityMs, r.contactTimeS);
+        }
+      }
+      return { label: r.label, fall, gForce, didBounce };
+    });
+  }, [cfg, session]);
+
+  const tableWidth =
+    cfg?.captureKind === "decibel" || cfg?.id === "parachute-drop"
+      ? 280 + 110 + 110
+      : 240 + 100 + 100;
 
   if (!cfg) {
     return (
@@ -61,14 +144,26 @@ export default function ActivityDashboardScreen() {
     );
   }
 
-  const cVariable = cfg.captureKind === 'decibel' ? styles.cVariableWide : styles.cVariable;
-  const cValue = cfg.captureKind === 'decibel' ? styles.cValueWide : styles.cValue;
+  const wideTable =
+    cfg.captureKind === "decibel" || cfg.id === "parachute-drop";
+  const cVariable = wideTable ? styles.cVariableWide : styles.cVariable;
+  const cValue = wideTable ? styles.cValueWide : styles.cValue;
+  const actualHeader =
+    cfg.id === "parachute-drop"
+      ? "Actual"
+      : cfg.captureKind === "decibel"
+        ? "Actual (dB)"
+        : "Actual";
 
   return (
     <WireScreen
       footer={
-        <PrimaryButton label="CONTINUE TO REFLECTION" onPress={() => router.push(`/activity/${cfg.id}/reflection`)} />
-      }>
+        <PrimaryButton
+          label="CONTINUE TO REFLECTION"
+          onPress={() => router.push(`/activity/${cfg.id}/reflection`)}
+        />
+      }
+    >
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}
@@ -79,24 +174,106 @@ export default function ActivityDashboardScreen() {
         <ScrollView horizontal>
           <View style={[styles.table, { width: tableWidth }]}>
             <View style={styles.row}>
-              <Text style={[styles.cell, styles.h, cVariable]}>Variable</Text>
-              <Text style={[styles.cell, styles.h, cValue, styles.center]}>Predicted</Text>
-              <Text style={[styles.cell, styles.h, cValue, styles.center]}>Actual (dB)</Text>
+              <Text
+                style={[styles.cell, styles.h, cVariable]}
+                numberOfLines={1}
+              >
+                Variable
+              </Text>
+              <Text
+                style={[styles.cell, styles.h, cValue, styles.center]}
+                numberOfLines={1}
+              >
+                Predicted
+              </Text>
+              <Text
+                style={[styles.cell, styles.h, cValue, styles.center]}
+                numberOfLines={1}
+              >
+                {actualHeader}
+              </Text>
             </View>
             {rows.map((row) => (
               <View key={row.variable} style={styles.row}>
-                <Text style={[styles.cell, styles.var, cVariable]}>{row.variable}</Text>
-                <Text style={[styles.cell, cValue, styles.center]}>{row.predicted}</Text>
-                <Text style={[styles.cell, cValue, styles.center]}>{row.actual}</Text>
+                <Text
+                  style={[styles.cell, styles.var, cVariable]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {row.variable}
+                </Text>
+                <Text
+                  style={[styles.cell, cValue, styles.center]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {row.predicted}
+                </Text>
+                <Text
+                  style={[styles.cell, cValue, styles.center]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {row.actual}
+                </Text>
               </View>
             ))}
           </View>
         </ScrollView>
       </Panel>
-      {cfg.captureKind === 'decibel' ? (
+      {cfg.captureKind === "decibel" ? (
         <Text style={styles.note}>
-          Actual dB values come from your phone microphone. Compare which action was loudest and whether your
-          louder/softer predictions were correct.
+          Actual dB values come from your phone microphone. Compare which action
+          was loudest and whether your louder/softer predictions were correct.
+        </Text>
+      ) : null}
+      {cfg.id === "parachute-drop" &&
+      parachutePhysics &&
+      parachutePhysics.length > 0 ? (
+        <Panel title="Forces & landing (from your video times)">
+          {parachutePhysics.map(
+            ({ label, fall, gForce, didBounce }, arrIndex) =>
+              fall ? (
+                <View key={label} style={styles.physicsBlock}>
+                  <Text style={styles.physicsTitle}>{label}</Text>
+                  <Text style={styles.physicsLine}>
+                    Final speed: {formatPhysics(fall.finalVelocityMs)} m/s ·
+                    Acceleration: {formatPhysics(fall.accelerationMs2)} m/s²
+                  </Text>
+                  <Text style={styles.physicsLine}>
+                    Net force: {formatPhysics(fall.netForceN)} N · Weight:{" "}
+                    {formatPhysics(fall.weightN)} N · Drag:{" "}
+                    {formatPhysics(fall.dragForceN)} N
+                  </Text>
+                  {gForce != null ? (
+                    <Text style={styles.physicsLine}>
+                      G-force on landing: {formatPhysics(gForce, 1)} g
+                    </Text>
+                  ) : (
+                    <Text style={styles.physicsMuted}>
+                      {didBounce
+                        ? "Add contact time and rebound time (to max height) from slow-motion."
+                        : "Add contact time from slow-motion to calculate g-force."}
+                    </Text>
+                  )}
+                  {arrIndex < parachutePhysics.length - 1 ? (
+                    <View style={styles.physicsDivider} />
+                  ) : null}
+                </View>
+              ) : null,
+          )}
+          <Text style={styles.note}>
+            Drag = weight − net force. A parachute should increase drag, lower
+            acceleration, and reduce g-force on landing. Compare Action 1
+            (baseline) with your parachute designs.
+          </Text>
+        </Panel>
+      ) : null}
+      {cfg.id === "parachute-drop" ? (
+        <Text style={styles.note}>
+          Fall times and bounce on landing come from what you entered after
+          reviewing each drop video. Use slow-motion on landing to measure
+          contact time.
         </Text>
       ) : null}
     </WireScreen>
@@ -104,17 +281,17 @@ export default function ActivityDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  cVariable: { width: 220 },
-  cVariableWide: { width: 260 },
-  cValue: { width: 80 },
-  cValueWide: { width: 88 },
-  center: { textAlign: 'center' },
+  cVariable: { width: 240 },
+  cVariableWide: { width: 280 },
+  cValue: { width: 100 },
+  cValueWide: { width: 110 },
+  center: { textAlign: "center" },
   table: {
     borderWidth: 1,
     borderColor: Wireframe.border,
   },
   row: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Wireframe.border,
   },
@@ -126,14 +303,38 @@ const styles = StyleSheet.create({
     borderRightColor: Wireframe.border,
   },
   h: {
-    fontWeight: '800',
-    backgroundColor: '#f0f0f0',
+    fontWeight: "800",
+    backgroundColor: "#f0f0f0",
   },
-  var: { fontWeight: '600' },
+  var: { fontWeight: "600" },
   note: {
     marginTop: 10,
     fontSize: 12,
-    color: '#aaa',
+    color: "#aaa",
     lineHeight: 17,
+  },
+  physicsBlock: { marginBottom: 4 },
+  physicsTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Wireframe.text,
+    marginBottom: 4,
+  },
+  physicsLine: {
+    fontSize: 12,
+    color: Wireframe.text,
+    lineHeight: 18,
+    marginBottom: 2,
+  },
+  physicsMuted: {
+    fontSize: 11,
+    color: Wireframe.textMuted,
+    fontStyle: "italic",
+    marginBottom: 4,
+  },
+  physicsDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: Wireframe.border,
+    marginVertical: 10,
   },
 });

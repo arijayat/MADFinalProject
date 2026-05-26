@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Wireframe } from '@/constants/wireframe-theme';
@@ -12,7 +12,13 @@ type Props = {
 
 export function WireScreen({ children, footer, scroll = true }: Props) {
   const body = scroll ? (
-    <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.scrollContent}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      automaticallyAdjustKeyboardInsets
+      showsVerticalScrollIndicator={false}>
       {children}
     </ScrollView>
   ) : (
@@ -21,10 +27,15 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={styles.inner}>
-        {body}
-        {footer ? <View style={styles.footer}>{footer}</View> : null}
-      </View>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}>
+        <View style={styles.inner}>
+          {body}
+          {footer ? <View style={styles.footer}>{footer}</View> : null}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -42,8 +53,12 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
+  scroll: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingBottom: 16,
+    flexGrow: 1,
+    paddingBottom: 32,
     gap: 12,
   },
   footer: {

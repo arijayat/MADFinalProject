@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DecibelCaptureScreen } from '@/components/activity/DecibelCaptureScreen';
+import { ParachuteCaptureScreen } from '@/components/activity/ParachuteCaptureScreen';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -35,6 +36,10 @@ export default function ActivityCaptureScreen() {
 
   if (cfg.captureKind === 'decibel') {
     return <DecibelCaptureScreen cfg={cfg} />;
+  }
+
+  if (cfg.id === 'parachute-drop') {
+    return <ParachuteCaptureScreen cfg={cfg} />;
   }
 
   const done = phase === 'done';
