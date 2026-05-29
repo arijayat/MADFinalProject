@@ -58,6 +58,12 @@ export interface ActivityConfig {
   vibrationDesignActions?: string[];
   /** Human Performance Lab: guided hand movements measured with accelerometer */
   movementActions?: string[];
+  /** Reaction Board: tap trials per hand phase */
+  reactionTapAttempts?: number;
+  /** Reaction Board: tracing trials in phase 3 */
+  reactionTraceAttempts?: number;
+  /** Breathing Pace Trainer: rest + post-exercise chest recordings */
+  breathingPhases?: string[];
 }
 
 const safetyDefault = [
@@ -463,63 +469,176 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
   },
   "reaction-time": {
     id: "reaction-time",
-    title: "Reaction Time",
-    subtitle: "Test reflex speed with visual stimuli.",
-    hubDescription: "Test reflex speed with visual stimuli.",
-    requirements: ["Timer", "Smartphone"],
-    gear: ["Timer", "Smartphone"],
-    safety: safetyDefault,
+    title: "Reaction Board Challenge",
+    subtitle:
+      "Measure reaction time, compare dominant vs non-dominant hand, then trace a moving target for accuracy and delay.",
+    hubDescription:
+      "Neuroscience + Mathematics: tap when a hidden button appears, repeat with your other hand, then trace a moving shape to measure coordination.",
+    requirements: [
+      "Mobile phone with STEMM Lab app",
+      "Flat table surface",
+      "Paper for recording results (optional)",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app",
+      "Flat table — rest the phone screen-up",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Keep the phone flat on the table during all phases.",
+      "Use one finger at a time for tapping and tracing.",
+      "Take turns if testing multiple team members.",
+    ],
+    reactionTapAttempts: 3,
+    reactionTraceAttempts: 3,
     predictionFields: [
       {
         key: "member",
         label: "Team member name",
-        placeholder: "Enter team member name",
+        placeholder: "Who is taking this test?",
         kind: "text",
       },
       {
-        key: "rt",
-        label: "Predicted reaction time (ms)",
-        placeholder: "Enter predicted reaction time (ms)",
+        key: "dominant_hand",
+        label: "Dominant hand",
+        placeholder: "Select",
+        kind: "dropdown",
+        options: ["Right", "Left"],
+      },
+      {
+        key: "phase1_pred",
+        label: "Phase 1 — predicted avg reaction time (ms), dominant hand",
+        placeholder: "e.g. 350",
         kind: "number",
       },
+      {
+        key: "phase2_pred",
+        label: "Phase 2 — predicted avg reaction time (ms), non-dominant hand",
+        placeholder: "e.g. 450",
+        kind: "number",
+      },
+      {
+        key: "dominant_faster",
+        label: "Will your dominant hand be faster?",
+        placeholder: "Select",
+        kind: "dropdown",
+        options: ["Yes", "No", "About the same"],
+      },
+      {
+        key: "trace1_pred",
+        label: "Tracing attempt 1 — predict outcome (accuracy + delay)",
+        placeholder: "e.g. ±1 cm, 0.5 s delay",
+        kind: "text",
+      },
+      {
+        key: "trace2_pred",
+        label: "Tracing attempt 2 — predict outcome",
+        placeholder: "e.g. 3 s delay, medium accuracy",
+        kind: "text",
+      },
+      {
+        key: "trace3_pred",
+        label: "Tracing attempt 3 — predict outcome",
+        placeholder: "e.g. 1 s delay, high accuracy",
+        kind: "text",
+      },
     ],
-    dashboardVariables: ["Team member name", "Predicted reaction time (ms)"],
+    dashboardVariables: [
+      "Team member name",
+      "Dominant hand",
+      "Phase 1: Tap reaction (dominant)",
+      "Phase 2: Swap hands (non-dominant)",
+      "Dominant faster? (prediction)",
+      "Tracing attempt 1",
+      "Tracing attempt 2",
+      "Tracing attempt 3",
+    ],
     captureKind: "reaction",
-    captureIdleLabel: "",
-    captureDoneLabel: "",
-    captureDoneStatusA: "Reaction time Captured",
-    captureDoneStatusB: "GPS Tagged",
-    leaderboardSubtitle: "Grade 6 Rankings - Reaction Time",
+    captureIdleLabel: "READY",
+    captureDoneLabel: "DONE",
+    captureDoneStatusA: "Reaction & tracing data captured",
+    captureDoneStatusB: "All three phases complete",
+    leaderboardSubtitle: "Grade 6 Rankings - Reaction Board Challenge",
   },
   "breathing-pattern": {
     id: "breathing-pattern",
-    title: "Breathing Pattern",
-    subtitle: "Analyze breathing rate before and after exercise.",
-    hubDescription: "Analyze breathing rate before and after exercise.",
-    requirements: ["Timer", "Smartphone"],
-    gear: ["Timer", "Smartphone"],
-    safety: safetyDefault,
+    title: "Breathing Pace Trainer",
+    subtitle:
+      "Lie down with the phone on your chest—use motion sensors to measure breathing at rest and after light exercise.",
+    hubDescription:
+      "Medical Science: record chest movement with the accelerometer, compare breaths per minute before and after jogging or star jumps.",
+    requirements: [
+      "Mobile phone with STEMM Lab app",
+      "Flat mat or clear floor to lie on",
+      "Space for light exercise (jog on the spot or star jumps)",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app",
+      "Mat or towel to lie on",
+      "Open floor space for light exercise",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Only do light exercise you are comfortable with—stop if you feel dizzy.",
+      "Place the phone gently on your chest; do not press hard.",
+      "Lie down and stand up carefully to avoid dropping the phone.",
+    ],
+    breathingPhases: [
+      "Breathing at rest",
+      "After Exercise 1",
+      "After Exercise 2",
+    ],
     predictionFields: [
       {
-        key: "activity",
-        label: "Activity type",
-        placeholder: "Enter activity type",
+        key: "rest_pred",
+        label: "At rest — predict breaths per minute",
+        placeholder: "e.g. 16",
+        kind: "number",
+      },
+      {
+        key: "exercise1_pred",
+        label: "After Exercise 1 — predict breaths per minute",
+        placeholder: "e.g. 24",
+        kind: "number",
+      },
+      {
+        key: "exercise2_pred",
+        label: "After Exercise 2 — predict breaths per minute",
+        placeholder: "e.g. 28",
+        kind: "number",
+      },
+      {
+        key: "exercise1_type",
+        label: "Exercise 1 — what will you do?",
+        placeholder: "e.g. jog on the spot for 1 minute",
         kind: "text",
       },
       {
-        key: "bpm",
-        label: "Predicted BPM",
-        placeholder: "Enter predicted BPM",
-        kind: "number",
+        key: "exercise2_type",
+        label: "Exercise 2 — what will you do?",
+        placeholder: "e.g. 100 star jumps",
+        kind: "text",
+      },
+      {
+        key: "higher_after_exercise",
+        label: "Will breathing rate be higher after exercise?",
+        placeholder: "Select",
+        kind: "dropdown",
+        options: ["Yes", "No", "About the same"],
       },
     ],
-    dashboardVariables: ["Activity type", "Predicted BPM"],
+    dashboardVariables: [
+      "Breathing at rest",
+      "After Exercise 1",
+      "After Exercise 2",
+      "Higher after exercise? (prediction)",
+    ],
     captureKind: "waveform",
-    captureIdleLabel: "",
-    captureDoneLabel: "",
-    captureDoneStatusA: "Waveform Captured",
-    captureDoneStatusB: "GPS Tagged",
-    leaderboardSubtitle: "Grade 6 Rankings - Breathing Pattern",
+    captureIdleLabel: "READY",
+    captureDoneLabel: "DONE",
+    captureDoneStatusA: "Breathing recordings captured",
+    captureDoneStatusB: "All three phases complete",
+    leaderboardSubtitle: "Grade 6 Rankings - Breathing Pace Trainer",
   },
 };
 

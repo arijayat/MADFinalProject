@@ -1,0 +1,437 @@
+import { Accelerometer } from 'expo-sensors';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+
+import { ScreenHeader } from '@/components/wireframe/BackNav';
+import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
+import { WireScreen } from '@/components/wireframe/WireScreen';
+import type { ActivityConfig } from '@/constants/activities';
+import { Wireframe } from '@/constants/wireframe-theme';
+import {
+  useActivitySession,
+  type BreathingReading,
+} from '@/contexts/ActivitySessionContext';
+import {
+  analyzeBreathing,
+  formatBreathingOutcome,
+  sampleFromAccel,
+} from '@/utils/breathing';
+
+type Props = {
+  cfg: ActivityConfig;
+};
+
+const RECORD_SECONDS = 30;
+const WAVEFORM_POINTS = 48;
+
+type Phase = 'ready' | 'recording' | 'exercise_break' | 'all_done';
+
+export function BreathingPatternCaptureScreen({ cfg }: Props) {
+  const router = useRouter();
+  const { setBreathingReadings, clearCapture } = useActivitySession();
+  const phases = cfg.breathingPhases ?? ['Breathing measurement'];
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [saved, setSaved] = useState<BreathingReading[]>([]);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [screenPhase, setScreenPhase] = useState<Phase>('ready');
+  const [elapsedS, setElapsedS] = useState(0);
+  const [liveBpm, setLiveBpm] = useState<number | null>(null);
+  const [waveform, setWaveform] = useState<number[]>([]);
+
+  const samplesRef = useRef<ReturnType<typeof sampleFromAccel>[]>([]);
+  const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const recordStartRef = useRef<number | null>(null);
+  const screenPhaseRef = useRef<Phase>('ready');
+
+  const recording = screenPhase === 'recording';
+  const exerciseBreak = screenPhase === 'exercise_break';
+  const allDone = screenPhase === 'all_done';
+  const currentLabel = phases[phaseIndex] ?? phases[phases.length - 1];
+
+  useEffect(() => {
+    screenPhaseRef.current = screenPhase;
+  }, [screenPhase]);
+
+  const stopSubscription = useCallback(() => {
+    subscriptionRef.current?.remove();
+    subscriptionRef.current = null;
+  }, []);
+
+  const stopElapsedTimer = useCallback(() => {
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+  }, []);
+
+  const startSubscription = useCallback(() => {
+    stopSubscription();
+    Accelerometer.setUpdateInterval(50);
+    subscriptionRef.current = Accelerometer.addListener((accel) => {
+      if (screenPhaseRef.current !== 'recording') return;
+      const t = Date.now();
+      const sample = sampleFromAccel(t, accel);
+      samplesRef.current.push(sample);
+
+      const recent = samplesRef.current.slice(-120);
+      if (recent.length >= 20) {
+        const partial = analyzeBreathing(recent);
+        setLiveBpm(partial.breathsPerMinute);
+      }
+
+      const signal = sample.z;
+      setWaveform((prev) => {
+        const next = [...prev, signal];
+        return next.length > WAVEFORM_POINTS
+          ? next.slice(next.length - WAVEFORM_POINTS)
+          : next;
+      });
+    });
+  }, [stopSubscription]);
+
+  useEffect(() => {
+    clearCapture(cfg.id);
+    (async () => {
+      if (Platform.OS === 'web') {
+        setAvailable(false);
+        return;
+      }
+      const isAvailable = await Accelerometer.isAvailableAsync();
+      setAvailable(isAvailable);
+    })();
+    return () => {
+      stopSubscription();
+      stopElapsedTimer();
+    };
+  }, [cfg.id, clearCapture, stopSubscription, stopElapsedTimer]);
+
+  const finishRecording = useCallback(() => {
+    stopElapsedTimer();
+    stopSubscription();
+    const analysis = analyzeBreathing(samplesRef.current);
+    const reading: BreathingReading = {
+      label: currentLabel,
+      ...analysis,
+    };
+    const nextSaved = [...saved, reading];
+    setSaved(nextSaved);
+    samplesRef.current = [];
+    setLiveBpm(null);
+    setWaveform([]);
+    setElapsedS(0);
+
+    const isLastPhase = phaseIndex + 1 >= phases.length;
+    if (isLastPhase) {
+      setBreathingReadings(cfg.id, nextSaved);
+      screenPhaseRef.current = 'all_done';
+      setScreenPhase('all_done');
+      return;
+    }
+
+    screenPhaseRef.current = 'exercise_break';
+    setScreenPhase('exercise_break');
+  }, [
+    stopElapsedTimer,
+    stopSubscription,
+    currentLabel,
+    saved,
+    phaseIndex,
+    phases.length,
+    setBreathingReadings,
+    cfg.id,
+  ]);
+
+  const beginRecording = useCallback(() => {
+    samplesRef.current = [];
+    setLiveBpm(null);
+    setWaveform([]);
+    setElapsedS(0);
+    recordStartRef.current = Date.now();
+    screenPhaseRef.current = 'recording';
+    setScreenPhase('recording');
+    startSubscription();
+
+    elapsedTimerRef.current = setInterval(() => {
+      const start = recordStartRef.current;
+      if (start == null) return;
+      const sec = Math.floor((Date.now() - start) / 1000);
+      setElapsedS(sec);
+      if (sec >= RECORD_SECONDS) {
+        finishRecording();
+      }
+    }, 500);
+  }, [startSubscription, finishRecording]);
+
+  const continueAfterExercise = useCallback(() => {
+    setPhaseIndex((i) => i + 1);
+    screenPhaseRef.current = 'ready';
+    setScreenPhase('ready');
+  }, []);
+
+  const waveMin = waveform.length > 0 ? Math.min(...waveform) : 0;
+  const waveMax = waveform.length > 0 ? Math.max(...waveform) : 1;
+  const waveRange = waveMax - waveMin || 0.01;
+
+  let footerLabel = 'START RECORDING';
+  let footerAction: () => void = beginRecording;
+  let footerDisabled = available === false;
+
+  if (allDone) {
+    footerLabel = 'VIEW RESULTS';
+    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+  } else if (recording) {
+    footerLabel = 'STOP EARLY';
+    footerAction = finishRecording;
+  } else if (exerciseBreak) {
+    footerLabel = 'READY — START NEXT RECORDING';
+    footerAction = continueAfterExercise;
+    footerDisabled = false;
+  } else if (available === false) {
+    footerLabel = 'SENSOR UNAVAILABLE';
+    footerAction = () => {};
+    footerDisabled = true;
+  }
+
+  return (
+    <WireScreen
+      scroll={false}
+      footer={
+        exerciseBreak ? null : (
+          <PrimaryButton
+            label={footerLabel}
+            onPress={footerAction}
+            disabled={footerDisabled}
+          />
+        )
+      }>
+      <ScreenHeader
+        backLabel="BACK"
+        onBack={() => router.back()}
+        title="Chest breathing capture"
+        subtitle="Accelerometer detects chest rise and fall."
+      />
+
+      {Platform.OS === 'web' ? (
+        <Text style={styles.warn}>
+          Open this project on a physical iPhone or Android device to use motion
+          sensors.
+        </Text>
+      ) : available === false ? (
+        <Text style={styles.warn}>
+          Motion sensors are not available on this device.
+        </Text>
+      ) : null}
+
+      {exerciseBreak ? (
+        <View style={styles.breakBox}>
+          <Text style={styles.breakTitle}>Light exercise break</Text>
+          <Text style={styles.breakText}>
+            Before the next measurement, do light exercise—for example jog on the
+            spot for one minute, or do 100 star jumps.
+          </Text>
+          <Text style={styles.breakText}>
+            Then lie down again, place the phone gently on your chest (screen
+            facing up), and tap the button below when you are ready to record.
+          </Text>
+          <PrimaryButton
+            label="READY — START NEXT RECORDING"
+            onPress={continueAfterExercise}
+          />
+        </View>
+      ) : (
+        <>
+          <Text style={styles.step}>
+            Phase {Math.min(phaseIndex + 1, phases.length)} of {phases.length}
+          </Text>
+          <Text style={styles.actionLabel}>
+            {allDone ? 'All phases complete' : currentLabel}
+          </Text>
+
+          {!recording && !allDone ? (
+            <Text style={styles.hint}>
+              Lie flat on your back. Rest the phone gently on the centre of your
+              chest. Breathe normally. Each recording lasts {RECORD_SECONDS}{' '}
+              seconds.
+            </Text>
+          ) : null}
+
+          <View style={styles.meterWrap}>
+            <View
+              style={[
+                styles.meterCircle,
+                recording && styles.meterActive,
+              ]}>
+              <Text style={styles.meterText}>
+                {recording
+                  ? liveBpm != null
+                    ? `${liveBpm}`
+                    : '…'
+                  : allDone && saved.length > 0
+                    ? `${saved[saved.length - 1].breathsPerMinute}`
+                    : '—'}
+              </Text>
+              <Text style={styles.meterSub}>breaths / min</Text>
+            </View>
+            <Text style={styles.meterCaption}>
+              {recording
+                ? `Recording ${elapsedS}s / ${RECORD_SECONDS}s`
+                : 'Live estimate from chest movement'}
+            </Text>
+          </View>
+
+          <View style={styles.waveBox}>
+            <View style={styles.waveRow}>
+              {waveform.length === 0
+                ? Array.from({ length: WAVEFORM_POINTS }).map((_, i) => (
+                    <View key={i} style={[styles.waveBar, { height: 4 }]} />
+                  ))
+                : waveform.map((v, i) => {
+                    const h = 8 + ((v - waveMin) / waveRange) * 52;
+                    return (
+                      <View
+                        key={`${i}-${v}`}
+                        style={[styles.waveBar, { height: h }]}
+                      />
+                    );
+                  })}
+            </View>
+            <Text style={styles.waveCaption}>
+              Accelerometer waveform (chest movement)
+            </Text>
+          </View>
+
+          {saved.length > 0 ? (
+            <View style={styles.savedBlock}>
+              <Text style={styles.savedTitle}>Recorded</Text>
+              {saved.map((r) => (
+                <Text key={r.label} style={styles.savedRow}>
+                  • {r.label}: {formatBreathingOutcome(r)}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
+          {allDone ? (
+            <View style={styles.statusBlock}>
+              <Text style={styles.statusLine}>✓ {cfg.captureDoneStatusA}</Text>
+              <Text style={styles.statusLine}>✓ {cfg.captureDoneStatusB}</Text>
+            </View>
+          ) : null}
+        </>
+      )}
+
+      <Text style={styles.disclaimer}>
+        Breaths per minute are classroom estimates from phone motion—not medical
+        spirometry. Compare trends at rest vs after exercise.
+      </Text>
+    </WireScreen>
+  );
+}
+
+const styles = StyleSheet.create({
+  warn: {
+    color: Wireframe.accentYellow,
+    fontSize: 13,
+    marginBottom: 8,
+  },
+  step: {
+    color: '#aaa',
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  actionLabel: {
+    color: Wireframe.panelBg,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#aaa',
+    lineHeight: 17,
+    marginBottom: 12,
+  },
+  meterWrap: {
+    minHeight: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3a3a3a',
+    borderWidth: 1,
+    borderColor: '#555',
+    padding: 16,
+    marginBottom: 12,
+  },
+  meterCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#d0d0d0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#888',
+  },
+  meterActive: { borderColor: Wireframe.accentRed },
+  meterText: { fontSize: 32, fontWeight: '800', color: Wireframe.text },
+  meterSub: { fontSize: 11, color: '#666', marginTop: 4 },
+  meterCaption: {
+    marginTop: 12,
+    color: '#cfcfcf',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  waveBox: {
+    minHeight: 100,
+    backgroundColor: '#3a3a3a',
+    borderWidth: 1,
+    borderColor: '#555',
+    padding: 12,
+    marginBottom: 12,
+  },
+  waveRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    height: 64,
+    gap: 2,
+  },
+  waveBar: {
+    flex: 1,
+    maxWidth: 8,
+    backgroundColor: Wireframe.accentRed,
+    borderRadius: 1,
+  },
+  waveCaption: { color: '#cfcfcf', fontSize: 11, textAlign: 'center', marginTop: 8 },
+  breakBox: {
+    backgroundColor: '#272727',
+    borderWidth: 1,
+    borderColor: Wireframe.border,
+    padding: 16,
+    marginBottom: 12,
+  },
+  breakTitle: {
+    color: Wireframe.accentRed,
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  breakText: {
+    color: Wireframe.text,
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  savedBlock: { marginTop: 8 },
+  savedTitle: { color: '#aaa', fontSize: 12, marginBottom: 6 },
+  savedRow: { color: Wireframe.panelBg, fontSize: 13, marginBottom: 4 },
+  statusBlock: { marginTop: 12 },
+  statusLine: { color: Wireframe.panelBg, fontSize: 14, marginBottom: 4 },
+  disclaimer: {
+    marginTop: 12,
+    fontSize: 11,
+    color: '#888',
+    lineHeight: 16,
+  },
+});

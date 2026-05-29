@@ -339,6 +339,99 @@ export default function ActivityIntroScreen() {
           </Panel>
         </>
       ) : null}
+      {cfg.id === "breathing-pattern" ? (
+        <>
+          <Panel title="Discussion">
+            <Text style={styles.panelHint}>
+              Breathing rate increases during exercise to supply more oxygen to
+              muscles. Sensors detect chest movement, helping students visualise
+              breathing patterns.
+            </Text>
+            <Text style={styles.howLine}>
+              Curriculum links: ACSSU150 (Body systems) · ACSIS218 (Planning
+              investigations) · ACSIS221 (Representing data)
+            </Text>
+          </Panel>
+
+          <Panel title="How to use phone sensors">
+            <Text style={styles.panelHint}>
+              The app uses your phone accelerometer to detect the small up-and-down
+              movement of your chest while you breathe—no extra equipment needed.
+            </Text>
+            <Text style={styles.howLine}>
+              1. Lie flat on your back on a mat. Place the phone gently on the
+              centre of your chest (screen facing up).
+            </Text>
+            <Text style={styles.howLine}>
+              2. Stay still and breathe normally while the app records for 30
+              seconds. It counts breaths per minute from chest movement.
+            </Text>
+            <Text style={styles.howLine}>
+              3. Do light exercise (jog on the spot for one minute, or 100 star
+              jumps), then lie down and record again.
+            </Text>
+            <Text style={styles.howLine}>
+              4. Repeat for a second exercise round, then compare rest vs
+              after-exercise results on the dashboard.
+            </Text>
+          </Panel>
+
+          <Panel title="Breathing Pace Trainer — Instructions">
+            <Text style={styles.panelHint}>
+              Activity 7 (Medical Science): analyse your breathing patterns at
+              rest and after light exercise.
+            </Text>
+            <Text style={styles.howLine}>Steps:</Text>
+            <Text style={styles.howLine}>
+              • Baseline: lie down and place the phone on your chest. Record
+              breathing at rest.
+            </Text>
+            <Text style={styles.howLine}>
+              • Exercise 1: jog on the spot for one minute (or 100 star jumps).
+            </Text>
+            <Text style={styles.howLine}>
+              • Lie down again immediately and record breathing (After Exercise
+              1).
+            </Text>
+            <Text style={styles.howLine}>
+              • Exercise 2: repeat light exercise, then record again (After
+              Exercise 2).
+            </Text>
+            <Text style={styles.howLine}>
+              • Compare your predictions with measured breaths per minute. Were
+              you right?
+            </Text>
+
+            <View style={styles.tableWrap}>
+              <View style={styles.tableRowHead}>
+                <Text style={styles.tableCellHead}>Activity state</Text>
+                <Text style={styles.tableCellHead}>Predict BPM</Text>
+                <Text style={styles.tableCellHead}>Outcome</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Breathing at rest</Text>
+                <Text style={styles.tableCell}>(your prediction)</Text>
+                <Text style={styles.tableCell}>(from app)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>After Exercise 1</Text>
+                <Text style={styles.tableCell}>(your prediction)</Text>
+                <Text style={styles.tableCell}>(time + movement)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>After Exercise 2</Text>
+                <Text style={styles.tableCell}>(your prediction)</Text>
+                <Text style={styles.tableCell}>(time + movement)</Text>
+              </View>
+            </View>
+
+            <Text style={styles.panelHint}>
+              Write-up: Why does breathing rate change after exercise? How did
+              the sensor waveform look different at rest vs after exercise?
+            </Text>
+          </Panel>
+        </>
+      ) : null}
     </WireScreen>
   );
 }

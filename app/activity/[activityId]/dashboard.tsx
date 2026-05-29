@@ -18,6 +18,7 @@ import {
     computeGForceNoBounce,
     formatPhysics,
 } from "@/utils/parachute-physics";
+import { formatBreathingOutcome } from "@/utils/breathing";
 
 const PL_PRED = "123";
 const PL_ACT = "127";
@@ -145,6 +146,133 @@ export default function ActivityDashboardScreen() {
       return actionRows;
     }
 
+    if (cfg.id === "reaction-time") {
+      const dominant = session.tapReactionReadings.filter(
+        (r) => r.hand === "dominant" && !r.falseStart,
+      );
+      const nonDominant = session.tapReactionReadings.filter(
+        (r) => r.hand === "non_dominant" && !r.falseStart,
+      );
+      const tapSummary = (hand: "dominant" | "non_dominant") => {
+        const valid = session.tapReactionReadings.filter(
+          (r) => r.hand === hand && !r.falseStart,
+        );
+        const all = session.tapReactionReadings.filter((r) => r.hand === hand);
+        if (all.length === 0) return "—";
+        if (valid.length === 0) return "False start";
+        const avg = Math.round(
+          valid.reduce((s, r) => s + r.reactionTimeMs, 0) / valid.length,
+        );
+        return `${avg} ms`;
+      };
+
+      const domAvg =
+        dominant.length > 0
+          ? Math.round(
+              dominant.reduce((s, r) => s + r.reactionTimeMs, 0) /
+                dominant.length,
+            )
+          : null;
+      const nonDomAvg =
+        nonDominant.length > 0
+          ? Math.round(
+              nonDominant.reduce((s, r) => s + r.reactionTimeMs, 0) /
+                nonDominant.length,
+            )
+          : null;
+
+      const traceKeys = ["trace1_pred", "trace2_pred", "trace3_pred"];
+      const traceLabels = [
+        "Tracing attempt 1",
+        "Tracing attempt 2",
+        "Tracing attempt 3",
+      ];
+
+      const rows: DashboardRow[] = [
+        {
+          variable: "Team member name",
+          predicted: session.predictions.member ?? "—",
+          actual: session.predictions.member ?? "—",
+        },
+        {
+          variable: "Dominant hand",
+          predicted: session.predictions.dominant_hand ?? "—",
+          actual: session.predictions.dominant_hand ?? "—",
+        },
+        {
+          variable: "Phase 1: Tap reaction (dominant)",
+          predicted: session.predictions.phase1_pred
+            ? `${session.predictions.phase1_pred} ms`
+            : "—",
+          actual: tapSummary("dominant"),
+        },
+        {
+          variable: "Phase 2: Swap hands (non-dominant)",
+          predicted: session.predictions.phase2_pred
+            ? `${session.predictions.phase2_pred} ms`
+            : "—",
+          actual: tapSummary("non_dominant"),
+        },
+        {
+          variable: "Dominant faster? (prediction)",
+          predicted: session.predictions.dominant_faster ?? "—",
+          actual:
+            domAvg != null && nonDomAvg != null
+              ? domAvg < nonDomAvg
+                ? "Yes — dominant was faster"
+                : domAvg > nonDomAvg
+                  ? "No — non-dominant was faster"
+                  : "About the same"
+              : "—",
+        },
+      ];
+
+      traceLabels.forEach((label, i) => {
+        const t = session.tracingReadings[i];
+        rows.push({
+          variable: label,
+          predicted: session.predictions[traceKeys[i]] ?? "—",
+          actual:
+            t != null
+              ? `${t.accuracyPct}% accuracy · ${t.avgDelayMs} ms delay`
+              : "—",
+        });
+      });
+      return rows;
+    }
+
+    if (cfg.id === "breathing-pattern" && cfg.breathingPhases) {
+      const predKeys = ["rest_pred", "exercise1_pred", "exercise2_pred"];
+      const phaseRows: DashboardRow[] = cfg.breathingPhases.map((label, i) => ({
+        variable: label,
+        predicted: session.predictions[predKeys[i]] ?? "—",
+        actual:
+          session.breathingReadings[i] != null
+            ? formatBreathingOutcome(session.breathingReadings[i])
+            : "—",
+      }));
+      phaseRows.push({
+        variable: "Higher after exercise? (prediction)",
+        predicted: session.predictions.higher_after_exercise ?? "—",
+        actual:
+          session.breathingReadings.length >= 2
+            ? (() => {
+                const rest = session.breathingReadings[0]?.breathsPerMinute ?? 0;
+                const after = Math.max(
+                  session.breathingReadings[1]?.breathsPerMinute ?? 0,
+                  session.breathingReadings[2]?.breathsPerMinute ?? 0,
+                );
+                return after > rest
+                  ? "Yes — rate increased after exercise"
+                  : after < rest
+                    ? "No — rate did not increase"
+                    : "About the same";
+              })()
+            : "—",
+      });
+      return phaseRows;
+    }
+
     if (cfg.id === "parachute-drop" && cfg.parachuteDropActions) {
       const rows: DashboardRow[] = [
         {
@@ -225,7 +353,9 @@ export default function ActivityDashboardScreen() {
     cfg?.captureKind === "decibel" ||
     cfg?.id === "parachute-drop" ||
     cfg?.id === "vibration-analysis" ||
-    cfg?.id === "surface-smoothness"
+    cfg?.id === "surface-smoothness" ||
+    cfg?.id === "reaction-time" ||
+    cfg?.id === "breathing-pattern"
       ? 280 + 110 + 110
       : 240 + 100 + 100;
 
@@ -241,7 +371,9 @@ export default function ActivityDashboardScreen() {
     cfg.captureKind === "decibel" ||
     cfg.id === "parachute-drop" ||
     cfg.id === "vibration-analysis" ||
-    cfg.id === "surface-smoothness";
+    cfg.id === "surface-smoothness" ||
+    cfg.id === "reaction-time" ||
+    cfg.id === "breathing-pattern";
   const cVariable = wideTable ? styles.cVariableWide : styles.cVariable;
   const cValue = wideTable ? styles.cValueWide : styles.cValue;
   const actualHeader =
@@ -249,7 +381,10 @@ export default function ActivityDashboardScreen() {
       ? "Actual"
       : cfg.captureKind === "decibel"
         ? "Actual (dB)"
-        : cfg.id === "vibration-analysis" || cfg.id === "surface-smoothness"
+        : cfg.id === "vibration-analysis" ||
+            cfg.id === "surface-smoothness" ||
+            cfg.id === "reaction-time" ||
+            cfg.id === "breathing-pattern"
           ? "Actual (sensor)"
           : "Actual";
 
@@ -331,12 +466,28 @@ export default function ActivityDashboardScreen() {
           Lower peak tilt (°) means a more stable, earthquake-resistant design.
         </Text>
       ) : null}
+      {cfg.id === "breathing-pattern" ? (
+        <Text style={styles.note}>
+          Outcomes use your phone accelerometer on your chest (time, breaths per
+          minute, and peak movement). Compare rest vs after exercise—did your
+          breathing rate increase?
+        </Text>
+      ) : null}
       {cfg.id === "surface-smoothness" ? (
         <Text style={styles.note}>
           Actual values come from your phone accelerometer (vibration sensor).
           Lower peak vibration (m/s²) means smoother, more coordinated movement.
           Compare which movement was hardest to keep vibration low—were you
           right?
+        </Text>
+      ) : null}
+      {cfg.id === "reaction-time" ? (
+        <Text style={styles.note}>
+          Reaction time measures how quickly your brain processes information
+          and sends signals to muscles. Practice can improve speed and
+          coordination. Comparing dominant vs non-dominant hand shows how
+          dominance affects performance. Were your predictions right? Any
+          surprises?
         </Text>
       ) : null}
       {cfg.id === "parachute-drop" &&

@@ -42,12 +42,38 @@ export type ParachuteReading = {
   observedBounce: BounceObservation | null;
 };
 
+export type TapReactionReading = {
+  hand: "dominant" | "non_dominant";
+  attempt: 1 | 2 | 3;
+  reactionTimeMs: number;
+  falseStart: boolean;
+};
+
+export type TracingReading = {
+  attempt: 1 | 2 | 3;
+  /** 0–100, higher = closer to the moving target */
+  accuracyPct: number;
+  /** Average lag behind the target (ms) */
+  avgDelayMs: number;
+};
+
+export type BreathingReading = {
+  label: string;
+  breathCount: number;
+  breathsPerMinute: number;
+  durationS: number;
+  peakMovementMs2: number;
+};
+
 type ActivitySession = {
   predictions: Record<string, string>;
   decibelReadings: DecibelReading[];
   vibrationReadings: VibrationReading[];
   performanceReadings: PerformanceReading[];
   parachuteReadings: ParachuteReading[];
+  tapReactionReadings: TapReactionReading[];
+  tracingReadings: TracingReading[];
+  breathingReadings: BreathingReading[];
   /** Landing bounce observed on best-design drop (Action 3), if set on dashboard */
   bounceActual: BounceObservation | null;
 };
@@ -78,6 +104,18 @@ type ActivitySessionContextValue = {
     activityId: ActivityId,
     value: BounceObservation | null,
   ) => void;
+  setTapReactionReadings: (
+    activityId: ActivityId,
+    readings: TapReactionReading[],
+  ) => void;
+  setTracingReadings: (
+    activityId: ActivityId,
+    readings: TracingReading[],
+  ) => void;
+  setBreathingReadings: (
+    activityId: ActivityId,
+    readings: BreathingReading[],
+  ) => void;
   clearCapture: (activityId: ActivityId) => void;
 };
 
@@ -87,6 +125,9 @@ const emptySession = (): ActivitySession => ({
   vibrationReadings: [],
   performanceReadings: [],
   parachuteReadings: [],
+  tapReactionReadings: [],
+  tracingReadings: [],
+  breathingReadings: [],
   bounceActual: null,
 });
 
@@ -182,6 +223,45 @@ export function ActivitySessionProvider({
     [],
   );
 
+  const setTapReactionReadings = useCallback(
+    (activityId: ActivityId, readings: TapReactionReading[]) => {
+      setSessions((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] ?? emptySession()),
+          tapReactionReadings: readings,
+        },
+      }));
+    },
+    [],
+  );
+
+  const setTracingReadings = useCallback(
+    (activityId: ActivityId, readings: TracingReading[]) => {
+      setSessions((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] ?? emptySession()),
+          tracingReadings: readings,
+        },
+      }));
+    },
+    [],
+  );
+
+  const setBreathingReadings = useCallback(
+    (activityId: ActivityId, readings: BreathingReading[]) => {
+      setSessions((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] ?? emptySession()),
+          breathingReadings: readings,
+        },
+      }));
+    },
+    [],
+  );
+
   const clearCapture = useCallback((activityId: ActivityId) => {
     setSessions((prev) => ({
       ...prev,
@@ -191,6 +271,9 @@ export function ActivitySessionProvider({
         vibrationReadings: [],
         performanceReadings: [],
         parachuteReadings: [],
+        tapReactionReadings: [],
+        tracingReadings: [],
+        breathingReadings: [],
         bounceActual: null,
       },
     }));
@@ -205,6 +288,9 @@ export function ActivitySessionProvider({
       setPerformanceReadings,
       setParachuteReadings,
       setBounceActual,
+      setTapReactionReadings,
+      setTracingReadings,
+      setBreathingReadings,
       clearCapture,
     }),
     [
@@ -215,6 +301,9 @@ export function ActivitySessionProvider({
       setPerformanceReadings,
       setParachuteReadings,
       setBounceActual,
+      setTapReactionReadings,
+      setTracingReadings,
+      setBreathingReadings,
       clearCapture,
     ],
   );

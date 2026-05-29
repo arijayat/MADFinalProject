@@ -6,6 +6,8 @@ import { DecibelCaptureScreen } from "@/components/activity/DecibelCaptureScreen
 import { FanChallengeCaptureScreen } from "@/components/activity/FanChallengeCaptureScreen";
 import { ParachuteCaptureScreen } from "@/components/activity/ParachuteCaptureScreen";
 import { HumanPerformanceCaptureScreen } from "@/components/activity/HumanPerformanceCaptureScreen";
+import { BreathingPatternCaptureScreen } from "@/components/activity/BreathingPatternCaptureScreen";
+import { ReactionBoardCaptureScreen } from "@/components/activity/ReactionBoardCaptureScreen";
 import { VibrationCaptureScreen } from "@/components/activity/VibrationCaptureScreen";
 import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
@@ -99,6 +101,14 @@ export default function ActivityCaptureScreen() {
 
   if (cfg.id === "hand-fan-challenge") {
     return <FanChallengeCaptureScreen cfg={cfg} />;
+  }
+
+  if (cfg.id === "reaction-time") {
+    return <ReactionBoardCaptureScreen cfg={cfg} />;
+  }
+
+  if (cfg.id === "breathing-pattern") {
+    return <BreathingPatternCaptureScreen cfg={cfg} />;
   }
 
   let footer: ReactNode = null;

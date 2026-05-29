@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMotionUsageDescription": "STEMM Lab uses your phone’s motion sensors to measure movement smoothness and vibration during science activities."
+        "NSMotionUsageDescription": "STEMM Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities."
       }
     },
     "android": {
