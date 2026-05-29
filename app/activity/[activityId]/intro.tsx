@@ -87,13 +87,13 @@ export default function ActivityIntroScreen() {
         <>
           <Panel title="How to record (phone camera)">
             <Text style={styles.panelHint}>
-              Use your phone camera in slow‑motion to capture bend and recovery.
-              Position the phone so the paper edge is visible from the side and
-              the fan is perpendicular to the sheet.
+              The app will not open the camera. Use your phone’s native camera
+              app in slow motion to capture bend and recovery, or observe the
+              motion directly.
             </Text>
             <Text style={styles.howLine}>
-              1. Set your camera to slow‑motion (Slo‑mo on iOS; high‑fps mode on
-              Android).
+              1. Open your phone camera app and select slow‑motion mode if
+              available.
             </Text>
             <Text style={styles.howLine}>
               2. Mount or tape the phone on a stable surface at the same height
@@ -104,8 +104,8 @@ export default function ActivityIntroScreen() {
               distances.
             </Text>
             <Text style={styles.howLine}>
-              4. After recording, play back in slow‑mo and pause at maximum bend
-              to estimate angle.
+              4. Play back the video in slow motion and pause at maximum bend to
+              estimate the angle.
             </Text>
             <Text style={styles.howLine}>
               Tip: use a protractor app or mark a reference line on the
@@ -160,6 +160,181 @@ export default function ActivityIntroScreen() {
               Write‑up: Predict which fan makes the paper move the most. How
               does material stiffness affect bend? How does distance change
               bending?
+            </Text>
+          </Panel>
+        </>
+      ) : null}
+      {cfg.id === "surface-smoothness" ? (
+        <>
+          <Panel title="Discussion (plain language)">
+            <Text style={styles.panelHint}>
+              Muscles and joints work together to create movement. Faster
+              movements often reduce control, while smoother movements show
+              better coordination. Sensors in the phone measure how quickly and
+              smoothly the body moves, helping students understand biomechanics
+              and fatigue.
+            </Text>
+            <Text style={styles.howLine}>
+              Curriculum links: ACPPS051 (Movement skills) · ACPPS054 (Physical
+              performance) · ACSSU176 (Structure and function of body systems)
+            </Text>
+          </Panel>
+
+          <Panel title="How to use phone sensors">
+            <Text style={styles.panelHint}>
+              The app uses your phone accelerometer as a vibration sensor and
+              can provide haptic (buzz) feedback when movement is not smooth—no
+              extra equipment needed.
+            </Text>
+            <Text style={styles.howLine}>
+              1. Hold the phone firmly in one hand and unlock the vibration
+              sensor in the capture screen.
+            </Text>
+            <Text style={styles.howLine}>
+              2. Perform each guided movement slowly while the app records peak
+              vibration (m/s²) and time.
+            </Text>
+            <Text style={styles.howLine}>
+              3. After all three movements, the app will prompt Attempt 2 —
+              repeat each movement while the phone buzzes when motion is not
+              smooth.
+            </Text>
+            <Text style={styles.howLine}>
+              4. Review speed, smoothness, and compare results to your
+              predictions on the dashboard.
+            </Text>
+          </Panel>
+
+          <Panel title="Human Performance Lab — Instructions">
+            <Text style={styles.panelHint}>
+              Students investigate how the human body moves by measuring speed,
+              smoothness, and coordination during controlled stretching
+              activities.
+            </Text>
+            <Text style={styles.howLine}>Steps:</Text>
+            <Text style={styles.howLine}>
+              • Movement 1: Rotate your hand in a circle, then in a figure-8,
+              while holding the phone.
+            </Text>
+            <Text style={styles.howLine}>
+              • Movement 2: Move your arm up and down steadily.
+            </Text>
+            <Text style={styles.howLine}>
+              • Movement 3: Move your arm side to side steadily.
+            </Text>
+            <Text style={styles.howLine}>
+              • Upload results and reflect: Which movement was hardest to keep
+              vibration low? Were you right? Any surprises?
+            </Text>
+
+            <View style={styles.tableWrap}>
+              <View style={styles.tableRowHead}>
+                <Text style={styles.tableCellHead}>Attempt</Text>
+                <Text style={styles.tableCellHead}>Predict vibration</Text>
+                <Text style={styles.tableCellHead}>Outcome (time + movement)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Attempt 1</Text>
+                <Text style={styles.tableCell}>e.g. ±1 cm</Text>
+                <Text style={styles.tableCell}>(from app)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Attempt 2</Text>
+                <Text style={styles.tableCell}>(your prediction)</Text>
+                <Text style={styles.tableCell}>e.g. 5 mm in 20 s</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Attempt 3</Text>
+                <Text style={styles.tableCell}>(your prediction)</Text>
+                <Text style={styles.tableCell}>e.g. 5 mm in 5 s</Text>
+              </View>
+            </View>
+          </Panel>
+        </>
+      ) : null}
+      {cfg.id === "vibration-analysis" ? (
+        <>
+          <Panel title="Discussion">
+            <Text style={styles.panelHint}>
+              Earthquakes cause ground vibrations that can collapse poorly
+              designed structures. Engineers design buildings to absorb and
+              distribute energy safely.
+            </Text>
+            <Text style={styles.howLine}>
+              Curriculum links: ACSSU096 (Earth processes) · ACTDEP036 (Testing
+              and improving designs)
+            </Text>
+          </Panel>
+
+          <Panel title="How to use phone sensors">
+            <Text style={styles.panelHint}>
+              The app uses your phone accelerometer as a level tool and
+              vibration sensor—no extra equipment needed.
+            </Text>
+            <Text style={styles.howLine}>
+              1. Level check: place the phone screen-up on your platform. The
+              green dot means the surface is stable enough to test.
+            </Text>
+            <Text style={styles.howLine}>
+              2. Vibration mode: tap START, then gently shake the table to
+              simulate an earthquake while the app records peak tilt (°) and
+              vibration (m/s²).
+            </Text>
+            <Text style={styles.howLine}>
+              3. Repeat for each design and compare which structure dampens
+              movement best.
+            </Text>
+          </Panel>
+
+          <Panel title="Earthquake-Resistant Structure — Instructions">
+            <Text style={styles.panelHint}>
+              Design and test structures that dampen vibrations, simulating an
+              earthquake.
+            </Text>
+            <Text style={styles.howLine}>Steps:</Text>
+            <Text style={styles.howLine}>
+              • Build an anti-vibration layer by folding paper or cardboard into
+              a zig-zag (accordion) shape.
+            </Text>
+            <Text style={styles.howLine}>
+              • Create a platform: place cups as pillars, lay the folded paper
+              across them, then add flat cardboard on top.
+            </Text>
+            <Text style={styles.howLine}>
+              • Place the phone screen-up in the center of the platform and run
+              the level check in the app.
+            </Text>
+            <Text style={styles.howLine}>
+              • Shake the table gently and record results. Change folds or
+              pillars and test again.
+            </Text>
+
+            <View style={styles.tableWrap}>
+              <View style={styles.tableRowHead}>
+                <Text style={styles.tableCellHead}>Design</Text>
+                <Text style={styles.tableCellHead}>Phone moves</Text>
+                <Text style={styles.tableCellHead}>Outcome (°)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Design 1: 4 folds + 4 pillars</Text>
+                <Text style={styles.tableCell}>(from app)</Text>
+                <Text style={styles.tableCell}>(peak tilt °)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Design 2: 10 folds + 4 pillars</Text>
+                <Text style={styles.tableCell}>(from app)</Text>
+                <Text style={styles.tableCell}>(peak tilt °)</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.tableCell}>Design 3: your design</Text>
+                <Text style={styles.tableCell}>(from app)</Text>
+                <Text style={styles.tableCell}>(peak tilt °)</Text>
+              </View>
+            </View>
+
+            <Text style={styles.panelHint}>
+              Write-up: Predict which design will move the least. Record results,
+              compare to predictions, and note any surprises.
             </Text>
           </Panel>
         </>

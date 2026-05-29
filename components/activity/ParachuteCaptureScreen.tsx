@@ -17,6 +17,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { parsePositiveSeconds } from '@/utils/parse-number';
 import {
   useActivitySession,
   type BounceObservation,
@@ -30,6 +31,9 @@ type Props = {
 type Phase = 'preview' | 'recording' | 'review' | 'times';
 
 type RecordingResult = { uri: string };
+
+/** Quarter-speed playback when reviewing drops for precise landing timestamps. */
+const REVIEW_PLAYBACK_RATE = 0.25;
 
 export function ParachuteCaptureScreen({ cfg }: Props) {
   const router = useRouter();
@@ -149,21 +153,30 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   }, []);
 
   const saveTimes = useCallback(() => {
-    const fall = parseFloat(fallTimeInput);
-    if (!Number.isFinite(fall) || fall <= 0) {
-      Alert.alert('Fall time needed', 'Enter the fall time in seconds from your video timestamp.');
+    const fall = parsePositiveSeconds(fallTimeInput);
+    if (fall == null) {
+      Alert.alert(
+        'Fall time needed',
+        'Enter the fall time in seconds from your video (e.g. 0.85 or 0,85).'
+      );
       return;
     }
     const contactRaw = contactTimeInput.trim();
-    const contact = contactRaw.length > 0 ? parseFloat(contactRaw) : null;
-    if (contactRaw.length > 0 && (!Number.isFinite(contact!) || contact! <= 0)) {
-      Alert.alert('Invalid contact time', 'Contact time must be a positive number in seconds.');
+    const contact = contactRaw.length > 0 ? parsePositiveSeconds(contactRaw) : null;
+    if (contactRaw.length > 0 && contact == null) {
+      Alert.alert(
+        'Invalid contact time',
+        'Contact time must be a positive number in seconds (e.g. 0.05 or 0,05).'
+      );
       return;
     }
     const reboundRaw = reboundTimeInput.trim();
-    const rebound = reboundRaw.length > 0 ? parseFloat(reboundRaw) : null;
-    if (reboundRaw.length > 0 && (!Number.isFinite(rebound!) || rebound! <= 0)) {
-      Alert.alert('Invalid rebound time', 'Rebound time must be a positive number in seconds.');
+    const rebound = reboundRaw.length > 0 ? parsePositiveSeconds(reboundRaw) : null;
+    if (reboundRaw.length > 0 && rebound == null) {
+      Alert.alert(
+        'Invalid rebound time',
+        'Rebound time must be a positive number in seconds (e.g. 0.15 or 0,15).'
+      );
       return;
     }
 
@@ -235,10 +248,10 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     if (phase === 'review' && videoUri) {
       return (
         <View>
-          <DropVideoReview uri={videoUri} />
+          <DropVideoReview uri={videoUri} playbackRate={REVIEW_PLAYBACK_RATE} />
           <Text style={styles.reviewHint}>
-            Replay your drop. Scrub the timeline to find when the toy was released and when it first hit
-            the ground. Use slow-motion on your phone’s player if needed for landing.
+            Replay your drop in slow motion. Scrub the timeline to find when the toy was released and
+            when it first hit the ground.
           </Text>
           <Pressable onPress={reRecord} hitSlop={8}>
             <Text style={styles.reRecordLink}>Re-record this drop</Text>
@@ -326,7 +339,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       {phase === 'times' && videoUri ? (
         <View style={styles.inlineReview}>
           <Text style={styles.inlineReviewLabel}>Your recording</Text>
-          <DropVideoReview uri={videoUri} />
+          <DropVideoReview uri={videoUri} playbackRate={REVIEW_PLAYBACK_RATE} />
         </View>
       ) : null}
 
@@ -337,7 +350,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           <TextInput
             style={styles.input}
             keyboardType="decimal-pad"
-            placeholder="e.g. 0.85"
+            placeholder="e.g. 0.85 or 0,85"
             placeholderTextColor={Wireframe.placeholder}
             value={fallTimeInput}
             onChangeText={setFallTimeInput}
@@ -348,7 +361,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           <TextInput
             style={styles.input}
             keyboardType="decimal-pad"
-            placeholder="e.g. 0.05"
+            placeholder="e.g. 0.05 or 0,05"
             placeholderTextColor={Wireframe.placeholder}
             value={contactTimeInput}
             onChangeText={setContactTimeInput}
@@ -361,7 +374,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
               <TextInput
                 style={styles.input}
                 keyboardType="decimal-pad"
-                placeholder="e.g. 0.15"
+                placeholder="e.g. 0.15 or 0,15"
                 placeholderTextColor={Wireframe.placeholder}
                 value={reboundTimeInput}
                 onChangeText={setReboundTimeInput}

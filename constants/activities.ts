@@ -27,7 +27,8 @@ export type CaptureKind =
   | "decibel"
   | "vibration_hz"
   | "waveform"
-  | "reaction";
+  | "reaction"
+  | "none";
 
 export interface ActivityConfig {
   id: ActivityId;
@@ -53,6 +54,10 @@ export interface ActivityConfig {
   decibelActions?: string[];
   /** Parachute Drop: record each design drop with the phone camera */
   parachuteDropActions?: string[];
+  /** Vibration Analysis: test each earthquake-resistant design with accelerometer */
+  vibrationDesignActions?: string[];
+  /** Human Performance Lab: guided hand movements measured with accelerometer */
+  movementActions?: string[];
 }
 
 const safetyDefault = [
@@ -220,11 +225,12 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
   "hand-fan-challenge": {
     id: "hand-fan-challenge",
     title: "Hand Fan Challenge",
-    subtitle: "Investigate how air movement affects flexible materials.",
+    subtitle:
+      "Record how air movement affects flexible materials and measure angles from video frames.",
     hubDescription:
-      "Physics — test how fan design, material stiffness and distance affect bending using your phone camera.",
+      "Physics — test how fan design, material stiffness and distance affect bending using the app to record video and measure angles from slow-motion frames.",
     requirements: [
-      "Mobile phone with STEMM Lab app (camera + slow-motion)",
+      "Mobile phone with STEMM Lab app",
       "Paper and cardboard (different stiffnesses)",
       "Scissors",
       "Sticky tape",
@@ -233,11 +239,11 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       "Hand fan (paper or cardboard) or built fan designs",
     ],
     gear: [
-      "Mobile phone with STEMM Lab app (camera)",
+      "Mobile phone with STEMM Lab app",
       "Various paper/cardboard samples",
       "Scissors, sticky tape",
       "Measuring tape or ruler",
-      "Protractor or angle app (optional)",
+      "Protractor or angle reference (optional)",
     ],
     safety: [
       ...safetyDefault,
@@ -271,7 +277,7 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       },
       {
         key: "predictedBend",
-        label: "Predicted bend angle (degrees)",
+        label: "Predicted maximum bend angle (degrees)",
         placeholder: "Enter predicted bend angle (°)",
         kind: "number",
       },
@@ -280,56 +286,180 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       "Fan design",
       "Material",
       "Distance from fan (cm)",
-      "Predicted bend angle (°)",
+      "Predicted maximum bend angle (°)",
     ],
     captureKind: "camera",
     captureIdleLabel: "READY",
     captureDoneLabel: "DONE",
-    captureDoneStatusA: "Video captured",
-    captureDoneStatusB: "Bend measurement saved",
+    captureDoneStatusA: "Video recording captured",
+    captureDoneStatusB: "Angle measurements from frames saved",
     leaderboardSubtitle: "Grade 6 Rankings - Hand Fan Challenge",
     showSlowMo: true,
     showRecordingTimer: true,
   },
   "vibration-analysis": {
     id: "vibration-analysis",
-    title: "Vibration Analysis",
-    subtitle: "Measure vibration intensity on different surfaces.",
-    hubDescription: "Measure vibration intensity on different surfaces.",
-    requirements: ["Smartphone", "Various surfaces", "Vibration Sources"],
-    gear: ["Various surfaces", "Smartphone", "Vibration sources"],
-    safety: safetyDefault,
+    title: "Earthquake-Resistant Structure",
+    subtitle:
+      "Design earthquake-resistant platforms and measure how well they dampen vibrations with your phone sensors.",
+    hubDescription:
+      "Engineering + Earth Science: build dampening structures, then use the accelerometer and level sensor to compare stability during simulated earthquakes.",
+    requirements: [
+      "Mobile phone with STEMM Lab app",
+      "Cardboard, paper, scissors, sticky tape",
+      "Plastic or paper cups (4–6)",
+      "Table or flat surface to shake gently",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app",
+      "Cardboard and paper (accordion folds)",
+      "Scissors and sticky tape",
+      "Plastic or paper cups (4–6 pillars)",
+      "Table or flat surface",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Shake the table gently—do not lift, throw, or drop the structure.",
+      "Keep the phone screen-up and centered on the cardboard platform during each test.",
+      "Hold the phone steady only when checking level—not during vibration capture.",
+    ],
+    vibrationDesignActions: [
+      "Design 1: 4 accordion folds + 4 pillars",
+      "Design 2: 10 accordion folds + 4 pillars",
+      "Design 3: Your best design (e.g. 3 folds + 6 pillars)",
+    ],
     predictionFields: [
       {
-        key: "surface",
-        label: "Surface material",
-        placeholder: "Enter surface material",
+        key: "design1_pred",
+        label: "Design 1 — predicted max tilt (degrees)",
+        placeholder: "How much will the phone tilt? e.g. 5",
+        kind: "number",
+      },
+      {
+        key: "design2_pred",
+        label: "Design 2 — predicted max tilt (degrees)",
+        placeholder: "More folds — less movement?",
+        kind: "number",
+      },
+      {
+        key: "design3_desc",
+        label: "Design 3 — describe your structure",
+        placeholder: "e.g. 3 folds + 6 pillars, extra cardboard layer",
         kind: "text",
       },
       {
-        key: "vibeSource",
-        label: "Vibration source",
-        placeholder: "Enter vibration source",
+        key: "design3_pred",
+        label: "Design 3 — predicted max tilt (degrees)",
+        placeholder: "Your best design prediction",
+        kind: "number",
+      },
+      {
+        key: "mostStable",
+        label: "Which design will move the least?",
+        placeholder: "Select prediction",
+        kind: "dropdown",
+        options: ["Design 1", "Design 2", "Design 3"],
+      },
+    ],
+    dashboardVariables: [
+      "Design 1: 4 folds + 4 pillars",
+      "Design 2: 10 folds + 4 pillars",
+      "Design 3: Your best design",
+      "Most stable design (prediction)",
+    ],
+    captureKind: "vibration_hz",
+    captureIdleLabel: "—",
+    captureDoneLabel: "—",
+    captureDoneStatusA: "Vibration readings captured",
+    captureDoneStatusB: "Level & tilt data saved for all designs",
+    leaderboardSubtitle: "Grade 6 Rankings - Vibration Analysis",
+  },
+  "surface-smoothness": {
+    id: "surface-smoothness",
+    title: "Human Performance Lab",
+    subtitle:
+      "Stretch Speed & Gracefulness — measure movement smoothness with your phone’s vibration sensor (Medical Science + Biomechanics).",
+    hubDescription:
+      "Investigate how the body moves by measuring speed, smoothness, and coordination during controlled stretching and hand movements.",
+    requirements: [
+      "Mobile phone with STEMM Lab app",
+      "Open space to move safely",
+    ],
+    gear: [
+      "Mobile phone with STEMM Lab app",
+      "Open space to move safely",
+    ],
+    safety: [
+      ...safetyDefault,
+      "Hold the phone firmly—do not swing it near other people or objects.",
+      "Move slowly and stay in an open area with enough room for arm movements.",
+      "Stop immediately if you feel pain or dizziness.",
+    ],
+    movementActions: [
+      "Movement 1: Circle / figure-8 (rotate hand while holding phone)",
+      "Movement 2: Up and down",
+      "Movement 3: Side to side",
+    ],
+    predictionFields: [
+      {
+        key: "move1_pred",
+        label: "Movement 1 — predicted vibration (absolute)",
+        placeholder: "e.g. low, medium, or a number",
         kind: "text",
       },
       {
-        key: "level",
-        label: "Predicted vibration level",
-        placeholder: "Enter predicted vibration level",
+        key: "move2_pred",
+        label: "Movement 2 — predicted vibration (absolute)",
+        placeholder: "e.g. low, medium, or a number",
+        kind: "text",
+      },
+      {
+        key: "move3_pred",
+        label: "Movement 3 — predicted vibration (absolute)",
+        placeholder: "e.g. low, medium, or a number",
+        kind: "text",
+      },
+      {
+        key: "hardest_move",
+        label: "Which movement will be hardest to keep vibration low?",
+        placeholder: "Select prediction",
+        kind: "dropdown",
+        options: ["Movement 1", "Movement 2", "Movement 3"],
+      },
+      {
+        key: "attempt1_pred",
+        label: "Attempt 1 — predict smoothness outcome",
+        placeholder: "e.g. ±1 cm",
+        kind: "text",
+      },
+      {
+        key: "attempt2_pred",
+        label: "Attempt 2 — predict outcome (time + movement)",
+        placeholder: "e.g. 5 mm in 20 seconds",
+        kind: "text",
+      },
+      {
+        key: "attempt3_pred",
+        label: "Attempt 3 — predict outcome (time + movement)",
+        placeholder: "e.g. 5 mm in 5 seconds",
         kind: "text",
       },
     ],
     dashboardVariables: [
-      "Surface material",
-      "Vibration source",
-      "Predicted Vibration",
+      "Movement 1: Circle / figure-8",
+      "Movement 2: Up and down",
+      "Movement 3: Side to side",
+      "Hardest to keep vibration low (prediction)",
+      "Attempt 1 smoothness",
+      "Attempt 2 (time + movement)",
+      "Attempt 3 (time + movement)",
     ],
     captureKind: "vibration_hz",
-    captureIdleLabel: "0 Hz",
-    captureDoneLabel: "40 Hz",
-    captureDoneStatusA: "Vibration Level Captured",
-    captureDoneStatusB: "GPS Tagged",
-    leaderboardSubtitle: "Grade 6 Rankings - Vibration Analysis",
+    captureIdleLabel: "—",
+    captureDoneLabel: "—",
+    captureDoneStatusA: "Movement vibrations captured",
+    captureDoneStatusB: "Speed & smoothness readings saved",
+    leaderboardSubtitle: "Grade 6 Rankings - Human Performance Lab",
   },
   "reaction-time": {
     id: "reaction-time",
@@ -360,36 +490,6 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     captureDoneStatusA: "Reaction time Captured",
     captureDoneStatusB: "GPS Tagged",
     leaderboardSubtitle: "Grade 6 Rankings - Reaction Time",
-  },
-  "surface-smoothness": {
-    id: "surface-smoothness",
-    title: "Surface Smoothness",
-    subtitle: "Measure friction using accelerometer waveforms.",
-    hubDescription: "Measure friction using accelerometer waveforms.",
-    requirements: ["Various surfaces", "Smartphone", "Ruler"],
-    gear: ["Various surfaces", "Smartphone", "Ruler"],
-    safety: safetyDefault,
-    predictionFields: [
-      {
-        key: "surface",
-        label: "Surface type",
-        placeholder: "Enter surface type",
-        kind: "text",
-      },
-      {
-        key: "friction",
-        label: "Expected friction level (1-10)",
-        placeholder: "Enter expected friction level (1-10)",
-        kind: "number",
-      },
-    ],
-    dashboardVariables: ["Surface type", "Expected Friction Level (1-10)"],
-    captureKind: "waveform",
-    captureIdleLabel: "",
-    captureDoneLabel: "",
-    captureDoneStatusA: "Waveform Captured",
-    captureDoneStatusB: "GPS Tagged",
-    leaderboardSubtitle: "Grade 6 Rankings - Surface Smoothness",
   },
   "breathing-pattern": {
     id: "breathing-pattern",
@@ -428,8 +528,8 @@ export const HUB_ACTIVITY_ORDER: ActivityId[] = [
   "decibel-detector",
   "hand-fan-challenge",
   "vibration-analysis",
-  "reaction-time",
   "surface-smoothness",
+  "reaction-time",
   "breathing-pattern",
 ];
 

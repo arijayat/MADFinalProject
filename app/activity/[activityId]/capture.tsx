@@ -1,24 +1,28 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { DecibelCaptureScreen } from '@/components/activity/DecibelCaptureScreen';
-import { ParachuteCaptureScreen } from '@/components/activity/ParachuteCaptureScreen';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
-import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
-import { WireScreen } from '@/components/wireframe/WireScreen';
-import { getActivity } from '@/constants/activities';
-import { Wireframe } from '@/constants/wireframe-theme';
+import { DecibelCaptureScreen } from "@/components/activity/DecibelCaptureScreen";
+import { FanChallengeCaptureScreen } from "@/components/activity/FanChallengeCaptureScreen";
+import { ParachuteCaptureScreen } from "@/components/activity/ParachuteCaptureScreen";
+import { HumanPerformanceCaptureScreen } from "@/components/activity/HumanPerformanceCaptureScreen";
+import { VibrationCaptureScreen } from "@/components/activity/VibrationCaptureScreen";
+import { ScreenHeader } from "@/components/wireframe/BackNav";
+import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
+import { WireScreen } from "@/components/wireframe/WireScreen";
+import { getActivity } from "@/constants/activities";
+import { Wireframe } from "@/constants/wireframe-theme";
 
-type Phase = 'idle' | 'recording' | 'done' | 'wait_reaction';
+type Phase = "idle" | "recording" | "done" | "wait_reaction";
 
 export default function ActivityCaptureScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
-  const [phase, setPhase] = useState<Phase>('idle');
+  const [phase, setPhase] = useState<Phase>("idle");
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const done = phase === "done";
 
   useEffect(() => {
     return () => {
@@ -34,121 +38,213 @@ export default function ActivityCaptureScreen() {
     );
   }
 
-  if (cfg.captureKind === 'decibel') {
+  if (cfg.captureKind === "decibel") {
     return <DecibelCaptureScreen cfg={cfg} />;
   }
 
-  if (cfg.id === 'parachute-drop') {
+  if (cfg.id === "vibration-analysis") {
+    return <VibrationCaptureScreen cfg={cfg} />;
+  }
+
+  if (cfg.id === "surface-smoothness") {
+    return <HumanPerformanceCaptureScreen cfg={cfg} />;
+  }
+
+  if (cfg.captureKind === "none") {
+    return (
+      <WireScreen
+        footer={
+          done ? (
+            <PrimaryButton
+              label="VIEW RESULTS"
+              onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+            />
+          ) : (
+            <PrimaryButton
+              label="MARK COMPLETE"
+              onPress={() => setPhase("done")}
+            />
+          )
+        }
+      >
+        <ScreenHeader
+          backLabel="BACK"
+          onBack={() => router.back()}
+          title="No Camera Needed"
+          subtitle="Record your observations manually."
+        />
+        <View style={styles.noneWrap}>
+          <Text style={styles.noneTitle}>
+            This activity does not open the camera.
+          </Text>
+          <Text style={styles.noneText}>
+            Use the app to record your predictions and observations. If you want
+            to check a bend angle, use your phone’s own camera app in slow
+            motion and then enter the observation here.
+          </Text>
+        </View>
+        {done ? (
+          <View style={styles.statusBlock}>
+            <Text style={styles.statusLine}>✓ {cfg.captureDoneStatusA}</Text>
+            <Text style={styles.statusLine}>✓ {cfg.captureDoneStatusB}</Text>
+          </View>
+        ) : null}
+      </WireScreen>
+    );
+  }
+
+  if (cfg.id === "parachute-drop") {
     return <ParachuteCaptureScreen cfg={cfg} />;
   }
 
-  const done = phase === 'done';
+  if (cfg.id === "hand-fan-challenge") {
+    return <FanChallengeCaptureScreen cfg={cfg} />;
+  }
 
   let footer: ReactNode = null;
-  if (cfg.captureKind === 'reaction') {
-    if (phase === 'wait_reaction') {
+  if (cfg.captureKind === "reaction") {
+    if (phase === "wait_reaction") {
       footer = null;
-    } else if (phase === 'idle') {
-      footer = <PrimaryButton label="START CAPTURE" onPress={() => setPhase('wait_reaction')} />;
+    } else if (phase === "idle") {
+      footer = (
+        <PrimaryButton
+          label="START CAPTURE"
+          onPress={() => setPhase("wait_reaction")}
+        />
+      );
     } else if (done) {
-      footer = <PrimaryButton label="VIEW RESULTS" onPress={() => router.push(`/activity/${cfg.id}/dashboard`)} />;
+      footer = (
+        <PrimaryButton
+          label="VIEW RESULTS"
+          onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+        />
+      );
     }
   } else if (!done) {
-    if (cfg.captureKind === 'camera' && phase === 'recording') {
+    if (cfg.captureKind === "camera" && phase === "recording") {
       footer = null;
     } else {
       footer = (
         <PrimaryButton
           label="START CAPTURE"
           onPress={() => {
-            if (cfg.captureKind === 'camera') {
-              setPhase('recording');
+            if (cfg.captureKind === "camera") {
+              setPhase("recording");
               if (cfg.showRecordingTimer) {
                 setTick(0);
-                timerRef.current = setInterval(() => setTick((t) => t + 1), 1000);
+                timerRef.current = setInterval(
+                  () => setTick((t) => t + 1),
+                  1000,
+                );
               }
               setTimeout(() => {
                 if (timerRef.current) {
                   clearInterval(timerRef.current);
                   timerRef.current = null;
                 }
-                setPhase('done');
+                setPhase("done");
               }, 2500);
             } else {
-              setTimeout(() => setPhase('done'), 500);
+              setTimeout(() => setPhase("done"), 500);
             }
           }}
         />
       );
     }
   } else {
-    footer = <PrimaryButton label="VIEW RESULTS" onPress={() => router.push(`/activity/${cfg.id}/dashboard`)} />;
+    footer = (
+      <PrimaryButton
+        label="VIEW RESULTS"
+        onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+      />
+    );
   }
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}:00`;
+    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}:00`;
   };
 
   const viewport = () => {
-    if (cfg.captureKind === 'camera') {
+    if (cfg.captureKind === "camera") {
       return (
         <View style={styles.viewfinder}>
-          {phase === 'recording' && cfg.showRecordingTimer ? (
+          {phase === "recording" && cfg.showRecordingTimer ? (
             <View style={styles.recordingBar}>
               <Text style={styles.recording}>RECORDING</Text>
               <Text style={styles.timer}>{formatTime(tick)}</Text>
             </View>
           ) : null}
           <View style={styles.camRow}>
-            <Text style={styles.tagRed}>{done ? cfg.captureDoneLabel : cfg.captureIdleLabel}</Text>
-            {cfg.showSlowMo ? <Text style={styles.tagGrey}>SLOW-MO MODE</Text> : <View />}
+            <Text style={styles.tagRed}>
+              {done ? cfg.captureDoneLabel : cfg.captureIdleLabel}
+            </Text>
+            {cfg.showSlowMo ? (
+              <Text style={styles.tagGrey}>SLOW-MO MODE</Text>
+            ) : (
+              <View />
+            )}
           </View>
         </View>
       );
     }
-    if (cfg.captureKind === 'decibel' || cfg.captureKind === 'vibration_hz') {
+    if (cfg.captureKind === "decibel" || cfg.captureKind === "vibration_hz") {
       return (
         <View style={styles.meterWrap}>
           <View style={styles.meterCircle}>
-            <Text style={styles.meterText}>{done ? cfg.captureDoneLabel : cfg.captureIdleLabel}</Text>
+            <Text style={styles.meterText}>
+              {done ? cfg.captureDoneLabel : cfg.captureIdleLabel}
+            </Text>
           </View>
           <Text style={styles.meterCaption}>
-            {cfg.captureKind === 'decibel' ? 'Live Decibels Reading' : 'Live vibration reading'}
+            {cfg.captureKind === "decibel"
+              ? "Live Decibels Reading"
+              : "Live vibration reading"}
           </Text>
         </View>
       );
     }
-    if (cfg.captureKind === 'waveform') {
+    if (cfg.captureKind === "waveform") {
       return (
         <View style={styles.waveBox}>
           <View style={styles.waveInner} />
-          <Text style={styles.waveCaption}>Accelerometer Waveform Visualization</Text>
+          <Text style={styles.waveCaption}>
+            Accelerometer Waveform Visualization
+          </Text>
         </View>
       );
     }
-    if (cfg.captureKind === 'reaction') {
-      if (phase === 'done') {
+    if (cfg.captureKind === "reaction") {
+      if (phase === "done") {
         return (
           <View style={styles.reactionWrap}>
             <Text style={styles.reactionHint}>Tap when the color changes.</Text>
-            <View style={[styles.reactionSquare, { backgroundColor: '#2e7d32' }]} />
+            <View
+              style={[styles.reactionSquare, { backgroundColor: "#2e7d32" }]}
+            />
           </View>
         );
       }
-      if (phase === 'wait_reaction') {
+      if (phase === "wait_reaction") {
         return (
-          <Pressable style={styles.reactionWrap} onPress={() => setPhase('done')}>
+          <Pressable
+            style={styles.reactionWrap}
+            onPress={() => setPhase("done")}
+          >
             <Text style={styles.reactionHint}>Tap when the color changes.</Text>
-            <View style={[styles.reactionSquare, { backgroundColor: '#c62828' }]} />
+            <View
+              style={[styles.reactionSquare, { backgroundColor: "#c62828" }]}
+            />
           </Pressable>
         );
       }
       return (
         <View style={styles.reactionWrap}>
           <Text style={styles.reactionHint}>Tap START CAPTURE to begin.</Text>
-          <View style={[styles.reactionSquare, { backgroundColor: '#9e9e9e' }]} />
+          <View
+            style={[styles.reactionSquare, { backgroundColor: "#9e9e9e" }]}
+          />
         </View>
       );
     }
@@ -178,26 +274,26 @@ const styles = StyleSheet.create({
   viewfinder: {
     flex: 1,
     minHeight: 280,
-    backgroundColor: '#3a3a3a',
+    backgroundColor: "#3a3a3a",
     borderWidth: 1,
-    borderColor: '#555',
-    justifyContent: 'center',
+    borderColor: "#555",
+    justifyContent: "center",
     padding: 12,
   },
   recordingBar: {
-    position: 'absolute',
+    position: "absolute",
     top: 8,
     left: 8,
     right: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  recording: { color: Wireframe.accentRed, fontWeight: '800', fontSize: 12 },
-  timer: { color: Wireframe.panelBg, fontWeight: '700' },
+  recording: { color: Wireframe.accentRed, fontWeight: "800", fontSize: 12 },
+  timer: { color: Wireframe.panelBg, fontWeight: "700" },
   camRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
     flex: 1,
   },
   tagRed: {
@@ -205,12 +301,12 @@ const styles = StyleSheet.create({
     color: Wireframe.panelBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    fontWeight: '800',
+    fontWeight: "800",
     fontSize: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   tagGrey: {
-    backgroundColor: '#555',
+    backgroundColor: "#555",
     color: Wireframe.panelBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -218,52 +314,71 @@ const styles = StyleSheet.create({
   },
   meterWrap: {
     minHeight: 280,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3a3a3a',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#3a3a3a",
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: "#555",
     padding: 16,
   },
   meterCircle: {
     width: 180,
     height: 180,
     borderRadius: 90,
-    backgroundColor: '#d0d0d0',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#d0d0d0",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 2,
-    borderColor: '#888',
+    borderColor: "#888",
   },
-  meterText: { fontSize: 28, fontWeight: '800', color: Wireframe.text },
-  meterCaption: { marginTop: 12, color: '#cfcfcf', fontSize: 13 },
+  meterText: { fontSize: 28, fontWeight: "800", color: Wireframe.text },
+  meterCaption: { marginTop: 12, color: "#cfcfcf", fontSize: 13 },
   waveBox: {
     minHeight: 280,
-    backgroundColor: '#3a3a3a',
+    backgroundColor: "#3a3a3a",
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: "#555",
     padding: 12,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   waveInner: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: "#333",
   },
-  waveCaption: { color: '#cfcfcf', fontSize: 12, textAlign: 'center' },
+  waveCaption: { color: "#cfcfcf", fontSize: 12, textAlign: "center" },
   reactionWrap: {
     minHeight: 280,
-    backgroundColor: '#3a3a3a',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "#3a3a3a",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 16,
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: "#555",
   },
   reactionHint: { color: Wireframe.panelBg, marginBottom: 16, fontSize: 14 },
   reactionSquare: { width: 160, height: 160 },
+  noneWrap: {
+    minHeight: 240,
+    borderWidth: 1,
+    borderColor: Wireframe.border,
+    backgroundColor: "#272727",
+    padding: 16,
+    marginBottom: 12,
+  },
+  noneTitle: {
+    color: Wireframe.accent,
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  noneText: {
+    color: Wireframe.text,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   statusBlock: { marginTop: 12 },
   statusLine: { color: Wireframe.panelBg, fontSize: 14, marginBottom: 4 },
 });

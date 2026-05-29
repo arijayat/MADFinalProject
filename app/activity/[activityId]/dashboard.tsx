@@ -38,6 +38,96 @@ export default function ActivityDashboardScreen() {
     if (!cfg) return [];
     const session = getSession(cfg.id);
 
+    if (cfg.id === "surface-smoothness" && cfg.movementActions) {
+      const predKeys = ["move1_pred", "move2_pred", "move3_pred"];
+      const attempt1 = session.performanceReadings.filter((r) => r.attempt === 1);
+      const attempt2 = session.performanceReadings.filter((r) => r.attempt === 2);
+
+      const fmt = (r: (typeof attempt1)[0] | undefined) =>
+        r != null
+          ? `${r.peakVibrationMs2.toFixed(2)} m/s² · ${r.durationS}s`
+          : "—";
+
+      const moveRows: DashboardRow[] = cfg.movementActions.map((label, i) => ({
+        variable: label,
+        predicted: session.predictions[predKeys[i]] ?? "—",
+        actual:
+          attempt1[i] != null && attempt2[i] != null
+            ? `A1: ${fmt(attempt1[i])} · A2: ${fmt(attempt2[i])}`
+            : attempt1[i] != null
+              ? `A1: ${fmt(attempt1[i])}`
+              : attempt2[i] != null
+                ? `A2: ${fmt(attempt2[i])}`
+                : "—",
+      }));
+      moveRows.push({
+        variable: "Hardest to keep vibration low (prediction)",
+        predicted: session.predictions.hardest_move ?? "—",
+        actual:
+          attempt1.length > 0
+            ? (() => {
+                const roughest = attempt1.reduce((a, b) =>
+                  b.peakVibrationMs2 > a.peakVibrationMs2 ? b : a,
+                );
+                return roughest.label.split(":")[0] ?? roughest.label;
+              })()
+            : "—",
+      });
+      const attemptKeys = [
+        "attempt1_pred",
+        "attempt2_pred",
+        "attempt3_pred",
+      ];
+      const attemptLabels = [
+        "Attempt 1 smoothness (all movements, no buzz)",
+        "Attempt 2 (time + movement, with buzz)",
+        "Attempt 3 (time + movement, with buzz)",
+      ];
+      const attemptActuals = [
+        attempt1.length > 0
+          ? `Avg ${(attempt1.reduce((s, r) => s + r.peakVibrationMs2, 0) / attempt1.length).toFixed(2)} m/s²`
+          : "—",
+        attempt2[0] != null ? fmt(attempt2[0]) : "—",
+        attempt2[1] != null ? fmt(attempt2[1]) : attempt2[2] != null ? fmt(attempt2[2]) : "—",
+      ];
+      attemptLabels.forEach((label, i) => {
+        moveRows.push({
+          variable: label,
+          predicted: session.predictions[attemptKeys[i]] ?? "—",
+          actual: attemptActuals[i],
+        });
+      });
+      return moveRows;
+    }
+
+    if (cfg.id === "vibration-analysis" && cfg.vibrationDesignActions) {
+      const predKeys = ["design1_pred", "design2_pred", "design3_pred"];
+      const designRows: DashboardRow[] = cfg.vibrationDesignActions.map(
+        (label, i) => ({
+          variable: label,
+          predicted: session.predictions[predKeys[i]] ?? "—",
+          actual:
+            session.vibrationReadings[i] != null
+              ? `${session.vibrationReadings[i].peakTiltDeg.toFixed(1)}° tilt · ${session.vibrationReadings[i].peakVibrationMs2.toFixed(2)} m/s²`
+              : "—",
+        }),
+      );
+      designRows.push({
+        variable: "Most stable design (prediction)",
+        predicted: session.predictions.mostStable ?? "—",
+        actual:
+          session.vibrationReadings.length > 0
+            ? (() => {
+                const steadiest = session.vibrationReadings.reduce((a, b) =>
+                  b.peakTiltDeg < a.peakTiltDeg ? b : a,
+                );
+                return steadiest.label.split(":")[0] ?? steadiest.label;
+              })()
+            : "—",
+      });
+      return designRows;
+    }
+
     if (cfg.captureKind === "decibel" && cfg.decibelActions) {
       const actionRows: DashboardRow[] = cfg.decibelActions.map((label, i) => ({
         variable: label,
@@ -132,7 +222,10 @@ export default function ActivityDashboardScreen() {
   }, [cfg, session]);
 
   const tableWidth =
-    cfg?.captureKind === "decibel" || cfg?.id === "parachute-drop"
+    cfg?.captureKind === "decibel" ||
+    cfg?.id === "parachute-drop" ||
+    cfg?.id === "vibration-analysis" ||
+    cfg?.id === "surface-smoothness"
       ? 280 + 110 + 110
       : 240 + 100 + 100;
 
@@ -145,7 +238,10 @@ export default function ActivityDashboardScreen() {
   }
 
   const wideTable =
-    cfg.captureKind === "decibel" || cfg.id === "parachute-drop";
+    cfg.captureKind === "decibel" ||
+    cfg.id === "parachute-drop" ||
+    cfg.id === "vibration-analysis" ||
+    cfg.id === "surface-smoothness";
   const cVariable = wideTable ? styles.cVariableWide : styles.cVariable;
   const cValue = wideTable ? styles.cValueWide : styles.cValue;
   const actualHeader =
@@ -153,7 +249,9 @@ export default function ActivityDashboardScreen() {
       ? "Actual"
       : cfg.captureKind === "decibel"
         ? "Actual (dB)"
-        : "Actual";
+        : cfg.id === "vibration-analysis" || cfg.id === "surface-smoothness"
+          ? "Actual (sensor)"
+          : "Actual";
 
   return (
     <WireScreen
@@ -225,6 +323,20 @@ export default function ActivityDashboardScreen() {
         <Text style={styles.note}>
           Actual dB values come from your phone microphone. Compare which action
           was loudest and whether your louder/softer predictions were correct.
+        </Text>
+      ) : null}
+      {cfg.id === "vibration-analysis" ? (
+        <Text style={styles.note}>
+          Actual values come from your phone accelerometer (level + vibration).
+          Lower peak tilt (°) means a more stable, earthquake-resistant design.
+        </Text>
+      ) : null}
+      {cfg.id === "surface-smoothness" ? (
+        <Text style={styles.note}>
+          Actual values come from your phone accelerometer (vibration sensor).
+          Lower peak vibration (m/s²) means smoother, more coordinated movement.
+          Compare which movement was hardest to keep vibration low—were you
+          right?
         </Text>
       ) : null}
       {cfg.id === "parachute-drop" &&
