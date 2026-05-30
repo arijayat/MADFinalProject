@@ -64,6 +64,8 @@ export interface ActivityConfig {
   reactionTraceAttempts?: number;
   /** Breathing Pace Trainer: rest + post-exercise chest recordings */
   breathingPhases?: string[];
+  /** Hand Fan Challenge: record bend angle at each fan distance */
+  fanChallengeActions?: string[];
 }
 
 const safetyDefault = [
@@ -302,6 +304,11 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     leaderboardSubtitle: "Grade 6 Rankings - Hand Fan Challenge",
     showSlowMo: true,
     showRecordingTimer: true,
+    fanChallengeActions: [
+      "15 cm from fan",
+      "30 cm from fan",
+      "45 cm from fan",
+    ],
   },
   "vibration-analysis": {
     id: "vibration-analysis",
@@ -525,22 +532,40 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
         options: ["Yes", "No", "About the same"],
       },
       {
-        key: "trace1_pred",
-        label: "Tracing attempt 1 — predict outcome (accuracy + delay)",
-        placeholder: "e.g. ±1 cm, 0.5 s delay",
-        kind: "text",
+        key: "trace1_accuracy_pred",
+        label: "Tracing attempt 1 — predicted accuracy (%)",
+        placeholder: "e.g. 70",
+        kind: "number",
       },
       {
-        key: "trace2_pred",
-        label: "Tracing attempt 2 — predict outcome",
-        placeholder: "e.g. 3 s delay, medium accuracy",
-        kind: "text",
+        key: "trace1_delay_pred",
+        label: "Tracing attempt 1 — predicted avg delay (ms)",
+        placeholder: "e.g. 200",
+        kind: "number",
       },
       {
-        key: "trace3_pred",
-        label: "Tracing attempt 3 — predict outcome",
-        placeholder: "e.g. 1 s delay, high accuracy",
-        kind: "text",
+        key: "trace2_accuracy_pred",
+        label: "Tracing attempt 2 — predicted accuracy (%)",
+        placeholder: "e.g. 60",
+        kind: "number",
+      },
+      {
+        key: "trace2_delay_pred",
+        label: "Tracing attempt 2 — predicted avg delay (ms)",
+        placeholder: "e.g. 300",
+        kind: "number",
+      },
+      {
+        key: "trace3_accuracy_pred",
+        label: "Tracing attempt 3 — predicted accuracy (%)",
+        placeholder: "e.g. 80",
+        kind: "number",
+      },
+      {
+        key: "trace3_delay_pred",
+        label: "Tracing attempt 3 — predicted avg delay (ms)",
+        placeholder: "e.g. 150",
+        kind: "number",
       },
     ],
     dashboardVariables: [

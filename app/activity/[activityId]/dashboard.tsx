@@ -19,6 +19,7 @@ import {
     formatPhysics,
 } from "@/utils/parachute-physics";
 import { formatBreathingOutcome } from "@/utils/breathing";
+import { formatTracePrediction } from "@/utils/reaction-dashboard";
 
 const PL_PRED = "123";
 const PL_ACT = "127";
@@ -28,6 +29,16 @@ type DashboardRow = {
   predicted: string;
   actual: string;
 };
+
+const CELL_PADDING = 16;
+const CHAR_WIDTH = 6.5;
+const MIN_VARIABLE_COL = 100;
+const MIN_VALUE_COL = 72;
+
+function estimateColumnWidth(texts: string[], minWidth: number): number {
+  const longest = texts.reduce((max, text) => Math.max(max, text.length), 0);
+  return Math.max(minWidth, Math.ceil(longest * CHAR_WIDTH) + CELL_PADDING);
+}
 
 export default function ActivityDashboardScreen() {
   const router = useRouter();
@@ -166,22 +177,51 @@ export default function ActivityDashboardScreen() {
         return `${avg} ms`;
       };
 
-      const domAvg =
-        dominant.length > 0
-          ? Math.round(
-              dominant.reduce((s, r) => s + r.reactionTimeMs, 0) /
-                dominant.length,
-            )
-          : null;
-      const nonDomAvg =
-        nonDominant.length > 0
-          ? Math.round(
-              nonDominant.reduce((s, r) => s + r.reactionTimeMs, 0) /
-                nonDominant.length,
-            )
-          : null;
+      const avgMs = (readings: typeof dominant) => {
+        if (readings.length === 0) return null;
+        return Math.round(
+          readings.reduce((s, r) => s + r.reactionTimeMs, 0) / readings.length,
+        );
+      };
 
-      const traceKeys = ["trace1_pred", "trace2_pred", "trace3_pred"];
+      const domAvg = avgMs(dominant);
+      const nonDomAvg = avgMs(nonDominant);
+
+      const domAll = session.tapReactionReadings.filter(
+        (r) => r.hand === "dominant",
+      );
+      const nonDomAll = session.tapReactionReadings.filter(
+        (r) => r.hand === "non_dominant",
+      );
+      const domFalseOnly =
+        domAll.length > 0 && dominant.length === 0;
+      const nonDomFalseOnly =
+        nonDomAll.length > 0 && nonDominant.length === 0;
+
+      const dominantFasterActual = (): string => {
+        if (domAvg != null && nonDomAvg != null) {
+          if (domAvg < nonDomAvg) return "Yes — dominant was faster";
+          if (domAvg > nonDomAvg) return "No — non-dominant was faster";
+          return "About the same";
+        }
+        if (domAvg != null && nonDomFalseOnly) {
+          return "Yes — dominant recorded; non-dominant had false start(s)";
+        }
+        if (nonDomAvg != null && domFalseOnly) {
+          return "No — dominant had false start(s); non-dominant recorded";
+        }
+        if (domFalseOnly && nonDomFalseOnly) {
+          return "Cannot compare — both phases had false start(s)";
+        }
+        if (domAvg != null && nonDomAll.length === 0) {
+          return "Yes — dominant recorded (phase 2 not completed)";
+        }
+        if (nonDomAvg != null && domAll.length === 0) {
+          return "No — non-dominant recorded (phase 1 not completed)";
+        }
+        return "—";
+      };
+
       const traceLabels = [
         "Tracing attempt 1",
         "Tracing attempt 2",
@@ -216,22 +256,16 @@ export default function ActivityDashboardScreen() {
         {
           variable: "Dominant faster? (prediction)",
           predicted: session.predictions.dominant_faster ?? "—",
-          actual:
-            domAvg != null && nonDomAvg != null
-              ? domAvg < nonDomAvg
-                ? "Yes — dominant was faster"
-                : domAvg > nonDomAvg
-                  ? "No — non-dominant was faster"
-                  : "About the same"
-              : "—",
+          actual: dominantFasterActual(),
         },
       ];
 
       traceLabels.forEach((label, i) => {
         const t = session.tracingReadings[i];
+        const attempt = (i + 1) as 1 | 2 | 3;
         rows.push({
           variable: label,
-          predicted: session.predictions[traceKeys[i]] ?? "—",
+          predicted: formatTracePrediction(session.predictions, attempt),
           actual:
             t != null
               ? `${t.accuracyPct}% accuracy · ${t.avgDelayMs} ms delay`
@@ -271,6 +305,30 @@ export default function ActivityDashboardScreen() {
             : "—",
       });
       return phaseRows;
+    }
+
+    if (cfg.id === "hand-fan-challenge" && cfg.fanChallengeActions) {
+      const predKeys = ["fanDesign", "material", "distance", "predictedBend"];
+      const predLabels = cfg.dashboardVariables;
+      const rows: DashboardRow[] = predLabels.map((label, i) => ({
+        variable: label,
+        predicted: session.predictions[predKeys[i]] ?? "—",
+        actual:
+          i === 3 && session.fanAngleReadings.length > 0
+            ? `${Math.max(...session.fanAngleReadings.map((r) => r.angleDegrees))}° (max measured)`
+            : i === 3
+              ? "—"
+              : session.predictions[predKeys[i]] ?? "—",
+      }));
+      cfg.fanChallengeActions.forEach((label, i) => {
+        const reading = session.fanAngleReadings[i];
+        rows.push({
+          variable: `${label} — measured bend (°)`,
+          predicted: "—",
+          actual: reading != null ? `${reading.angleDegrees}°` : "—",
+        });
+      });
+      return rows;
     }
 
     if (cfg.id === "parachute-drop" && cfg.parachuteDropActions) {
@@ -349,15 +407,39 @@ export default function ActivityDashboardScreen() {
     });
   }, [cfg, session]);
 
-  const tableWidth =
-    cfg?.captureKind === "decibel" ||
-    cfg?.id === "parachute-drop" ||
-    cfg?.id === "vibration-analysis" ||
-    cfg?.id === "surface-smoothness" ||
-    cfg?.id === "reaction-time" ||
-    cfg?.id === "breathing-pattern"
-      ? 280 + 110 + 110
-      : 240 + 100 + 100;
+  const columnWidths = useMemo(() => {
+    const actualHeader =
+      cfg?.id === "parachute-drop"
+        ? "Actual"
+        : cfg?.captureKind === "decibel"
+          ? "Actual (dB)"
+          : cfg?.id === "vibration-analysis" ||
+              cfg?.id === "surface-smoothness" ||
+              cfg?.id === "reaction-time" ||
+              cfg?.id === "breathing-pattern"
+            ? "Actual (sensor)"
+            : "Actual";
+
+    const variable = estimateColumnWidth(
+      ["Variable", ...rows.map((row) => row.variable)],
+      MIN_VARIABLE_COL,
+    );
+    const predicted = estimateColumnWidth(
+      ["Predicted", ...rows.map((row) => row.predicted)],
+      MIN_VALUE_COL,
+    );
+    const actual = estimateColumnWidth(
+      [actualHeader, ...rows.map((row) => row.actual)],
+      MIN_VALUE_COL,
+    );
+    return {
+      actualHeader,
+      variable,
+      predicted,
+      actual,
+      table: variable + predicted + actual,
+    };
+  }, [cfg, rows]);
 
   if (!cfg) {
     return (
@@ -366,27 +448,6 @@ export default function ActivityDashboardScreen() {
       </WireScreen>
     );
   }
-
-  const wideTable =
-    cfg.captureKind === "decibel" ||
-    cfg.id === "parachute-drop" ||
-    cfg.id === "vibration-analysis" ||
-    cfg.id === "surface-smoothness" ||
-    cfg.id === "reaction-time" ||
-    cfg.id === "breathing-pattern";
-  const cVariable = wideTable ? styles.cVariableWide : styles.cVariable;
-  const cValue = wideTable ? styles.cValueWide : styles.cValue;
-  const actualHeader =
-    cfg.id === "parachute-drop"
-      ? "Actual"
-      : cfg.captureKind === "decibel"
-        ? "Actual (dB)"
-        : cfg.id === "vibration-analysis" ||
-            cfg.id === "surface-smoothness" ||
-            cfg.id === "reaction-time" ||
-            cfg.id === "breathing-pattern"
-          ? "Actual (sensor)"
-          : "Actual";
 
   return (
     <WireScreen
@@ -404,48 +465,65 @@ export default function ActivityDashboardScreen() {
         subtitle="Compare your predictions with actual results."
       />
       <Panel title="Prediction vs. Actual">
-        <ScrollView horizontal>
-          <View style={[styles.table, { width: tableWidth }]}>
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View style={[styles.table, { width: columnWidths.table }]}>
             <View style={styles.row}>
               <Text
-                style={[styles.cell, styles.h, cVariable]}
-                numberOfLines={1}
+                style={[
+                  styles.cell,
+                  styles.h,
+                  { width: columnWidths.variable },
+                ]}
               >
                 Variable
               </Text>
               <Text
-                style={[styles.cell, styles.h, cValue, styles.center]}
-                numberOfLines={1}
+                style={[
+                  styles.cell,
+                  styles.h,
+                  styles.center,
+                  { width: columnWidths.predicted },
+                ]}
               >
                 Predicted
               </Text>
               <Text
-                style={[styles.cell, styles.h, cValue, styles.center]}
-                numberOfLines={1}
+                style={[
+                  styles.cell,
+                  styles.h,
+                  styles.center,
+                  { width: columnWidths.actual },
+                ]}
               >
-                {actualHeader}
+                {columnWidths.actualHeader}
               </Text>
             </View>
             {rows.map((row) => (
               <View key={row.variable} style={styles.row}>
                 <Text
-                  style={[styles.cell, styles.var, cVariable]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+                  style={[
+                    styles.cell,
+                    styles.var,
+                    { width: columnWidths.variable },
+                  ]}
                 >
                   {row.variable}
                 </Text>
                 <Text
-                  style={[styles.cell, cValue, styles.center]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+                  style={[
+                    styles.cell,
+                    styles.center,
+                    { width: columnWidths.predicted },
+                  ]}
                 >
                   {row.predicted}
                 </Text>
                 <Text
-                  style={[styles.cell, cValue, styles.center]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
+                  style={[
+                    styles.cell,
+                    styles.center,
+                    { width: columnWidths.actual },
+                  ]}
                 >
                   {row.actual}
                 </Text>
@@ -544,10 +622,6 @@ export default function ActivityDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  cVariable: { width: 240 },
-  cVariableWide: { width: 280 },
-  cValue: { width: 100 },
-  cValueWide: { width: 110 },
   center: { textAlign: "center" },
   table: {
     borderWidth: 1,
@@ -555,13 +629,16 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
+    alignItems: "flex-start",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Wireframe.border,
   },
   cell: {
+    flexShrink: 0,
     padding: 8,
     fontSize: 12,
     color: Wireframe.text,
+    lineHeight: 17,
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: Wireframe.border,
   },

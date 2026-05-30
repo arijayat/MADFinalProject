@@ -65,6 +65,11 @@ export type BreathingReading = {
   peakMovementMs2: number;
 };
 
+export type FanAngleReading = {
+  label: string;
+  angleDegrees: number;
+};
+
 type ActivitySession = {
   predictions: Record<string, string>;
   decibelReadings: DecibelReading[];
@@ -74,6 +79,7 @@ type ActivitySession = {
   tapReactionReadings: TapReactionReading[];
   tracingReadings: TracingReading[];
   breathingReadings: BreathingReading[];
+  fanAngleReadings: FanAngleReading[];
   /** Landing bounce observed on best-design drop (Action 3), if set on dashboard */
   bounceActual: BounceObservation | null;
 };
@@ -116,6 +122,10 @@ type ActivitySessionContextValue = {
     activityId: ActivityId,
     readings: BreathingReading[],
   ) => void;
+  setFanAngleReadings: (
+    activityId: ActivityId,
+    readings: FanAngleReading[],
+  ) => void;
   clearCapture: (activityId: ActivityId) => void;
 };
 
@@ -128,6 +138,7 @@ const emptySession = (): ActivitySession => ({
   tapReactionReadings: [],
   tracingReadings: [],
   breathingReadings: [],
+  fanAngleReadings: [],
   bounceActual: null,
 });
 
@@ -262,6 +273,19 @@ export function ActivitySessionProvider({
     [],
   );
 
+  const setFanAngleReadings = useCallback(
+    (activityId: ActivityId, readings: FanAngleReading[]) => {
+      setSessions((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] ?? emptySession()),
+          fanAngleReadings: readings,
+        },
+      }));
+    },
+    [],
+  );
+
   const clearCapture = useCallback((activityId: ActivityId) => {
     setSessions((prev) => ({
       ...prev,
@@ -274,6 +298,7 @@ export function ActivitySessionProvider({
         tapReactionReadings: [],
         tracingReadings: [],
         breathingReadings: [],
+        fanAngleReadings: [],
         bounceActual: null,
       },
     }));
@@ -291,6 +316,7 @@ export function ActivitySessionProvider({
       setTapReactionReadings,
       setTracingReadings,
       setBreathingReadings,
+      setFanAngleReadings,
       clearCapture,
     }),
     [
@@ -304,6 +330,7 @@ export function ActivitySessionProvider({
       setTapReactionReadings,
       setTracingReadings,
       setBreathingReadings,
+      setFanAngleReadings,
       clearCapture,
     ],
   );

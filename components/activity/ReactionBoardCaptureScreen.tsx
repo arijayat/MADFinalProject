@@ -28,8 +28,11 @@ type MainPhase = 'tap_dominant' | 'tap_non_dominant' | 'tracing';
 type TapUi = 'intro' | 'waiting' | 'ready' | 'result';
 type TraceUi = 'intro' | 'tracing' | 'result';
 
-const TAP_BUTTON = 72;
 const TRACE_DURATION_MS = 8000;
+const TRACE_ON_PATH_RADIUS_PX = 44;
+const TRACE_HIT_RADIUS_PX = 48;
+const TRACE_MAX_LAG_MS = 2500;
+const TRACE_MIN_TOUCH_SAMPLES = 12;
 const TRACE_SAMPLE_MS = 50;
 const RANDOM_DELAY_MIN = 1500;
 const RANDOM_DELAY_MAX = 4500;
@@ -48,38 +51,78 @@ function targetPoint(progress: number, w: number, h: number) {
   return { x, y };
 }
 
+function sampleDistance(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+) {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+/** Target position at the same moment in time as the finger (not nearest point on the whole path). */
+function targetAtTime(
+  targetSamples: { t: number; x: number; y: number }[],
+  t: number,
+) {
+  if (targetSamples.length === 0) return null;
+  if (t <= targetSamples[0].t) return targetSamples[0];
+  const last = targetSamples[targetSamples.length - 1];
+  if (t >= last.t) return last;
+
+  for (let i = 0; i < targetSamples.length - 1; i++) {
+    const a = targetSamples[i];
+    const b = targetSamples[i + 1];
+    if (t >= a.t && t <= b.t) {
+      const span = b.t - a.t || 1;
+      const u = (t - a.t) / span;
+      return {
+        t,
+        x: a.x + u * (b.x - a.x),
+        y: a.y + u * (b.y - a.y),
+      };
+    }
+  }
+  return last;
+}
+
 function computeTracingMetrics(
   targetSamples: { t: number; x: number; y: number }[],
   touchSamples: { t: number; x: number; y: number }[],
 ) {
-  if (targetSamples.length === 0 || touchSamples.length === 0) {
-    return { accuracyPct: 0, avgDelayMs: 0 };
+  if (
+    targetSamples.length === 0 ||
+    touchSamples.length < TRACE_MIN_TOUCH_SAMPLES
+  ) {
+    return { accuracyPct: 0, avgDelayMs: TRACE_MAX_LAG_MS };
   }
 
-  let distSum = 0;
-  let delaySum = 0;
-  let count = 0;
-
+  let onPath = 0;
   for (const touch of touchSamples) {
-    let nearest = targetSamples[0];
-    let bestDist = Infinity;
-    for (const target of targetSamples) {
-      const dx = touch.x - target.x;
-      const dy = touch.y - target.y;
-      const d = Math.sqrt(dx * dx + dy * dy);
-      if (d < bestDist) {
-        bestDist = d;
-        nearest = target;
-      }
-    }
-    distSum += bestDist;
-    delaySum += Math.max(0, touch.t - nearest.t);
-    count += 1;
+    const target = targetAtTime(targetSamples, touch.t);
+    if (target == null) continue;
+    if (sampleDistance(touch, target) <= TRACE_ON_PATH_RADIUS_PX) onPath += 1;
   }
 
-  const avgDist = distSum / count;
-  const avgDelayMs = Math.round(delaySum / count);
-  const accuracyPct = Math.max(0, Math.min(100, Math.round(100 - avgDist / 2.5)));
+  const accuracyPct = Math.round((onPath / touchSamples.length) * 100);
+
+  let delaySum = 0;
+  let delayCount = 0;
+  for (let i = 0; i < targetSamples.length; i += 2) {
+    const target = targetSamples[i];
+    let hitLag: number | null = null;
+    for (const touch of touchSamples) {
+      if (touch.t < target.t || touch.t > target.t + TRACE_MAX_LAG_MS) continue;
+      if (sampleDistance(touch, target) > TRACE_HIT_RADIUS_PX) continue;
+      const lag = touch.t - target.t;
+      if (hitLag == null || lag < hitLag) hitLag = lag;
+    }
+    delaySum += hitLag ?? TRACE_MAX_LAG_MS;
+    delayCount += 1;
+  }
+
+  const avgDelayMs =
+    delayCount > 0 ? Math.round(delaySum / delayCount) : TRACE_MAX_LAG_MS;
   return { accuracyPct, avgDelayMs };
 }
 
@@ -103,7 +146,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
 
   const [lastReactionMs, setLastReactionMs] = useState<number | null>(null);
   const [falseStart, setFalseStart] = useState(false);
-  const [buttonPos, setButtonPos] = useState({ left: 40, top: 120 });
 
   const [arenaSize, setArenaSize] = useState({ w: 300, h: 280 });
   const [targetPos, setTargetPos] = useState({ x: 40, y: 140 });
@@ -139,15 +181,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
   const handForPhase = (): 'dominant' | 'non_dominant' =>
     mainPhase === 'tap_dominant' ? 'dominant' : 'non_dominant';
 
-  const placeRandomButton = useCallback(() => {
-    const maxLeft = Math.max(8, arenaSize.w - TAP_BUTTON - 8);
-    const maxTop = Math.max(8, arenaSize.h - TAP_BUTTON - 8);
-    setButtonPos({
-      left: 8 + Math.floor(Math.random() * maxLeft),
-      top: 8 + Math.floor(Math.random() * maxTop),
-    });
-  }, [arenaSize.w, arenaSize.h]);
-
   const clearDelayTimer = useCallback(() => {
     if (delayTimerRef.current) {
       clearTimeout(delayTimerRef.current);
@@ -159,13 +192,12 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     clearDelayTimer();
     setFalseStart(false);
     setLastReactionMs(null);
-    placeRandomButton();
     setTapUi('waiting');
     delayTimerRef.current = setTimeout(() => {
       showTimeRef.current = Date.now();
       setTapUi('ready');
     }, randomDelayMs());
-  }, [clearDelayTimer, placeRandomButton]);
+  }, [clearDelayTimer]);
 
   const onEarlyTap = useCallback(() => {
     if (tapUi !== 'waiting') return;
@@ -349,11 +381,13 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     }
     if (tapUi === 'intro')
       return mainPhase === 'tap_dominant'
-        ? 'Use your dominant hand. Tap the button as soon as it appears.'
-        : 'Use your non-dominant hand. Tap as soon as the button appears.';
-    if (tapUi === 'waiting') return 'Wait… do not tap until the button appears.';
-    if (tapUi === 'ready') return 'Tap now!';
-    if (falseStart) return 'False start — wait for the button before tapping.';
+        ? 'Use your dominant hand. Tap as soon as the square turns green.'
+        : 'Use your non-dominant hand. Tap as soon as the square turns green.';
+    if (tapUi === 'waiting')
+      return 'Wait… do not tap until the square turns green.';
+    if (tapUi === 'ready') return 'Tap now! The square is green.';
+    if (falseStart)
+      return 'False start — wait for the green square before tapping.';
     return lastReactionMs != null
       ? `Reaction time: ${lastReactionMs} ms`
       : 'Trial recorded.';
@@ -430,7 +464,10 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
       <Text style={styles.hint}>{phaseHint()}</Text>
 
       <View
-        style={styles.arena}
+        style={[
+          styles.arena,
+          mainPhase !== 'tracing' && tapUi === 'ready' && styles.arenaReady,
+        ]}
         onLayout={onArenaLayout}
         {...(mainPhase === 'tracing' && traceUi === 'tracing'
           ? panResponder.panHandlers
@@ -444,18 +481,15 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
             }}>
             {tapUi === 'waiting' ? (
               <View style={styles.waitBox}>
-                <Text style={styles.waitText}>Wait for the button…</Text>
+                <Text style={styles.waitText}>
+                  Wait for the square to turn green…
+                </Text>
               </View>
             ) : null}
             {tapUi === 'ready' ? (
-              <Pressable
-                style={[
-                  styles.tapButton,
-                  { left: buttonPos.left, top: buttonPos.top },
-                ]}
-                onPress={onReactionTap}>
-                <Text style={styles.tapButtonText}>TAP</Text>
-              </Pressable>
+              <View style={styles.readyBox}>
+                <Text style={styles.readyText}>TAP ANYWHERE</Text>
+              </View>
             ) : null}
             {tapUi === 'result' && !falseStart && lastReactionMs != null ? (
               <View style={styles.resultBox}>
@@ -474,6 +508,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
         ) : (
           <>
             <View
+              pointerEvents="none"
               style={[
                 styles.tracePath,
                 {
@@ -483,6 +518,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
             />
             {(traceUi === 'tracing' || traceUi === 'result') && (
               <View
+                pointerEvents="none"
                 style={[
                   styles.targetDot,
                   {
@@ -493,7 +529,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
               />
             )}
             {traceUi === 'intro' ? (
-              <View style={styles.waitBox}>
+              <View pointerEvents="none" style={styles.waitBox}>
                 <Text style={styles.waitText}>
                   A shape will move across the screen. Trace it with your
                   finger.
@@ -501,7 +537,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
               </View>
             ) : null}
             {traceUi === 'result' && liveAccuracy != null ? (
-              <View style={styles.traceStats}>
+              <View pointerEvents="none" style={styles.traceStats}>
                 <Text style={styles.traceStatLine}>
                   Accuracy: {liveAccuracy}%
                 </Text>
@@ -511,7 +547,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
               </View>
             ) : null}
             {traceUi === 'tracing' ? (
-              <View style={styles.traceLive}>
+              <View pointerEvents="none" style={styles.traceLive}>
                 <Text style={styles.traceLiveText}>
                   {Math.round(traceProgress * 100)}% ·{' '}
                   {liveAccuracy != null ? `${liveAccuracy}% acc` : 'tracing…'}
@@ -571,6 +607,10 @@ const styles = StyleSheet.create({
     borderColor: '#555',
     overflow: 'hidden',
   },
+  arenaReady: {
+    backgroundColor: '#2e7d32',
+    borderColor: '#81c784',
+  },
   waitBox: {
     flex: 1,
     alignItems: 'center',
@@ -583,21 +623,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  tapButton: {
-    position: 'absolute',
-    width: TAP_BUTTON,
-    height: TAP_BUTTON,
-    borderRadius: TAP_BUTTON / 2,
-    backgroundColor: Wireframe.accentRed,
+  readyBox: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
+    padding: 20,
   },
-  tapButtonText: {
+  readyText: {
     color: '#fff',
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 18,
+    letterSpacing: 1,
   },
   resultBox: {
     flex: 1,

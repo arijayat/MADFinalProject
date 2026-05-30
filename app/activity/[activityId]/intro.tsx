@@ -87,25 +87,23 @@ export default function ActivityIntroScreen() {
         <>
           <Panel title="How to record (phone camera)">
             <Text style={styles.panelHint}>
-              The app will not open the camera. Use your phone’s native camera
-              app in slow motion to capture bend and recovery, or observe the
-              motion directly.
+              The app opens your phone camera to record each trial. Position the
+              phone to capture both the fan wave and the vertical paper movement.
             </Text>
             <Text style={styles.howLine}>
-              1. Open your phone camera app and select slow‑motion mode if
-              available.
+              1. Tap ALLOW CAMERA on the capture screen, then START RECORDING.
             </Text>
             <Text style={styles.howLine}>
               2. Mount or tape the phone on a stable surface at the same height
               as the paper edge.
             </Text>
             <Text style={styles.howLine}>
-              3. Record each trial from the side at 15cm, 30cm, and 45cm
+              3. Record each trial from the side at 15 cm, 30 cm, and 45 cm
               distances.
             </Text>
             <Text style={styles.howLine}>
-              4. Play back the video in slow motion and pause at maximum bend to
-              estimate the angle.
+              4. Review the video in slow motion and pause at maximum bend to
+              measure the angle.
             </Text>
             <Text style={styles.howLine}>
               Tip: use a protractor app or mark a reference line on the
