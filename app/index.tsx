@@ -5,9 +5,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
 
+function getPostAuthRoute(hasTeam: boolean): '/(tabs)' | '/team-onboarding' {
+  return hasTeam ? '/(tabs)' : '/team-onboarding';
+}
+
 export default function SplashScreen() {
   const router = useRouter();
-  const { user, isLoading, configError } = useAuth();
+  const { user, profile, isLoading, configError } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
@@ -18,14 +22,14 @@ export default function SplashScreen() {
         return;
       }
       if (user) {
-        router.replace('/(tabs)');
+        router.replace(getPostAuthRoute(Boolean(profile?.teamId)));
       } else {
         router.replace('/sign-in');
       }
-    }, 1500);
+    }, 1200);
 
     return () => clearTimeout(delay);
-  }, [isLoading, user, configError, router]);
+  }, [isLoading, user, profile?.teamId, configError, router]);
 
   function handleTap() {
     if (isLoading) return;
@@ -33,7 +37,11 @@ export default function SplashScreen() {
       router.replace('/sign-in');
       return;
     }
-    router.replace(user ? '/(tabs)' : '/sign-in');
+    if (user) {
+      router.replace(getPostAuthRoute(Boolean(profile?.teamId)));
+    } else {
+      router.replace('/sign-in');
+    }
   }
 
   return (
@@ -46,7 +54,7 @@ export default function SplashScreen() {
       )}
       {configError ? (
         <Text style={styles.configWarning} numberOfLines={4}>
-          Firebase not configured — add values to .env and restart Expo.
+          Firebase not configured — see docs/FIREBASE_SETUP.md and restart Expo.
         </Text>
       ) : null}
     </Pressable>

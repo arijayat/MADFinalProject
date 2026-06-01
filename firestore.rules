@@ -1,0 +1,46 @@
+rules_version = '2';
+
+// Paste into Firebase Console → Firestore Database → Rules → Publish
+// Start in TEST MODE only for quick experiments; use these rules for real auth.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isTeamMember(teamId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/teams/$(teamId))
+        && (
+          get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid
+          || request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.memberUids
+        );
+    }
+
+    match /users/{userId} {
+      allow read, create, update: if isSelf(userId);
+      allow delete: if false;
+    }
+
+    match /teams/{teamId} {
+      // Signed-in users can look up teams by join code and read team info.
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isTeamMember(teamId);
+      allow delete: if false;
+
+      match /activityResults/{activityId} {
+        allow read: if isTeamMember(teamId);
+        allow create, update: if isTeamMember(teamId);
+        allow delete: if false;
+      }
+    }
+  }
+}

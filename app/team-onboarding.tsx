@@ -1,21 +1,38 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { Wireframe } from '@/constants/wireframe-theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 
 export default function TeamOnboardingScreen() {
   const router = useRouter();
-  const { resetForNewTeam } = useTeam();
+  const { profile, logOut } = useAuth();
+  const { resetForNewTeam, isLoadingTeam } = useTeam();
+
+  useEffect(() => {
+    if (!isLoadingTeam && profile?.teamId) {
+      router.replace('/(tabs)');
+    }
+  }, [isLoadingTeam, profile?.teamId, router]);
+
+  if (isLoadingTeam) {
+    return (
+      <WireScreen scroll={false}>
+        <ActivityIndicator size="large" color="#fff" style={styles.loader} />
+        <Text style={styles.loadingText}>Loading your team…</Text>
+      </WireScreen>
+    );
+  }
 
   return (
     <WireScreen scroll={false}>
       <ScreenHeader
-        backLabel="Back"
-        onBack={() => router.replace('/sign-in')}
+        backLabel="Sign out"
+        onBack={() => void logOut().then(() => router.replace('/sign-in'))}
         title="Your team"
         subtitle="Register a new team for this season, or join one that already exists."
       />
@@ -38,8 +55,8 @@ export default function TeamOnboardingScreen() {
       </View>
 
       <Text style={styles.hint}>
-        New teams set up a name, grade level, and roster. Joining only needs a team code from your
-        captain or teacher.
+        New teams get a join code to share. Joining only needs that code from your captain or
+        teacher. Data is saved to Firebase Firestore.
       </Text>
     </WireScreen>
   );
@@ -63,5 +80,14 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     maxWidth: 420,
     alignSelf: 'center',
+  },
+  loader: {
+    marginTop: 48,
+  },
+  loadingText: {
+    marginTop: 16,
+    textAlign: 'center',
+    color: '#ccc',
+    fontSize: 14,
   },
 });

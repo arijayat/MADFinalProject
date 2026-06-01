@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LogInScreen() {
   const router = useRouter();
-  const { signIn } = useAuth();
+  const { signIn, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +24,8 @@ export default function LogInScreen() {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      router.replace('/team-onboarding');
+      const profile = await refreshProfile();
+      router.replace(profile?.teamId ? '/(tabs)' : '/team-onboarding');
     } catch (error) {
       Alert.alert('Log in failed', error instanceof Error ? error.message : 'Try again.');
     } finally {

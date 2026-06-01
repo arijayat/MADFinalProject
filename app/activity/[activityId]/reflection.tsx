@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
@@ -9,13 +9,61 @@ import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { getActivity } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useActivitySession } from '@/contexts/ActivitySessionContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTeam } from '@/contexts/TeamContext';
+import { isActivityId, toActivitySessionSnapshot } from '@/lib/activity-snapshot';
+import { saveActivityResult } from '@/lib/firestore/results';
 
 export default function ActivityReflectionScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const { user } = useAuth();
+  const { teamDocId } = useTeam();
+  const { getSession } = useActivitySession();
   const [stars, setStars] = useState(0);
   const [insights, setInsights] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const cfg = activityId ? getActivity(activityId) : undefined;
+
+  async function handleSave() {
+    if (!cfg || !activityId || !isActivityId(activityId)) return;
+
+    if (!user) {
+      Alert.alert('Not signed in', 'Log in to save results to the cloud.');
+      return;
+    }
+    if (!teamDocId) {
+      Alert.alert('No team', 'Register or join a team before saving activity results.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const session = getSession(activityId);
+      await saveActivityResult({
+        teamId: teamDocId,
+        activityId,
+        savedByUid: user.uid,
+        session: toActivitySessionSnapshot(session),
+        reflection: {
+          stars,
+          insights: insights.trim(),
+        },
+      });
+      router.push(`/activity/${cfg.id}/leaderboard`);
+    } catch (error) {
+      Alert.alert(
+        'Save failed',
+        error instanceof Error
+          ? error.message
+          : 'Could not save to Firestore. Check rules and your connection.',
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!cfg) {
     return (
@@ -28,7 +76,11 @@ export default function ActivityReflectionScreen() {
   return (
     <WireScreen
       footer={
-        <PrimaryButton label="SAVE & CONTINUE" onPress={() => router.push(`/activity/${cfg.id}/leaderboard`)} />
+        <PrimaryButton
+          label={saving ? 'SAVING…' : 'SAVE & CONTINUE'}
+          disabled={saving}
+          onPress={handleSave}
+        />
       }>
       <ScreenHeader
         backLabel="BACK"
@@ -40,7 +92,7 @@ export default function ActivityReflectionScreen() {
         <Text style={styles.q}>How much did you enjoy this activity?</Text>
         <View style={styles.stars}>
           {[1, 2, 3, 4, 5].map((n) => (
-            <Pressable key={n} onPress={() => setStars(n)} hitSlop={6}>
+            <Pressable key={n} onPress={() => setStars(n)} hitSlop={6} disabled={saving}>
               <MaterialIcons
                 name={n <= stars ? 'star' : 'star-border'}
                 size={32}
@@ -57,11 +109,15 @@ export default function ActivityReflectionScreen() {
           placeholderTextColor={Wireframe.placeholder}
           value={insights}
           onChangeText={setInsights}
+          editable={!saving}
         />
         <View style={styles.note}>
-          <MaterialIcons name="info-outline" size={18} color={Wireframe.textMuted} />
-          <Text style={styles.noteText}>Video and data will be saved to the cloud.</Text>
+          <MaterialIcons name="cloud-upload" size={18} color={Wireframe.textMuted} />
+          <Text style={styles.noteText}>
+            Activity data and this reflection are saved to Firebase when you continue.
+          </Text>
         </View>
+        {saving ? <ActivityIndicator style={styles.spinner} color={Wireframe.text} /> : null}
       </Panel>
     </WireScreen>
   );
@@ -81,4 +137,5 @@ const styles = StyleSheet.create({
   },
   note: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
   noteText: { flex: 1, fontSize: 12, color: Wireframe.textMuted },
+  spinner: { marginTop: 16 },
 });

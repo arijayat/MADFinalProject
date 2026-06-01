@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function CreateAccountScreen() {
   const router = useRouter();
-  const { signUp } = useAuth();
+  const { signUp, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +29,8 @@ export default function CreateAccountScreen() {
     setSubmitting(true);
     try {
       await signUp(email, password);
-      router.replace('/team-onboarding');
+      const profile = await refreshProfile();
+      router.replace(profile?.teamId ? '/(tabs)' : '/team-onboarding');
     } catch (error) {
       Alert.alert('Could not create account', error instanceof Error ? error.message : 'Try again.');
     } finally {

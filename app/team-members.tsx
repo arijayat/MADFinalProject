@@ -1,49 +1,71 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
-import { WireScreen } from "@/components/wireframe/WireScreen";
-import { Wireframe } from "@/constants/wireframe-theme";
-import { useTeam } from "@/contexts/TeamContext";
+import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
+import { WireScreen } from '@/components/wireframe/WireScreen';
+import { Wireframe } from '@/constants/wireframe-theme';
+import { useTeam } from '@/contexts/TeamContext';
 
 export default function TeamMembersScreen() {
   const router = useRouter();
-  const { teamName, members, addMember } = useTeam();
-  const [name, setName] = useState("");
+  const { teamName, members, addMember, registerTeam } = useTeam();
+  const [name, setName] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleContinue() {
+    setSubmitting(true);
+    try {
+      const { code } = await registerTeam();
+      Alert.alert(
+        'Team registered',
+        `Share this join code with teammates: ${code}\n\nIt is also shown on the Team tab as #${code}.`,
+        [{ text: 'OK', onPress: () => router.replace('/(tabs)') }],
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not save team',
+        error instanceof Error ? error.message : 'Check Firestore rules and your connection.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <WireScreen
       footer={
         <PrimaryButton
-          label="CONTINUE"
+          label={submitting ? 'SAVING…' : 'CONTINUE'}
           style={styles.primaryButton}
-          onPress={() => router.replace("/(tabs)")}
+          onPress={handleContinue}
+          disabled={submitting}
         />
-      }
-    >
+      }>
       <View style={styles.content}>
         <Text style={styles.heading}>TEAM MEMBERS</Text>
-        <Text style={styles.sub}>Add all members of {teamName}</Text>
+        <Text style={styles.sub}>Add all members of {teamName || 'your team'}</Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Member 1 Name</Text>
+          <Text style={styles.label}>Member name</Text>
           <TextInput
             style={styles.input}
             placeholder="Enter the team member name"
             placeholderTextColor={Wireframe.placeholder}
             value={name}
             onChangeText={setName}
+            editable={!submitting}
           />
         </View>
         <PrimaryButton
           variant="light"
           label="ADD MEMBER"
           style={styles.secondaryButton}
+          disabled={submitting}
           onPress={() => {
             if (name.trim()) {
               addMember(name.trim());
-              setName("");
+              setName('');
             }
           }}
         />
@@ -58,6 +80,8 @@ export default function TeamMembersScreen() {
             ))}
           </View>
         ) : null}
+
+        {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
       </View>
     </WireScreen>
   );
@@ -65,19 +89,19 @@ export default function TeamMembersScreen() {
 
 const styles = StyleSheet.create({
   content: {
-    width: "100%",
+    width: '100%',
     maxWidth: 420,
-    alignSelf: "center",
+    alignSelf: 'center',
     paddingTop: 24,
   },
   heading: {
     color: Wireframe.panelBg,
     fontSize: 20,
-    fontWeight: "800",
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
   sub: {
-    color: "#cfcfcf",
+    color: '#cfcfcf',
     marginBottom: 24,
     marginTop: 4,
   },
@@ -87,7 +111,7 @@ const styles = StyleSheet.create({
   label: {
     color: Wireframe.panelBg,
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 6,
   },
   input: {
@@ -100,14 +124,14 @@ const styles = StyleSheet.create({
     color: Wireframe.text,
   },
   secondaryButton: {
-    width: "100%",
+    width: '100%',
     marginTop: 16,
   },
   added: {
     marginTop: 24,
   },
   addedTitle: {
-    color: "#aaa",
+    color: '#aaa',
     fontSize: 12,
     marginBottom: 10,
   },
@@ -117,6 +141,9 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   primaryButton: {
-    width: "100%",
+    width: '100%',
+  },
+  spinner: {
+    marginTop: 20,
   },
 });

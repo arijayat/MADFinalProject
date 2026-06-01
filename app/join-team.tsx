@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
@@ -12,27 +12,40 @@ export default function JoinTeamScreen() {
   const router = useRouter();
   const { joinWithTeamCode } = useTeam();
   const [code, setCode] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const canContinue = code.trim().length > 0;
+  const canContinue = code.trim().length > 0 && !submitting;
+
+  async function handleJoin() {
+    setSubmitting(true);
+    try {
+      await joinWithTeamCode(code.trim());
+      router.replace('/(tabs)');
+    } catch (error) {
+      Alert.alert(
+        'Could not join team',
+        error instanceof Error ? error.message : 'Check the code and try again.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <WireScreen
       footer={
         <PrimaryButton
-          label="JOIN TEAM"
+          label={submitting ? 'JOINING…' : 'JOIN TEAM'}
           style={styles.primaryButton}
           disabled={!canContinue}
-          onPress={() => {
-            joinWithTeamCode(code.trim());
-            router.replace('/(tabs)');
-          }}
+          onPress={handleJoin}
         />
       }>
       <ScreenHeader
         backLabel="Back"
         onBack={() => router.back()}
         title="Join a team"
-        subtitle="Enter the team code you were given (letters and numbers)."
+        subtitle="Enter the team code from your captain (letters and numbers)."
       />
 
       <View style={styles.field}>
@@ -44,8 +57,11 @@ export default function JoinTeamScreen() {
           value={code}
           onChangeText={setCode}
           autoCapitalize="characters"
+          editable={!submitting}
         />
       </View>
+
+      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
     </WireScreen>
   );
 }
@@ -74,5 +90,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
+  },
+  spinner: {
+    marginTop: 16,
   },
 });

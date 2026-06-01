@@ -22,6 +22,10 @@ export function getAuthErrorMessage(error: unknown): string {
       return 'Too many attempts. Wait a moment and try again.';
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.';
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with this email using a different sign-in method.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign-in was cancelled.';
     default:
       return error.message || 'Authentication failed. Please try again.';
   }

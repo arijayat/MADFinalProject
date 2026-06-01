@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -6,27 +6,46 @@ import { useTeam } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
 
 export default function TeamTabScreen() {
-  const { teamName, teamId, members } = useTeam();
-  const displayMembers =
-    members.length > 0
-      ? members
-      : [{ id: 'placeholder', name: 'Student A', email: 'studenta@mail.edu' }];
+  const { teamName, teamId, members, isLoadingTeam, teamDocId } = useTeam();
+
+  if (isLoadingTeam) {
+    return (
+      <WireScreen>
+        <ActivityIndicator color={Wireframe.panelBg} size="large" />
+        <Text style={styles.loading}>Loading team from cloud…</Text>
+      </WireScreen>
+    );
+  }
+
+  if (!teamDocId) {
+    return (
+      <WireScreen>
+        <Text style={styles.teamId}>No team yet</Text>
+        <Text style={styles.sub}>Register or join a team from the onboarding flow.</Text>
+      </WireScreen>
+    );
+  }
 
   return (
     <WireScreen>
       <View style={styles.header}>
         <Text style={styles.teamId}>
-          {teamName}
-          {teamId}
+          {teamName} {teamId}
         </Text>
-        <Text style={styles.sub}>Team members information</Text>
+        <Text style={styles.sub}>Team members (saved in Firestore)</Text>
       </View>
-      {displayMembers.map((m) => (
-        <Panel key={m.id}>
-          <Text style={styles.memberName}>{m.name}</Text>
-          {m.email ? <Text style={styles.email}>{m.email}</Text> : null}
+      {members.length === 0 ? (
+        <Panel>
+          <Text style={styles.memberName}>No members listed yet</Text>
         </Panel>
-      ))}
+      ) : (
+        members.map((m) => (
+          <Panel key={m.id}>
+            <Text style={styles.memberName}>{m.name}</Text>
+            {m.email ? <Text style={styles.email}>{m.email}</Text> : null}
+          </Panel>
+        ))
+      )}
     </WireScreen>
   );
 }
@@ -42,6 +61,11 @@ const styles = StyleSheet.create({
     color: '#cfcfcf',
     fontSize: 13,
     marginTop: 4,
+  },
+  loading: {
+    marginTop: 12,
+    color: '#cfcfcf',
+    textAlign: 'center',
   },
   memberName: {
     fontSize: 16,
