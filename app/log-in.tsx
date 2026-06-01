@@ -1,31 +1,52 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function LogInScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleLogin() {
+    if (!email.trim() || !password) {
+      Alert.alert('Missing fields', 'Enter your email and password.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await signIn(email, password);
+      router.replace('/team-onboarding');
+    } catch (error) {
+      Alert.alert('Log in failed', error instanceof Error ? error.message : 'Try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <WireScreen
       footer={
         <PrimaryButton
-          label="LOG IN"
+          label={submitting ? 'LOGGING IN…' : 'LOG IN'}
           style={styles.primaryButton}
-          onPress={() => router.push('/team-onboarding')}
+          onPress={handleLogin}
+          disabled={submitting}
         />
       }>
       <ScreenHeader
         backLabel="Back"
         onBack={() => router.back()}
         title="Log in"
-        subtitle="Use your school email and password (wireframe — no real auth yet)."
+        subtitle="Use the email and password from your Firebase account."
       />
 
       <View style={styles.field}>
@@ -38,6 +59,7 @@ export default function LogInScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          editable={!submitting}
         />
       </View>
       <View style={styles.field}>
@@ -49,8 +71,15 @@ export default function LogInScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          editable={!submitting}
         />
       </View>
+
+      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+
+      <Pressable onPress={() => router.push('/create-account')} disabled={submitting}>
+        <Text style={styles.link}>Need an account? Create one</Text>
+      </Pressable>
     </WireScreen>
   );
 }
@@ -79,5 +108,16 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
+  },
+  spinner: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  link: {
+    marginTop: 8,
+    textAlign: 'center',
+    color: Wireframe.panelBg,
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

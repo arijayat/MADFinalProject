@@ -1,12 +1,19 @@
 import { useRouter } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { configError } = useAuth();
+
+  function showConfigHelp() {
+    if (!configError) return;
+    Alert.alert("Firebase setup", configError);
+  }
 
   return (
     <SafeAreaView style={styles.screen}>
@@ -14,8 +21,13 @@ export default function SignInScreen() {
         <View style={styles.logo} />
         <Text style={styles.title}>GLOBAL APP</Text>
         <Text style={styles.subtitle}>
-          Log in with your school account, or sign in with Google.
+          Log in with your school account, or create a new account.
         </Text>
+        {configError ? (
+          <Text style={styles.configError} onPress={showConfigHelp}>
+            Tap here: Firebase .env is missing or incomplete.
+          </Text>
+        ) : null}
         <View style={styles.actions}>
           <PrimaryButton
             label="LOG IN"
@@ -24,9 +36,9 @@ export default function SignInScreen() {
           />
           <PrimaryButton
             variant="light"
-            label="SIGN IN WITH GOOGLE"
+            label="CREATE ACCOUNT"
             style={styles.button}
-            onPress={() => router.push("/team-onboarding")}
+            onPress={() => router.push("/create-account")}
           />
         </View>
       </View>
@@ -67,6 +79,14 @@ const styles = StyleSheet.create({
     color: Wireframe.textMuted,
     maxWidth: 320,
     lineHeight: 20,
+  },
+  configError: {
+    marginTop: 12,
+    textAlign: "center",
+    fontSize: 12,
+    color: "#b45309",
+    maxWidth: 320,
+    textDecorationLine: "underline",
   },
   actions: {
     width: "100%",
