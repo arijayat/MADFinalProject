@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 
 import { getFirebaseDb } from '@/lib/firebase';
+import { claimMemberSlot, linkAuthUserToMembers } from '@/lib/team-members';
 import { generateTeamCode, normalizeTeamCode } from '@/lib/team-code';
 import type { FirestoreTeamMember, TeamDocument } from '@/types/firestore';
 
@@ -63,6 +64,16 @@ export async function createTeam(params: {
   return { teamId: ref.id, code };
 }
 
+export async function updateTeamMembers(
+  teamId: string,
+  members: FirestoreTeamMember[],
+): Promise<void> {
+  await updateDoc(doc(getFirebaseDb(), 'teams', teamId), {
+    members,
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function addMemberToTeam(
   teamId: string,
   uid: string,
@@ -78,4 +89,57 @@ export async function addMemberToTeam(
     memberUids,
     updatedAt: serverTimestamp(),
   });
+}
+
+/** Join by code and link the signed-in user to a captain-added roster name. */
+export async function claimTeamRosterSlot(params: {
+  teamId: string;
+  uid: string;
+  memberId: string;
+  email: string | null | undefined;
+}): Promise<FirestoreTeamMember[]> {
+  const team = await getTeamById(params.teamId);
+  if (!team) throw new Error('Team not found.');
+
+  const nextMembers = claimMemberSlot(
+    team.members ?? [],
+    params.memberId,
+    params.uid,
+    params.email,
+  );
+
+  await addMemberToTeam(params.teamId, params.uid, nextMembers);
+  return nextMembers;
+}
+
+/** Persist auth email/uid on the roster when the signed-in user opens their team. */
+export async function syncTeamMemberAuthInfo(
+  teamId: string,
+  uid: string,
+  email: string | null | undefined,
+  displayName: string | null | undefined,
+): Promise<FirestoreTeamMember[]> {
+  const team = await getTeamById(teamId);
+  if (!team) return [];
+
+  const linked = linkAuthUserToMembers(team.members ?? [], uid, email, displayName);
+  const changed = JSON.stringify(linked) !== JSON.stringify(team.members ?? []);
+
+  if (changed) {
+    await updateTeamMembers(teamId, linked);
+  }
+
+  return linked;
+}
+
+export async function listTeamsForLeaderboard(): Promise<
+  Map<string, { name: string; code: string }>
+> {
+  const snap = await getDocs(teamsCollection());
+  const map = new Map<string, { name: string; code: string }>();
+  for (const docSnap of snap.docs) {
+    const data = docSnap.data() as TeamDocument;
+    map.set(docSnap.id, { name: data.name, code: data.code });
+  }
+  return map;
 }

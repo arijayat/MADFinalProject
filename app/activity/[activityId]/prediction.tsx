@@ -59,15 +59,159 @@ export default function ActivityPredictionScreen() {
         </Text>
       </View>
 
+      {cfg.id === "parachute-drop" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            For each drop (baseline, plastic parachute, then your best design), guess how many seconds
+            pass until the toy first touches the ground. A parachute should usually increase fall time
+            compared with no parachute.
+          </Text>
+          <Text style={styles.hint}>
+            Also predict whether the toy will bounce after Action 3 — that choice is compared with what
+            you observe when reviewing the landing video. Drop height and mass are not guesses; they are
+            measurements used later to calculate speed, drag, and g-force.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "hand-fan-challenge" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            Describe the fan design you think will move the paper the most, then
+            guess the largest bend angle (in degrees) you expect to see when you
+            review slow-motion video at 15 cm, 30 cm, and 45 cm.
+          </Text>
+          <Text style={styles.hint}>
+            Choose the vertical strip material — it sets stiffness k for the force
+            estimate F ≈ k × θ on the results page. Distance (cm) is a note for your
+            main trial setup; you will still record all three distances in capture.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "surface-smoothness" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            For each movement, guess how shaky it will feel (low / medium / high
+            or an approximate m/s²) during Attempt 1 — slow moves with no buzz.
+          </Text>
+          <Text style={styles.hint}>
+            Pick which movement will be hardest to keep vibration low. Also
+            predict Attempt 1 overall smoothness (e.g. ±1 cm), then predict
+            Attempt 2 outcomes for Movement 1 and 2 when buzz feedback is on
+            (peak vibration + time, e.g. 5 mm in 20 s).
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "vibration-analysis" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            For each structure, guess the peak tilt (in degrees) when you gently
+            shake the table — how far the platform tilts from level. Lower tilt
+            means less movement and a more earthquake-resistant design.
+          </Text>
+          <Text style={styles.hint}>
+            Also pick which design (1, 2, or your own Design 3) you think will
+            move the least overall. After testing, the app compares your degree
+            guesses and your “moves least” choice to measured tilt and vibration.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "breathing-pattern" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            Guess breaths per minute (BPM) at rest, then immediately after
+            Exercise 1 and Exercise 2 (light jog or star jumps, then lie down and
+            record on your chest).
+          </Text>
+          <Text style={styles.hint}>
+            Note what each exercise will be. Also predict whether your BPM will
+            be higher after exercise than at rest — the dashboard compares your
+            numbers to the sensor recording.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "reaction-time" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            Phase 1 & 2: guess your average tap reaction time in milliseconds (ms) —
+            how fast you tap after the color changes, for dominant hand then your other hand.
+          </Text>
+          <Text style={styles.hint}>
+            Say whether your dominant hand will be faster. Phase 3: for each tracing
+            attempt, predict accuracy (%) and average delay (ms) while following the
+            moving shape.
+          </Text>
+        </Panel>
+      ) : null}
+
+      {cfg.id === "decibel-detector" ? (
+        <Panel title="What you are predicting">
+          <Text style={styles.hint}>
+            You are not guessing decibel numbers yet — you are ranking how loud each action will be
+            compared with a reference:
+          </Text>
+          <Text style={styles.hint}>
+            • Action 1 (e.g. drop a book): louder, softer, or about the same as a quiet room (~45 dB).
+          </Text>
+          <Text style={styles.hint}>
+            • Action 2 (e.g. talking): louder, softer, or about the same than Action 1’s sound.
+          </Text>
+          <Text style={styles.hint}>
+            • Action 3 (e.g. stamping): louder, softer, or about the same than Action 2’s sound.
+          </Text>
+          <Text style={styles.hint}>
+            After measuring, the dashboard compares your choices to the recorded peaks and shows hearing
+            risk from the sound-level table.
+          </Text>
+        </Panel>
+      ) : null}
+
       <Panel>
-        {cfg.predictionFields.map((f) => (
-          <FieldBlock
-            key={f.key}
-            field={f}
-            value={values[f.key] ?? ''}
-            onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
-          />
-        ))}
+        {cfg.id === 'reaction-time' ? (
+          <>
+            {cfg.predictionFields
+              .filter((f) => !f.key.startsWith('trace'))
+              .map((f) => (
+                <FieldBlock
+                  key={f.key}
+                  field={f}
+                  value={values[f.key] ?? ''}
+                  onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                />
+              ))}
+            {([1, 2, 3] as const).map((traceNum) => (
+              <View key={traceNum} style={styles.traceGroup}>
+                <Text style={styles.traceHeading}>Phase 3 — Trace {traceNum}</Text>
+                {cfg.predictionFields
+                  .filter((f) => f.key.startsWith(`trace${traceNum}_`))
+                  .map((f) => (
+                    <FieldBlock
+                      key={f.key}
+                      field={{
+                        ...f,
+                        label: f.label.replace(/^Phase 3 — Trace \d+: /, ''),
+                      }}
+                      value={values[f.key] ?? ''}
+                      onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                    />
+                  ))}
+              </View>
+            ))}
+          </>
+        ) : (
+          cfg.predictionFields.map((f) => (
+            <FieldBlock
+              key={f.key}
+              field={f}
+              value={values[f.key] ?? ''}
+              onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+            />
+          ))
+        )}
         <View style={styles.warnRow}>
           <MaterialIcons name="warning" size={18} color={Wireframe.accentYellow} />
           <Text style={styles.warn}>You must complete all predictions before the sensor unlocks.</Text>
@@ -91,4 +235,22 @@ const styles = StyleSheet.create({
   calloutText: { flex: 1, fontSize: 12, color: Wireframe.text, lineHeight: 17 },
   warnRow: { flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' },
   warn: { flex: 1, fontSize: 12, color: Wireframe.textMuted },
+  hint: {
+    fontSize: 13,
+    color: Wireframe.text,
+    lineHeight: 19,
+    marginBottom: 8,
+  },
+  traceGroup: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Wireframe.border,
+  },
+  traceHeading: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Wireframe.text,
+    marginBottom: 8,
+  },
 });

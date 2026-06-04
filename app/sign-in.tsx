@@ -1,50 +1,18 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useGoogleSignIn } from '@/hooks/use-google-sign-in';
-
-function getPostAuthRoute(hasTeam: boolean): '/(tabs)' | '/team-onboarding' {
-  return hasTeam ? '/(tabs)' : '/team-onboarding';
-}
 
 export default function SignInScreen() {
   const router = useRouter();
-  const { configError, refreshProfile } = useAuth();
-  const { signInWithGoogle, isGoogleConfigured, isReady } = useGoogleSignIn();
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const { configError } = useAuth();
 
   function showConfigHelp() {
     if (!configError) return;
     Alert.alert('Firebase setup', configError);
-  }
-
-  async function handleGoogleSignIn() {
-    if (!isGoogleConfigured) {
-      Alert.alert(
-        'Google Sign-In',
-        'Add EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to your .env file. See docs/FIREBASE_SETUP.md.',
-      );
-      return;
-    }
-
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-      const updated = await refreshProfile();
-      router.replace(getPostAuthRoute(Boolean(updated?.teamId)));
-    } catch (error) {
-      Alert.alert(
-        'Google sign-in failed',
-        error instanceof Error ? error.message : 'Please try again.',
-      );
-    } finally {
-      setGoogleLoading(false);
-    }
   }
 
   return (
@@ -52,9 +20,7 @@ export default function SignInScreen() {
       <View style={styles.centerContent}>
         <View style={styles.logo} />
         <Text style={styles.title}>GLOBAL APP</Text>
-        <Text style={styles.subtitle}>
-          Log in with email and password, or sign in with Google.
-        </Text>
+        <Text style={styles.subtitle}>Log in with email and password.</Text>
         {configError ? (
           <Text style={styles.configError} onPress={showConfigHelp}>
             Tap here: Firebase .env is missing or incomplete.
@@ -65,24 +31,14 @@ export default function SignInScreen() {
             label="LOG IN"
             style={styles.button}
             onPress={() => router.push('/log-in')}
-            disabled={googleLoading}
           />
           <PrimaryButton
             variant="light"
             label="CREATE ACCOUNT"
             style={styles.button}
             onPress={() => router.push('/create-account')}
-            disabled={googleLoading}
-          />
-          <PrimaryButton
-            variant="light"
-            label={googleLoading ? 'SIGNING IN…' : 'SIGN IN WITH GOOGLE'}
-            style={styles.button}
-            onPress={handleGoogleSignIn}
-            disabled={googleLoading || !isReady}
           />
         </View>
-        {googleLoading ? <ActivityIndicator style={styles.spinner} color={Wireframe.textMuted} /> : null}
       </View>
     </SafeAreaView>
   );
@@ -138,8 +94,5 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '100%',
-  },
-  spinner: {
-    marginTop: 16,
   },
 });

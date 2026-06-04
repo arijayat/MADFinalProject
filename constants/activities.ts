@@ -79,18 +79,16 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     id: "parachute-drop",
     title: "Parachute Drop",
     subtitle:
-      "Design, build, and test parachutes—use your phone camera to time the fall and slow-motion landing.",
+      "Design, build, and test parachutes—record drops and compare fall times with your predictions.",
     hubDescription:
       "Engineering + physics: compare baseline and parachute drops, then calculate drag and g-force from video.",
     requirements: [
-      "Mobile phone with STEMM Lab app",
       "Small toy (e.g. army figurine)",
       "Table or elevated drop point",
       "Paper or plastic, string, scissors, tape",
       "Measuring tape or ruler",
     ],
     gear: [
-      "Mobile phone with STEMM Lab app",
       "Small toy (army figurine or similar)",
       "Table or elevated surface",
       "Paper or plastic (canopy)",
@@ -110,43 +108,47 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "dropHeight",
-        label: "Drop height (meters)",
+        label: "Drop height (meters) — used for speed & force calculations",
         placeholder: "Measure from table edge to floor",
         kind: "number",
       },
       {
         key: "mass",
-        label: "Mass of toy (grams)",
+        label: "Mass of toy (grams) — used for force calculations",
         placeholder: "e.g. 200",
         kind: "number",
       },
       {
         key: "action1_pred",
-        label: "Action 1 — predicted fall time (s), no parachute",
-        placeholder: "How long until first hit the ground?",
+        label:
+          "Action 1 (no parachute) — predicted seconds until first hits ground",
+        placeholder: "e.g. 0.5",
         kind: "number",
       },
       {
         key: "action2_pred",
-        label: "Action 2 — predicted fall time (s), plastic design",
-        placeholder: "How long until first hit the ground?",
+        label:
+          "Action 2 (plastic canopy) — predicted seconds until first hits ground",
+        placeholder: "e.g. 0.8",
         kind: "number",
       },
       {
         key: "action3_design",
-        label: "Action 3 — describe your parachute design",
-        placeholder: "e.g. larger nylon canopy, 6 strings",
+        label: "Action 3 — describe your best parachute design",
+        placeholder: "e.g. larger plastic canopy, 6 strings",
         kind: "text",
       },
       {
         key: "action3_pred",
-        label: "Action 3 — predicted fall time (seconds)",
-        placeholder: "How long until first hit the ground?",
+        label:
+          "Action 3 (your design) — predicted seconds until first hits ground",
+        placeholder: "e.g. 1.2",
         kind: "number",
       },
       {
         key: "bounce",
-        label: "Do you expect the toy to bounce on landing?",
+        label:
+          "After Action 3 lands — do you predict bounce or no bounce? (affects g-force)",
         placeholder: "Select",
         kind: "dropdown",
         options: ["No bounce", "Bounce"],
@@ -176,12 +178,8 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       "Measure and compare sound levels from different classroom actions.",
     hubDescription:
       "Measure and compare sound levels from different classroom actions.",
-    requirements: [
-      "Mobile phone with STEMM Lab app",
-      "Classroom sound sources",
-      "Measuring Tape",
-    ],
-    gear: ["Mobile phone with STEMM Lab app", "Measuring Tape"],
+    requirements: ["Classroom sound sources", "Measuring tape"],
+    gear: ["Measuring tape"],
     safety: safetyDefault,
     decibelActions: [
       "Action 1 (e.g. dropping a book on the table)",
@@ -191,21 +189,24 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "action1_pred",
-        label: "Action 1 — louder or softer than quiet room?",
+        label:
+          "Action 1 (e.g. drop book) — vs a quiet room (~45 dB): louder, softer, or about the same?",
         placeholder: "Select prediction",
         kind: "dropdown",
         options: ["Louder", "Softer", "About the same"],
       },
       {
         key: "action2_pred",
-        label: "Action 2 — louder or softer than Action 1?",
+        label:
+          "Action 2 (e.g. talking) — vs Action 1’s measured sound: louder, softer, or about the same?",
         placeholder: "Select prediction",
         kind: "dropdown",
         options: ["Louder", "Softer", "About the same"],
       },
       {
         key: "action3_pred",
-        label: "Action 3 — louder or softer than Action 2?",
+        label:
+          "Action 3 (e.g. stamping) — vs Action 2’s measured sound: louder, softer, or about the same?",
         placeholder: "Select prediction",
         kind: "dropdown",
         options: ["Louder", "Softer", "About the same"],
@@ -238,7 +239,6 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     hubDescription:
       "Physics — test how fan design, material stiffness and distance affect bending using the app to record video and measure angles from slow-motion frames.",
     requirements: [
-      "Mobile phone with STEMM Lab app",
       "Paper and cardboard (different stiffnesses)",
       "Scissors",
       "Sticky tape",
@@ -247,7 +247,6 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       "Hand fan (paper or cardboard) or built fan designs",
     ],
     gear: [
-      "Mobile phone with STEMM Lab app",
       "Various paper/cardboard samples",
       "Scissors, sticky tape",
       "Measuring tape or ruler",
@@ -261,14 +260,16 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "fanDesign",
-        label: "Fan design",
-        placeholder: "Describe your fan (folds, size, holes)",
+        label:
+          "Fan design you will test (folds, size, holes) — which design do you think moves the paper most?",
+        placeholder: "e.g. 1 cm back-and-forward folds",
         kind: "text",
       },
       {
         key: "material",
-        label: "Material",
-        placeholder: "e.g. thin printer paper, card stock",
+        label:
+          "Vertical strip material (sets stiffness k for force estimate)",
+        placeholder: "Select material",
         kind: "dropdown",
         options: [
           "Thin printer paper",
@@ -279,14 +280,16 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       },
       {
         key: "distance",
-        label: "Distance from fan (cm)",
-        placeholder: "Enter distance in cm",
+        label:
+          "Note: you will test at 15, 30, and 45 cm — primary distance for this run (cm)",
+        placeholder: "e.g. 30",
         kind: "number",
       },
       {
         key: "predictedBend",
-        label: "Predicted maximum bend angle (degrees)",
-        placeholder: "Enter predicted bend angle (°)",
+        label:
+          "Predicted maximum bend angle (°) — largest bend you expect at any distance",
+        placeholder: "e.g. 30",
         kind: "number",
       },
     ],
@@ -318,13 +321,11 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     hubDescription:
       "Engineering + Earth Science: build dampening structures, then use the accelerometer and level sensor to compare stability during simulated earthquakes.",
     requirements: [
-      "Mobile phone with STEMM Lab app",
       "Cardboard, paper, scissors, sticky tape",
       "Plastic or paper cups (4–6)",
       "Table or flat surface to shake gently",
     ],
     gear: [
-      "Mobile phone with STEMM Lab app",
       "Cardboard and paper (accordion folds)",
       "Scissors and sticky tape",
       "Plastic or paper cups (4–6 pillars)",
@@ -344,31 +345,35 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "design1_pred",
-        label: "Design 1 — predicted max tilt (degrees)",
-        placeholder: "How much will the phone tilt? e.g. 5",
+        label:
+          "Design 1 (4 folds + 4 pillars) — predicted peak tilt when table is shaken (°)",
+        placeholder: "e.g. 5",
         kind: "number",
       },
       {
         key: "design2_pred",
-        label: "Design 2 — predicted max tilt (degrees)",
-        placeholder: "More folds — less movement?",
+        label:
+          "Design 2 (10 folds + 4 pillars) — predicted peak tilt when shaken (°)",
+        placeholder: "e.g. 3",
         kind: "number",
       },
       {
         key: "design3_desc",
-        label: "Design 3 — describe your structure",
-        placeholder: "e.g. 3 folds + 6 pillars, extra cardboard layer",
+        label: "Design 3 — describe your best structure (folds + pillars)",
+        placeholder: "e.g. 3 folds + 6 pillars",
         kind: "text",
       },
       {
         key: "design3_pred",
-        label: "Design 3 — predicted max tilt (degrees)",
-        placeholder: "Your best design prediction",
+        label:
+          "Design 3 (your structure) — predicted peak tilt when shaken (°)",
+        placeholder: "e.g. 2",
         kind: "number",
       },
       {
         key: "mostStable",
-        label: "Which design will move the least?",
+        label:
+          "Overall — which design do you predict will move the least (lowest tilt)?",
         placeholder: "Select prediction",
         kind: "dropdown",
         options: ["Design 1", "Design 2", "Design 3"],
@@ -394,14 +399,8 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       "Stretch Speed & Gracefulness — measure movement smoothness with your phone’s vibration sensor (Medical Science + Biomechanics).",
     hubDescription:
       "Investigate how the body moves by measuring speed, smoothness, and coordination during controlled stretching and hand movements.",
-    requirements: [
-      "Mobile phone with STEMM Lab app",
-      "Open space to move safely",
-    ],
-    gear: [
-      "Mobile phone with STEMM Lab app",
-      "Open space to move safely",
-    ],
+    requirements: ["Open space to move safely"],
+    gear: ["Open space to move safely"],
     safety: [
       ...safetyDefault,
       "Hold the phone firmly—do not swing it near other people or objects.",
@@ -416,45 +415,52 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "move1_pred",
-        label: "Movement 1 — predicted vibration (absolute)",
-        placeholder: "e.g. low, medium, or a number",
+        label:
+          "Movement 1 (circle / figure-8) — predicted peak vibration (low / medium / high or m/s²)",
+        placeholder: "e.g. low or 0.5 m/s²",
         kind: "text",
       },
       {
         key: "move2_pred",
-        label: "Movement 2 — predicted vibration (absolute)",
-        placeholder: "e.g. low, medium, or a number",
+        label:
+          "Movement 2 (up & down) — predicted peak vibration",
+        placeholder: "e.g. medium",
         kind: "text",
       },
       {
         key: "move3_pred",
-        label: "Movement 3 — predicted vibration (absolute)",
-        placeholder: "e.g. low, medium, or a number",
+        label:
+          "Movement 3 (side to side) — predicted peak vibration",
+        placeholder: "e.g. low",
         kind: "text",
       },
       {
         key: "hardest_move",
-        label: "Which movement will be hardest to keep vibration low?",
+        label:
+          "Which movement will be hardest to keep vibration low? (Attempt 1, no buzz)",
         placeholder: "Select prediction",
         kind: "dropdown",
         options: ["Movement 1", "Movement 2", "Movement 3"],
       },
       {
         key: "attempt1_pred",
-        label: "Attempt 1 — predict smoothness outcome",
-        placeholder: "e.g. ±1 cm",
+        label:
+          "Attempt 1 (slow, no buzz) — predict overall smoothness (e.g. ±1 cm or low vibration)",
+        placeholder: "e.g. ±1 cm or low",
         kind: "text",
       },
       {
         key: "attempt2_pred",
-        label: "Attempt 2 — predict outcome (time + movement)",
-        placeholder: "e.g. 5 mm in 20 seconds",
+        label:
+          "Attempt 2 with buzz — Movement 1: predict outcome (peak vibration + time)",
+        placeholder: "e.g. 5 mm in 20 s or 0.8 m/s²",
         kind: "text",
       },
       {
         key: "attempt3_pred",
-        label: "Attempt 3 — predict outcome (time + movement)",
-        placeholder: "e.g. 5 mm in 5 seconds",
+        label:
+          "Attempt 2 with buzz — Movement 2: predict outcome (peak vibration + time)",
+        placeholder: "e.g. 5 mm in 5 s",
         kind: "text",
       },
     ],
@@ -482,14 +488,10 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     hubDescription:
       "Neuroscience + Mathematics: tap when a hidden button appears, repeat with your other hand, then trace a moving shape to measure coordination.",
     requirements: [
-      "Mobile phone with STEMM Lab app",
       "Flat table surface",
       "Paper for recording results (optional)",
     ],
-    gear: [
-      "Mobile phone with STEMM Lab app",
-      "Flat table — rest the phone screen-up",
-    ],
+    gear: ["Flat table — rest device screen-up", "Clear working space"],
     safety: [
       ...safetyDefault,
       "Keep the phone flat on the table during all phases.",
@@ -514,56 +516,60 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       },
       {
         key: "phase1_pred",
-        label: "Phase 1 — predicted avg reaction time (ms), dominant hand",
+        label:
+          "Phase 1 (tap, dominant hand) — predicted average reaction time in ms",
         placeholder: "e.g. 350",
         kind: "number",
       },
       {
         key: "phase2_pred",
-        label: "Phase 2 — predicted avg reaction time (ms), non-dominant hand",
+        label:
+          "Phase 2 (tap, other hand) — predicted average reaction time in ms",
         placeholder: "e.g. 450",
         kind: "number",
       },
       {
         key: "dominant_faster",
-        label: "Will your dominant hand be faster?",
+        label:
+          "Will your dominant hand be faster than your other hand? (compare Phase 1 vs 2)",
         placeholder: "Select",
         kind: "dropdown",
         options: ["Yes", "No", "About the same"],
       },
       {
         key: "trace1_accuracy_pred",
-        label: "Tracing attempt 1 — predicted accuracy (%)",
+        label:
+          "Phase 3 — Trace 1: predicted accuracy (%) following the moving shape",
         placeholder: "e.g. 70",
         kind: "number",
       },
       {
         key: "trace1_delay_pred",
-        label: "Tracing attempt 1 — predicted avg delay (ms)",
+        label: "Phase 3 — Trace 1: predicted average delay (ms)",
         placeholder: "e.g. 200",
         kind: "number",
       },
       {
         key: "trace2_accuracy_pred",
-        label: "Tracing attempt 2 — predicted accuracy (%)",
+        label: "Phase 3 — Trace 2: predicted accuracy (%)",
         placeholder: "e.g. 60",
         kind: "number",
       },
       {
         key: "trace2_delay_pred",
-        label: "Tracing attempt 2 — predicted avg delay (ms)",
+        label: "Phase 3 — Trace 2: predicted average delay (ms)",
         placeholder: "e.g. 300",
         kind: "number",
       },
       {
         key: "trace3_accuracy_pred",
-        label: "Tracing attempt 3 — predicted accuracy (%)",
+        label: "Phase 3 — Trace 3: predicted accuracy (%)",
         placeholder: "e.g. 80",
         kind: "number",
       },
       {
         key: "trace3_delay_pred",
-        label: "Tracing attempt 3 — predicted avg delay (ms)",
+        label: "Phase 3 — Trace 3: predicted average delay (ms)",
         placeholder: "e.g. 150",
         kind: "number",
       },
@@ -593,15 +599,10 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     hubDescription:
       "Medical Science: record chest movement with the accelerometer, compare breaths per minute before and after jogging or star jumps.",
     requirements: [
-      "Mobile phone with STEMM Lab app",
       "Flat mat or clear floor to lie on",
       "Space for light exercise (jog on the spot or star jumps)",
     ],
-    gear: [
-      "Mobile phone with STEMM Lab app",
-      "Mat or towel to lie on",
-      "Open floor space for light exercise",
-    ],
+    gear: ["Mat or towel to lie on", "Open floor space for light exercise"],
     safety: [
       ...safetyDefault,
       "Only do light exercise you are comfortable with—stop if you feel dizzy.",
@@ -616,37 +617,41 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     predictionFields: [
       {
         key: "rest_pred",
-        label: "At rest — predict breaths per minute",
+        label:
+          "Breathing at rest — predicted breaths per minute (BPM)",
         placeholder: "e.g. 16",
         kind: "number",
       },
       {
         key: "exercise1_pred",
-        label: "After Exercise 1 — predict breaths per minute",
+        label:
+          "After Exercise 1 — predicted BPM (record right after exercise)",
         placeholder: "e.g. 24",
         kind: "number",
       },
       {
         key: "exercise2_pred",
-        label: "After Exercise 2 — predict breaths per minute",
+        label:
+          "After Exercise 2 — predicted BPM (record right after exercise)",
         placeholder: "e.g. 28",
         kind: "number",
       },
       {
         key: "exercise1_type",
-        label: "Exercise 1 — what will you do?",
+        label: "Exercise 1 — what will you do before recording?",
         placeholder: "e.g. jog on the spot for 1 minute",
         kind: "text",
       },
       {
         key: "exercise2_type",
-        label: "Exercise 2 — what will you do?",
+        label: "Exercise 2 — what will you do before recording?",
         placeholder: "e.g. 100 star jumps",
         kind: "text",
       },
       {
         key: "higher_after_exercise",
-        label: "Will breathing rate be higher after exercise?",
+        label:
+          "Compared with rest — will your BPM be higher after exercise?",
         placeholder: "Select",
         kind: "dropdown",
         options: ["Yes", "No", "About the same"],

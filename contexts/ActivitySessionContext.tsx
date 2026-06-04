@@ -2,11 +2,16 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
 import type { ActivityId } from "@/constants/activities";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTeam } from "@/contexts/TeamContext";
+import { sessionFromActivityResult } from "@/lib/activity-snapshot";
+import { listTeamActivityResults } from "@/lib/firestore/results";
 
 export type DecibelReading = {
   label: string;
@@ -150,9 +155,72 @@ export function ActivitySessionProvider({
 }: {
   children: React.ReactNode;
 }) {
+  const { user } = useAuth();
+  const { teamDocId } = useTeam();
   const [sessions, setSessions] = useState<
     Partial<Record<ActivityId, ActivitySession>>
   >({});
+
+  useEffect(() => {
+    if (!user || !teamDocId) return;
+
+    let cancelled = false;
+
+    void listTeamActivityResults(teamDocId).then((saved) => {
+      if (cancelled) return;
+      setSessions((prev) => {
+        const next = { ...prev };
+        for (const [activityId, doc] of Object.entries(saved)) {
+          const id = activityId as ActivityId;
+          const fromCloud = sessionFromActivityResult(doc);
+          const local = prev[id] ?? emptySession();
+          next[id] = {
+            predictions: { ...fromCloud.predictions, ...local.predictions },
+            decibelReadings:
+              local.decibelReadings.length > 0
+                ? local.decibelReadings
+                : (fromCloud.decibelReadings as DecibelReading[]),
+            vibrationReadings:
+              local.vibrationReadings.length > 0
+                ? local.vibrationReadings
+                : (fromCloud.vibrationReadings as VibrationReading[]),
+            performanceReadings:
+              local.performanceReadings.length > 0
+                ? local.performanceReadings
+                : (fromCloud.performanceReadings as PerformanceReading[]),
+            parachuteReadings:
+              local.parachuteReadings.length > 0
+                ? local.parachuteReadings
+                : (fromCloud.parachuteReadings as ParachuteReading[]),
+            tapReactionReadings:
+              local.tapReactionReadings.length > 0
+                ? local.tapReactionReadings
+                : (fromCloud.tapReactionReadings as TapReactionReading[]),
+            tracingReadings:
+              local.tracingReadings.length > 0
+                ? local.tracingReadings
+                : (fromCloud.tracingReadings as TracingReading[]),
+            breathingReadings:
+              local.breathingReadings.length > 0
+                ? local.breathingReadings
+                : (fromCloud.breathingReadings as BreathingReading[]),
+            fanAngleReadings:
+              local.fanAngleReadings.length > 0
+                ? local.fanAngleReadings
+                : (fromCloud.fanAngleReadings as FanAngleReading[]),
+            bounceActual:
+              local.bounceActual ??
+              (fromCloud.bounceActual as BounceObservation | null),
+          };
+        }
+        return next;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, teamDocId]);
 
   const getSession = useCallback(
     (activityId: ActivityId) => sessions[activityId] ?? emptySession(),

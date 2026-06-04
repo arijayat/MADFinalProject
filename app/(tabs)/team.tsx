@@ -2,10 +2,24 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { useTeam } from '@/contexts/TeamContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTeam, type TeamMember } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
 
+/** Hide legacy placeholder emails generated before accounts were linked. */
+function memberDisplayEmail(member: TeamMember, authUid?: string, authEmail?: string | null): string | null {
+  if (member.uid && authUid && member.uid === authUid && authEmail?.trim()) {
+    return authEmail.trim();
+  }
+
+  const email = member.email?.trim();
+  if (!email) return null;
+  if (!member.uid && email.endsWith('@mail.edu')) return null;
+  return email;
+}
+
 export default function TeamTabScreen() {
+  const { user } = useAuth();
   const { teamName, teamId, members, isLoadingTeam, teamDocId } = useTeam();
 
   if (isLoadingTeam) {
@@ -32,19 +46,22 @@ export default function TeamTabScreen() {
         <Text style={styles.teamId}>
           {teamName} {teamId}
         </Text>
-        <Text style={styles.sub}>Team members (saved in Firestore)</Text>
+        <Text style={styles.sub}>Team members</Text>
       </View>
       {members.length === 0 ? (
         <Panel>
           <Text style={styles.memberName}>No members listed yet</Text>
         </Panel>
       ) : (
-        members.map((m) => (
-          <Panel key={m.id}>
-            <Text style={styles.memberName}>{m.name}</Text>
-            {m.email ? <Text style={styles.email}>{m.email}</Text> : null}
-          </Panel>
-        ))
+        members.map((m) => {
+          const email = memberDisplayEmail(m, user?.uid, user?.email);
+          return (
+            <Panel key={m.id}>
+              <Text style={styles.memberName}>{m.name}</Text>
+              {email ? <Text style={styles.email}>{email}</Text> : null}
+            </Panel>
+          );
+        })
       )}
     </WireScreen>
   );

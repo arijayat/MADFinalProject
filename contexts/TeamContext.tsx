@@ -8,7 +8,14 @@ import React, {
 } from 'react';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { addMemberToTeam, createTeam, getTeamById, getTeamByJoinCode } from '@/lib/firestore/teams';
+import {
+  claimTeamRosterSlot,
+  createTeam,
+  getTeamById,
+  getTeamByJoinCode,
+  syncTeamMemberAuthInfo,
+} from '@/lib/firestore/teams';
+import { linkAuthUserToMembers } from '@/lib/team-members';
 import { setUserTeamId } from '@/lib/firestore/users';
 import { normalizeTeamCode } from '@/lib/team-code';
 import type { FirestoreTeamMember } from '@/types/firestore';
@@ -31,8 +38,8 @@ type TeamContextValue = {
   resetForNewTeam: () => void;
   /** Create team in Firestore and link to the signed-in user. */
   registerTeam: () => Promise<{ teamDocId: string; code: string }>;
-  /** Join by join code and sync local state. */
-  joinWithTeamCode: (code: string) => Promise<void>;
+  /** Join by join code and claim a roster name the captain added. */
+  joinWithTeamCode: (code: string, memberId: string) => Promise<void>;
   refreshTeamFromFirestore: () => Promise<void>;
 };
 
@@ -77,13 +84,35 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     setIsLoadingTeam(true);
     try {
       const team = await getTeamById(profile.teamId);
-      if (team) {
-        applyTeamDocument(team);
+      if (!team) return;
+
+      let roster = team.members ?? [];
+      if (user) {
+        roster = await syncTeamMemberAuthInfo(
+          profile.teamId,
+          user.uid,
+          user.email,
+          user.displayName,
+        );
+        roster = linkAuthUserToMembers(
+          roster,
+          user.uid,
+          user.email,
+          user.displayName,
+        );
       }
+
+      applyTeamDocument({
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        gradeLevel: team.gradeLevel,
+        members: roster,
+      });
     } finally {
       setIsLoadingTeam(false);
     }
-  }, [profile?.teamId, applyTeamDocument]);
+  }, [profile?.teamId, user, applyTeamDocument]);
 
   useEffect(() => {
     if (!user) {
@@ -99,10 +128,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   const addMember = useCallback((name: string) => {
     const id = `m-${Date.now()}`;
-    setMembers((prev) => [
-      ...prev,
-      { id, name, email: `${name.toLowerCase().replace(/\s+/g, '')}@mail.edu` },
-    ]);
+    setMembers((prev) => [...prev, { id, name }]);
   }, []);
 
   const resetForNewTeam = useCallback(() => {
@@ -116,11 +142,18 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const registerTeam = useCallback(async () => {
     if (!user) throw new Error('You must be signed in to register a team.');
 
+    const linkedMembers = linkAuthUserToMembers(
+      members,
+      user.uid,
+      user.email,
+      user.displayName,
+    );
+
     const { teamId, code } = await createTeam({
       ownerUid: user.uid,
       name: teamName.trim() || 'My Team',
       gradeLevel,
-      members,
+      members: linkedMembers,
     });
 
     await setUserTeamId(user.uid, teamId);
@@ -130,26 +163,51 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       name: teamName.trim() || 'My Team',
       code,
       gradeLevel,
-      members,
+      members: linkedMembers,
     });
 
     return { teamDocId: teamId, code };
   }, [user, teamName, gradeLevel, members, refreshProfile, applyTeamDocument]);
 
   const joinWithTeamCode = useCallback(
-    async (rawCode: string) => {
+    async (rawCode: string, memberId: string) => {
       if (!user) throw new Error('You must be signed in to join a team.');
+      if (!memberId.trim()) throw new Error('Select your name on the team roster.');
 
       const team = await getTeamByJoinCode(rawCode);
       if (!team) {
         throw new Error('No team found with that code. Check the code and try again.');
       }
 
-      const nextMembers = team.members ?? [];
-      await addMemberToTeam(team.id, user.uid, nextMembers);
+      if (team.memberUids.includes(user.uid)) {
+        await setUserTeamId(user.uid, team.id);
+        await refreshProfile();
+        applyTeamDocument({
+          id: team.id,
+          name: team.name,
+          code: team.code,
+          gradeLevel: team.gradeLevel,
+          members: team.members ?? [],
+        });
+        return;
+      }
+
+      const nextMembers = await claimTeamRosterSlot({
+        teamId: team.id,
+        uid: user.uid,
+        memberId,
+        email: user.email,
+      });
+
       await setUserTeamId(user.uid, team.id);
       await refreshProfile();
-      applyTeamDocument(team);
+      applyTeamDocument({
+        id: team.id,
+        name: team.name,
+        code: team.code,
+        gradeLevel: team.gradeLevel,
+        members: nextMembers,
+      });
     },
     [user, refreshProfile, applyTeamDocument],
   );

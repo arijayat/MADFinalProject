@@ -1,5 +1,7 @@
 import type { ActivityId } from '@/constants/activities';
 import type { ActivitySessionSnapshot } from '@/lib/firestore/results';
+import type { ActivityResultDocument } from '@/types/firestore';
+import type { BounceObservation } from '@/contexts/ActivitySessionContext';
 
 type SessionLike = {
   predictions: Record<string, string>;
@@ -26,6 +28,23 @@ export function toActivitySessionSnapshot(session: SessionLike): ActivitySession
     breathingReadings: session.breathingReadings,
     fanAngleReadings: session.fanAngleReadings,
     bounceActual: session.bounceActual,
+  };
+}
+
+export function sessionFromActivityResult(
+  doc: ActivityResultDocument,
+): SessionLike {
+  return {
+    predictions: doc.predictions ?? {},
+    decibelReadings: doc.decibelReadings ?? [],
+    vibrationReadings: doc.vibrationReadings ?? [],
+    performanceReadings: doc.performanceReadings ?? [],
+    parachuteReadings: doc.parachuteReadings ?? [],
+    tapReactionReadings: doc.tapReactionReadings ?? [],
+    tracingReadings: doc.tracingReadings ?? [],
+    breathingReadings: doc.breathingReadings ?? [],
+    fanAngleReadings: doc.fanAngleReadings ?? [],
+    bounceActual: (doc.bounceActual as BounceObservation | null) ?? null,
   };
 }
 

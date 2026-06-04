@@ -13,13 +13,48 @@ import {
     type BounceObservation,
 } from "@/contexts/ActivitySessionContext";
 import {
+  BREATHING_PHASE_SHORT,
+  bpmPredictionMatches,
+  formatRecordingDetail,
+  higherAfterExerciseActual,
+  higherAfterExerciseMatches,
+} from "@/utils/breathing-dashboard";
+import {
+  getHearingRisk,
+  predictionMatchesActual,
+  QUIET_ROOM_REFERENCE_DB,
+} from "@/utils/decibel-hearing-risk";
+import {
+  bendPredictionMatches,
+  estimateForceN,
+  formatForceN,
+  getStiffnessK,
+} from "@/utils/fan-force";
+import {
+  averagePeakVibration,
+  formatPerformanceReading,
+  getHardestMovementPrediction,
+  hardestMovementMatches,
+  MOVEMENT_SHORT,
+} from "@/utils/performance-dashboard";
+import {
+  mostStablePredictionMatches,
+  steadiestDesignLabel,
+  tiltPredictionMatches,
+  VIBRATION_DESIGN_SHORT,
+} from "@/utils/vibration-dashboard";
+import {
     computeFallPhysics,
     computeGForceBounce,
     computeGForceNoBounce,
     formatPhysics,
 } from "@/utils/parachute-physics";
-import { formatBreathingOutcome } from "@/utils/breathing";
-import { formatTracePrediction } from "@/utils/reaction-dashboard";
+import {
+  dominantFasterMatches,
+  formatTracePrediction,
+  reactionTimeMatches,
+  traceRowMatches,
+} from "@/utils/reaction-dashboard";
 
 const PL_PRED = "123";
 const PL_ACT = "127";
@@ -28,17 +63,50 @@ type DashboardRow = {
   variable: string;
   predicted: string;
   actual: string;
+  hearingRisk?: string;
+  actualVib?: string;
+  wereRight?: string;
 };
 
+type ContextLine = { label: string; value: string };
+
+type TableSection = { title: string; rows: DashboardRow[] };
+
+type DashboardData = {
+  contextLines: ContextLine[];
+  rows: DashboardRow[];
+  sections: TableSection[];
+};
+
+const DECIBEL_ACTION_LABELS = [
+  "Action 1 — drop object",
+  "Action 2 — talking",
+  "Action 3 — stamping",
+];
+
 const CELL_PADDING = 16;
-const CHAR_WIDTH = 6.5;
+const CHAR_WIDTH = 7;
 const MIN_VARIABLE_COL = 100;
-const MIN_VALUE_COL = 72;
+const MIN_VALUE_COL = 92;
+const MIN_PREDICTED_HEADER_COL = 96;
 
 function estimateColumnWidth(texts: string[], minWidth: number): number {
   const longest = texts.reduce((max, text) => Math.max(max, text.length), 0);
   return Math.max(minWidth, Math.ceil(longest * CHAR_WIDTH) + CELL_PADDING);
 }
+
+function formatFallTimePrediction(value: string | undefined): string {
+  const v = value?.trim();
+  if (!v) return "—";
+  const n = parseFloat(v);
+  return Number.isFinite(n) ? `${v} s` : v;
+}
+
+const PARACHUTE_ACTION_LABELS = [
+  "Action 1 — fall time",
+  "Action 2 — fall time",
+  "Action 3 — fall time",
+];
 
 export default function ActivityDashboardScreen() {
   const router = useRouter();
@@ -46,8 +114,8 @@ export default function ActivityDashboardScreen() {
   const cfg = activityId ? getActivity(activityId) : undefined;
   const { getSession } = useActivitySession();
 
-  const rows = useMemo((): DashboardRow[] => {
-    if (!cfg) return [];
+  const dashboardData = useMemo((): DashboardData => {
+    if (!cfg) return { contextLines: [], rows: [], sections: [] };
     const session = getSession(cfg.id);
 
     if (cfg.id === "surface-smoothness" && cfg.movementActions) {
@@ -55,106 +123,160 @@ export default function ActivityDashboardScreen() {
       const attempt1 = session.performanceReadings.filter((r) => r.attempt === 1);
       const attempt2 = session.performanceReadings.filter((r) => r.attempt === 2);
 
-      const fmt = (r: (typeof attempt1)[0] | undefined) =>
-        r != null
-          ? `${r.peakVibrationMs2.toFixed(2)} m/s² · ${r.durationS}s`
-          : "—";
+      const attempt1Rows: DashboardRow[] = cfg.movementActions.map((label, i) => {
+        const a1 = attempt1.find((r) => r.label === label);
+        return {
+          variable: MOVEMENT_SHORT[i] ?? `Movement ${i + 1}`,
+          predicted: session.predictions[predKeys[i]] ?? "—",
+          actual: a1 != null ? formatPerformanceReading(a1) : "—",
+          wereRight: "—",
+        };
+      });
 
-      const moveRows: DashboardRow[] = cfg.movementActions.map((label, i) => ({
-        variable: label,
-        predicted: session.predictions[predKeys[i]] ?? "—",
-        actual:
-          attempt1[i] != null && attempt2[i] != null
-            ? `A1: ${fmt(attempt1[i])} · A2: ${fmt(attempt2[i])}`
-            : attempt1[i] != null
-              ? `A1: ${fmt(attempt1[i])}`
-              : attempt2[i] != null
-                ? `A2: ${fmt(attempt2[i])}`
-                : "—",
-      }));
-      moveRows.push({
-        variable: "Hardest to keep vibration low (prediction)",
+      attempt1Rows.push({
+        variable: "Hardest to keep vibration low",
         predicted: session.predictions.hardest_move ?? "—",
-        actual:
-          attempt1.length > 0
-            ? (() => {
-                const roughest = attempt1.reduce((a, b) =>
-                  b.peakVibrationMs2 > a.peakVibrationMs2 ? b : a,
-                );
-                return roughest.label.split(":")[0] ?? roughest.label;
-              })()
-            : "—",
+        actual: getHardestMovementPrediction(attempt1, 1),
+        wereRight: hardestMovementMatches(
+          session.predictions.hardest_move,
+          attempt1,
+          1,
+        ),
       });
-      const attemptKeys = [
-        "attempt1_pred",
-        "attempt2_pred",
-        "attempt3_pred",
+
+      const attempt2Preds: { key: string; label: string; index: number }[] = [
+        {
+          key: "attempt2_pred",
+          label: "Movement 1 (with buzz)",
+          index: 0,
+        },
+        {
+          key: "attempt3_pred",
+          label: "Movement 2 (with buzz)",
+          index: 1,
+        },
       ];
-      const attemptLabels = [
-        "Attempt 1 smoothness (all movements, no buzz)",
-        "Attempt 2 (time + movement, with buzz)",
-        "Attempt 3 (time + movement, with buzz)",
-      ];
-      const attemptActuals = [
-        attempt1.length > 0
-          ? `Avg ${(attempt1.reduce((s, r) => s + r.peakVibrationMs2, 0) / attempt1.length).toFixed(2)} m/s²`
-          : "—",
-        attempt2[0] != null ? fmt(attempt2[0]) : "—",
-        attempt2[1] != null ? fmt(attempt2[1]) : attempt2[2] != null ? fmt(attempt2[2]) : "—",
-      ];
-      attemptLabels.forEach((label, i) => {
-        moveRows.push({
-          variable: label,
-          predicted: session.predictions[attemptKeys[i]] ?? "—",
-          actual: attemptActuals[i],
+      const attempt2Rows: DashboardRow[] = attempt2Preds.map(
+        ({ key, label, index }) => {
+          const reading = attempt2[index];
+          return {
+            variable: label,
+            predicted: session.predictions[key] ?? "—",
+            actual: reading != null ? formatPerformanceReading(reading) : "—",
+            wereRight: "—",
+          };
+        },
+      );
+
+      const attempt1Overall = session.predictions.attempt1_pred?.trim();
+      const attempt1Measured = averagePeakVibration(attempt1, 1);
+      const contextLines: ContextLine[] = [];
+
+      if (attempt1Overall || attempt1Measured !== "—") {
+        contextLines.push({
+          label: "Attempt 1 overall smoothness",
+          value: `${attempt1Overall || "—"} (predicted) · ${attempt1Measured} (measured avg)`,
         });
-      });
-      return moveRows;
+      }
+      if (attempt2[2] != null) {
+        contextLines.push({
+          label: "Movement 3 (with buzz)",
+          value: formatPerformanceReading(attempt2[2]),
+        });
+      }
+
+      return {
+        contextLines,
+        rows: [],
+        sections: [
+          { title: "Attempt 1 — slow (no buzz)", rows: attempt1Rows },
+          { title: "Attempt 2 — with buzz feedback", rows: attempt2Rows },
+        ],
+      };
     }
 
     if (cfg.id === "vibration-analysis" && cfg.vibrationDesignActions) {
       const predKeys = ["design1_pred", "design2_pred", "design3_pred"];
+      const readings = session.vibrationReadings;
       const designRows: DashboardRow[] = cfg.vibrationDesignActions.map(
-        (label, i) => ({
-          variable: label,
-          predicted: session.predictions[predKeys[i]] ?? "—",
-          actual:
-            session.vibrationReadings[i] != null
-              ? `${session.vibrationReadings[i].peakTiltDeg.toFixed(1)}° tilt · ${session.vibrationReadings[i].peakVibrationMs2.toFixed(2)} m/s²`
-              : "—",
-        }),
+        (_, i) => {
+          const reading = readings[i];
+          const pred = session.predictions[predKeys[i]];
+          const tilt = reading?.peakTiltDeg;
+          return {
+            variable: VIBRATION_DESIGN_SHORT[i] ?? `Design ${i + 1}`,
+            predicted: pred ? `${pred}°` : "—",
+            actual: tilt != null ? `${tilt.toFixed(1)}°` : "—",
+            actualVib:
+              reading != null
+                ? `${reading.peakVibrationMs2.toFixed(2)} m/s²`
+                : "—",
+            wereRight:
+              tilt != null && pred
+                ? tiltPredictionMatches(pred, tilt)
+                : "—",
+          };
+        },
       );
       designRows.push({
-        variable: "Most stable design (prediction)",
+        variable: "Moves least (overall prediction)",
         predicted: session.predictions.mostStable ?? "—",
-        actual:
-          session.vibrationReadings.length > 0
-            ? (() => {
-                const steadiest = session.vibrationReadings.reduce((a, b) =>
-                  b.peakTiltDeg < a.peakTiltDeg ? b : a,
-                );
-                return steadiest.label.split(":")[0] ?? steadiest.label;
-              })()
-            : "—",
+        actual: steadiestDesignLabel(readings),
+        actualVib: "—",
+        wereRight: mostStablePredictionMatches(
+          session.predictions.mostStable,
+          readings,
+        ),
       });
-      return designRows;
+      const design3Desc = session.predictions.design3_desc?.trim();
+      return {
+        contextLines: design3Desc
+          ? [{ label: "Design 3 — your description", value: design3Desc }]
+          : [],
+        rows: designRows,
+        sections: [],
+      };
     }
 
     if (cfg.captureKind === "decibel" && cfg.decibelActions) {
-      const actionRows: DashboardRow[] = cfg.decibelActions.map((label, i) => ({
-        variable: label,
-        predicted: session.predictions[`action${i + 1}_pred`] ?? "—",
-        actual:
-          session.decibelReadings[i] != null
-            ? `${session.decibelReadings[i].peakDb}`
-            : "—",
-      }));
-      actionRows.push({
-        variable: "Location / zone",
-        predicted: session.predictions.location ?? "—",
-        actual: "—",
+      const readings = session.decibelReadings;
+      const actionRows: DashboardRow[] = cfg.decibelActions.map((_, i) => {
+        const reading = readings[i];
+        const peakDb = reading?.peakDb;
+        const predKey = `action${i + 1}_pred`;
+        const prediction = session.predictions[predKey];
+        let wereRight = "—";
+        if (peakDb != null && prediction) {
+          if (i === 0) {
+            wereRight = predictionMatchesActual(
+              prediction,
+              peakDb,
+              QUIET_ROOM_REFERENCE_DB,
+            );
+          } else if (readings[i - 1] != null) {
+            wereRight = predictionMatchesActual(
+              prediction,
+              peakDb,
+              readings[i - 1].peakDb,
+            );
+          }
+        }
+        return {
+          variable: DECIBEL_ACTION_LABELS[i] ?? `Action ${i + 1}`,
+          predicted: prediction ?? "—",
+          actual: peakDb != null ? `${peakDb} dB` : "—",
+          hearingRisk: peakDb != null ? getHearingRisk(peakDb) : "—",
+          wereRight,
+        };
       });
-      return actionRows;
+      const location = session.predictions.location?.trim();
+      return {
+        contextLines: location
+          ? [{ label: "Location / zone", value: location }]
+          : [],
+        rows: actionRows,
+        sections: [],
+      };
     }
 
     if (cfg.id === "reaction-time") {
@@ -164,17 +286,18 @@ export default function ActivityDashboardScreen() {
       const nonDominant = session.tapReactionReadings.filter(
         (r) => r.hand === "non_dominant" && !r.falseStart,
       );
+
       const tapSummary = (hand: "dominant" | "non_dominant") => {
         const valid = session.tapReactionReadings.filter(
           (r) => r.hand === hand && !r.falseStart,
         );
         const all = session.tapReactionReadings.filter((r) => r.hand === hand);
-        if (all.length === 0) return "—";
-        if (valid.length === 0) return "False start";
+        if (all.length === 0) return { text: "—", avg: null as number | null };
+        if (valid.length === 0) return { text: "False start", avg: null };
         const avg = Math.round(
           valid.reduce((s, r) => s + r.reactionTimeMs, 0) / valid.length,
         );
-        return `${avg} ms`;
+        return { text: `${avg} ms`, avg };
       };
 
       const avgMs = (readings: typeof dominant) => {
@@ -184,6 +307,8 @@ export default function ActivityDashboardScreen() {
         );
       };
 
+      const domResult = tapSummary("dominant");
+      const nonDomResult = tapSummary("non_dominant");
       const domAvg = avgMs(dominant);
       const nonDomAvg = avgMs(nonDominant);
 
@@ -193,142 +318,192 @@ export default function ActivityDashboardScreen() {
       const nonDomAll = session.tapReactionReadings.filter(
         (r) => r.hand === "non_dominant",
       );
-      const domFalseOnly =
-        domAll.length > 0 && dominant.length === 0;
+      const domFalseOnly = domAll.length > 0 && dominant.length === 0;
       const nonDomFalseOnly =
         nonDomAll.length > 0 && nonDominant.length === 0;
 
       const dominantFasterActual = (): string => {
         if (domAvg != null && nonDomAvg != null) {
-          if (domAvg < nonDomAvg) return "Yes — dominant was faster";
-          if (domAvg > nonDomAvg) return "No — non-dominant was faster";
+          if (domAvg < nonDomAvg) return "Yes — dominant faster";
+          if (domAvg > nonDomAvg) return "No — other hand faster";
           return "About the same";
         }
         if (domAvg != null && nonDomFalseOnly) {
-          return "Yes — dominant recorded; non-dominant had false start(s)";
+          return "Dominant only (false start other hand)";
         }
         if (nonDomAvg != null && domFalseOnly) {
-          return "No — dominant had false start(s); non-dominant recorded";
+          return "Other hand only (false start dominant)";
         }
         if (domFalseOnly && nonDomFalseOnly) {
-          return "Cannot compare — both phases had false start(s)";
+          return "Cannot compare (false starts)";
         }
         if (domAvg != null && nonDomAll.length === 0) {
-          return "Yes — dominant recorded (phase 2 not completed)";
+          return "Dominant only (phase 2 not done)";
         }
         if (nonDomAvg != null && domAll.length === 0) {
-          return "No — non-dominant recorded (phase 1 not completed)";
+          return "Other hand only (phase 1 not done)";
         }
         return "—";
       };
 
-      const traceLabels = [
-        "Tracing attempt 1",
-        "Tracing attempt 2",
-        "Tracing attempt 3",
-      ];
-
       const rows: DashboardRow[] = [
         {
-          variable: "Team member name",
-          predicted: session.predictions.member ?? "—",
-          actual: session.predictions.member ?? "—",
-        },
-        {
-          variable: "Dominant hand",
-          predicted: session.predictions.dominant_hand ?? "—",
-          actual: session.predictions.dominant_hand ?? "—",
-        },
-        {
-          variable: "Phase 1: Tap reaction (dominant)",
+          variable: "Phase 1 — tap (dominant)",
           predicted: session.predictions.phase1_pred
             ? `${session.predictions.phase1_pred} ms`
             : "—",
-          actual: tapSummary("dominant"),
+          actual: domResult.text,
+          actualVib: "—",
+          wereRight: reactionTimeMatches(
+            session.predictions.phase1_pred,
+            domResult.avg,
+          ),
         },
         {
-          variable: "Phase 2: Swap hands (non-dominant)",
+          variable: "Phase 2 — tap (other hand)",
           predicted: session.predictions.phase2_pred
             ? `${session.predictions.phase2_pred} ms`
             : "—",
-          actual: tapSummary("non_dominant"),
+          actual: nonDomResult.text,
+          actualVib: "—",
+          wereRight: reactionTimeMatches(
+            session.predictions.phase2_pred,
+            nonDomResult.avg,
+          ),
         },
         {
-          variable: "Dominant faster? (prediction)",
+          variable: "Dominant hand faster?",
           predicted: session.predictions.dominant_faster ?? "—",
           actual: dominantFasterActual(),
+          actualVib: "—",
+          wereRight: dominantFasterMatches(
+            session.predictions.dominant_faster,
+            domAvg,
+            nonDomAvg,
+          ),
         },
       ];
 
-      traceLabels.forEach((label, i) => {
-        const t = session.tracingReadings[i];
-        const attempt = (i + 1) as 1 | 2 | 3;
+      ([1, 2, 3] as const).forEach((attempt) => {
+        const t = session.tracingReadings[attempt - 1];
         rows.push({
-          variable: label,
+          variable: `Phase 3 — Trace ${attempt}`,
           predicted: formatTracePrediction(session.predictions, attempt),
-          actual:
+          actual: t != null ? `${t.accuracyPct}%` : "—",
+          actualVib: t != null ? `${t.avgDelayMs} ms` : "—",
+          wereRight:
             t != null
-              ? `${t.accuracyPct}% accuracy · ${t.avgDelayMs} ms delay`
+              ? traceRowMatches(
+                  session.predictions,
+                  attempt,
+                  t.accuracyPct,
+                  t.avgDelayMs,
+                )
               : "—",
         });
       });
-      return rows;
+      return { contextLines: [], rows, sections: [] };
     }
 
     if (cfg.id === "breathing-pattern" && cfg.breathingPhases) {
       const predKeys = ["rest_pred", "exercise1_pred", "exercise2_pred"];
-      const phaseRows: DashboardRow[] = cfg.breathingPhases.map((label, i) => ({
-        variable: label,
-        predicted: session.predictions[predKeys[i]] ?? "—",
-        actual:
-          session.breathingReadings[i] != null
-            ? formatBreathingOutcome(session.breathingReadings[i])
-            : "—",
-      }));
-      phaseRows.push({
-        variable: "Higher after exercise? (prediction)",
-        predicted: session.predictions.higher_after_exercise ?? "—",
-        actual:
-          session.breathingReadings.length >= 2
-            ? (() => {
-                const rest = session.breathingReadings[0]?.breathsPerMinute ?? 0;
-                const after = Math.max(
-                  session.breathingReadings[1]?.breathsPerMinute ?? 0,
-                  session.breathingReadings[2]?.breathsPerMinute ?? 0,
-                );
-                return after > rest
-                  ? "Yes — rate increased after exercise"
-                  : after < rest
-                    ? "No — rate did not increase"
-                    : "About the same";
-              })()
-            : "—",
+      const readings = session.breathingReadings;
+
+      const phaseRows: DashboardRow[] = cfg.breathingPhases.map((_, i) => {
+        const reading = readings[i];
+        const pred = session.predictions[predKeys[i]];
+        return {
+          variable: BREATHING_PHASE_SHORT[i] ?? cfg.breathingPhases![i],
+          predicted: pred ? `${pred} BPM` : "—",
+          actual:
+            reading != null ? `${reading.breathsPerMinute} BPM` : "—",
+          actualVib:
+            reading != null ? formatRecordingDetail(reading) : "—",
+          wereRight: bpmPredictionMatches(
+            pred,
+            reading?.breathsPerMinute,
+          ),
+        };
       });
-      return phaseRows;
+
+      const contextLines: ContextLine[] = [];
+      const ex1 = session.predictions.exercise1_type?.trim();
+      const ex2 = session.predictions.exercise2_type?.trim();
+      if (ex1) contextLines.push({ label: "Exercise 1", value: ex1 });
+      if (ex2) contextLines.push({ label: "Exercise 2", value: ex2 });
+
+      phaseRows.push({
+        variable: "Higher BPM after exercise?",
+        predicted: session.predictions.higher_after_exercise ?? "—",
+        actual: higherAfterExerciseActual(readings),
+        actualVib: "—",
+        wereRight: higherAfterExerciseMatches(
+          session.predictions.higher_after_exercise,
+          readings,
+        ),
+      });
+      return { contextLines, rows: phaseRows, sections: [] };
     }
 
     if (cfg.id === "hand-fan-challenge" && cfg.fanChallengeActions) {
-      const predKeys = ["fanDesign", "material", "distance", "predictedBend"];
-      const predLabels = cfg.dashboardVariables;
-      const rows: DashboardRow[] = predLabels.map((label, i) => ({
-        variable: label,
-        predicted: session.predictions[predKeys[i]] ?? "—",
-        actual:
-          i === 3 && session.fanAngleReadings.length > 0
-            ? `${Math.max(...session.fanAngleReadings.map((r) => r.angleDegrees))}° (max measured)`
-            : i === 3
-              ? "—"
-              : session.predictions[predKeys[i]] ?? "—",
-      }));
+      const material = session.predictions.material ?? "";
+      const k = getStiffnessK(material);
+      const predictedBend = session.predictions.predictedBend ?? "";
+      const readings = session.fanAngleReadings;
+
+      const contextLines: ContextLine[] = [];
+      if (session.predictions.fanDesign?.trim()) {
+        contextLines.push({
+          label: "Fan design",
+          value: session.predictions.fanDesign,
+        });
+      }
+      if (material) {
+        contextLines.push({
+          label: "Material",
+          value: k != null ? `${material} (k = ${k} N/rad)` : material,
+        });
+      }
+      if (session.predictions.distance?.trim()) {
+        contextLines.push({
+          label: "Primary distance",
+          value: `${session.predictions.distance} cm`,
+        });
+      }
+      if (predictedBend) {
+        contextLines.push({
+          label: "Predicted max bend",
+          value: `${predictedBend}°`,
+        });
+      }
+
+      const rows: DashboardRow[] = [];
       cfg.fanChallengeActions.forEach((label, i) => {
-        const reading = session.fanAngleReadings[i];
+        const reading = readings[i];
+        const angle = reading?.angleDegrees;
         rows.push({
-          variable: `${label} — measured bend (°)`,
-          predicted: "—",
-          actual: reading != null ? `${reading.angleDegrees}°` : "—",
+          variable: label,
+          predicted: predictedBend ? `${predictedBend}°` : "—",
+          actual: angle != null ? `${angle}°` : "—",
+          wereRight:
+            angle != null && predictedBend
+              ? bendPredictionMatches(predictedBend, angle)
+              : "—",
         });
       });
-      return rows;
+
+      if (readings.length > 0) {
+        const maxAngle = Math.max(...readings.map((r) => r.angleDegrees));
+        rows.push({
+          variable: "Max bend (all trials)",
+          predicted: predictedBend ? `${predictedBend}°` : "—",
+          actual: `${maxAngle}°`,
+          wereRight: predictedBend
+            ? bendPredictionMatches(predictedBend, maxAngle)
+            : "—",
+        });
+      }
+      return { contextLines, rows, sections: [] };
     }
 
     if (cfg.id === "parachute-drop" && cfg.parachuteDropActions) {
@@ -345,11 +520,11 @@ export default function ActivityDashboardScreen() {
         },
       ];
       const predKeys = ["action1_pred", "action2_pred", "action3_pred"];
-      cfg.parachuteDropActions.forEach((label, i) => {
+      cfg.parachuteDropActions.forEach((_, i) => {
         const reading = session.parachuteReadings[i];
         rows.push({
-          variable: label,
-          predicted: session.predictions[predKeys[i]] ?? "—",
+          variable: PARACHUTE_ACTION_LABELS[i] ?? `Action ${i + 1}`,
+          predicted: formatFallTimePrediction(session.predictions[predKeys[i]]),
           actual: reading != null ? `${reading.fallTimeS} s` : "—",
         });
       });
@@ -362,15 +537,23 @@ export default function ActivityDashboardScreen() {
         predicted: session.predictions.bounce ?? "—",
         actual: bounceActual ?? "—",
       });
-      return rows;
+      return { contextLines: [], rows, sections: [] };
     }
 
-    return cfg.dashboardVariables.map((v) => ({
-      variable: v,
-      predicted: PL_PRED,
-      actual: PL_ACT,
-    }));
+    return {
+      contextLines: [],
+      rows: cfg.dashboardVariables.map((v) => ({
+        variable: v,
+        predicted: PL_PRED,
+        actual: PL_ACT,
+      })),
+      sections: [],
+    };
   }, [cfg, getSession]);
+
+  const rows = dashboardData.rows;
+  const tableSections = dashboardData.sections;
+  const contextLines = dashboardData.contextLines;
 
   const session = cfg ? getSession(cfg.id) : null;
   const parachutePhysics = useMemo(() => {
@@ -407,39 +590,148 @@ export default function ActivityDashboardScreen() {
     });
   }, [cfg, session]);
 
+  const isDecibel = cfg?.captureKind === "decibel";
+  const isFan = cfg?.id === "hand-fan-challenge";
+  const isVibration = cfg?.id === "vibration-analysis";
+  const isPerformance = cfg?.id === "surface-smoothness";
+  const isReaction = cfg?.id === "reaction-time";
+  const isBreathing = cfg?.id === "breathing-pattern";
+  const allTableRows = useMemo(
+    () => [...rows, ...tableSections.flatMap((section) => section.rows)],
+    [rows, tableSections],
+  );
+  const performanceUsesSections = tableSections.length > 0;
+  const showExtraCol1 =
+    isDecibel || isVibration || isBreathing || isReaction;
+  const showExtraCol2 =
+    showExtraCol1 || isFan || isPerformance;
+  const hasExtraCols = showExtraCol1 || showExtraCol2;
+
+  const fanForceResults = useMemo(() => {
+    if (!cfg || cfg.id !== "hand-fan-challenge" || !session) return null;
+    const material = session.predictions.material ?? "";
+    const k = getStiffnessK(material);
+    const readings = session.fanAngleReadings;
+    if (k == null || readings.length === 0) return null;
+
+    return readings.map((r) => {
+      const force = estimateForceN(k, r.angleDegrees);
+      return {
+        label: r.label,
+        angleDegrees: r.angleDegrees,
+        stiffnessK: k,
+        forceN: force,
+      };
+    });
+  }, [cfg, session]);
+
   const columnWidths = useMemo(() => {
+    const isParachute = cfg?.id === "parachute-drop";
     const actualHeader =
-      cfg?.id === "parachute-drop"
+      isParachute
         ? "Actual"
-        : cfg?.captureKind === "decibel"
+        : isDecibel
           ? "Actual (dB)"
-          : cfg?.id === "vibration-analysis" ||
-              cfg?.id === "surface-smoothness" ||
-              cfg?.id === "reaction-time" ||
-              cfg?.id === "breathing-pattern"
-            ? "Actual (sensor)"
-            : "Actual";
+          : isFan
+            ? "Actual (°)"
+            : isVibration
+              ? "Tilt (°)"
+              : isPerformance
+                ? performanceUsesSections
+                  ? "Measured"
+                  : "Attempt 1"
+                : isReaction
+                  ? "Measured"
+                  : isBreathing
+                    ? "BPM"
+                    : "Actual";
+
+    const variableHeader = isDecibel
+      ? "Action"
+      : isFan
+        ? "Trial"
+        : isVibration
+          ? "Design"
+          : isPerformance || isReaction || isBreathing
+            ? "Phase"
+            : "Variable";
+    const variableMin = isParachute || hasExtraCols ? 120 : MIN_VARIABLE_COL;
+    const valueMin = MIN_VALUE_COL;
 
     const variable = estimateColumnWidth(
-      ["Variable", ...rows.map((row) => row.variable)],
-      MIN_VARIABLE_COL,
+      [variableHeader, ...allTableRows.map((row) => row.variable)],
+      variableMin,
     );
-    const predicted = estimateColumnWidth(
-      ["Predicted", ...rows.map((row) => row.predicted)],
-      MIN_VALUE_COL,
+    const predicted = Math.max(
+      MIN_PREDICTED_HEADER_COL,
+      estimateColumnWidth(
+        ["Predicted", ...allTableRows.map((row) => row.predicted)],
+        valueMin,
+      ),
     );
     const actual = estimateColumnWidth(
-      [actualHeader, ...rows.map((row) => row.actual)],
-      MIN_VALUE_COL,
+      [actualHeader, ...allTableRows.map((row) => row.actual)],
+      valueMin,
     );
+    const extraCol1Header = isDecibel
+      ? "Hearing risk"
+      : isVibration
+        ? "Vibration"
+        : isBreathing
+          ? "Recording"
+          : "Delay";
+    const extraCol1 = showExtraCol1
+      ? estimateColumnWidth(
+          [
+            extraCol1Header,
+            ...allTableRows.map((row) =>
+              isDecibel
+                ? (row.hearingRisk ?? "—")
+                : (row.actualVib ?? "—"),
+            ),
+          ],
+          isDecibel
+            ? 148
+            : isBreathing
+              ? 110
+              : isReaction
+                ? 72
+                : 88,
+        )
+      : 0;
+    const extraCol2Header = isFan ? "Close?" : "Right?";
+    const extraCol2 = showExtraCol2
+      ? estimateColumnWidth(
+          [extraCol2Header, ...allTableRows.map((row) => row.wereRight ?? "—")],
+          56,
+        )
+      : 0;
     return {
       actualHeader,
+      variableHeader,
+      extraCol1Header,
+      extraCol2Header,
       variable,
       predicted,
       actual,
-      table: variable + predicted + actual,
+      extraCol1,
+      extraCol2,
+      table: variable + predicted + actual + extraCol1 + extraCol2,
     };
-  }, [cfg, rows]);
+  }, [
+    cfg,
+    allTableRows,
+    isDecibel,
+    isFan,
+    isVibration,
+    isPerformance,
+    performanceUsesSections,
+    isReaction,
+    isBreathing,
+    showExtraCol1,
+    showExtraCol2,
+    hasExtraCols,
+  ]);
 
   if (!cfg) {
     return (
@@ -449,35 +741,31 @@ export default function ActivityDashboardScreen() {
     );
   }
 
-  return (
-    <WireScreen
-      footer={
-        <PrimaryButton
-          label="CONTINUE TO REFLECTION"
-          onPress={() => router.push(`/activity/${cfg.id}/reflection`)}
-        />
-      }
-    >
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Analytical Dashboard"
-        subtitle="Compare your predictions with actual results."
-      />
-      <Panel title="Prediction vs. Actual">
-        <ScrollView horizontal showsHorizontalScrollIndicator>
+  function renderDataTable(tableRows: DashboardRow[], panelTitle: string) {
+    if (tableRows.length === 0) return null;
+
+    return (
+      <Panel title={panelTitle}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator
+          nestedScrollEnabled
+          contentContainerStyle={styles.tableScrollContent}
+        >
           <View style={[styles.table, { width: columnWidths.table }]}>
             <View style={styles.row}>
               <Text
+                numberOfLines={2}
                 style={[
                   styles.cell,
                   styles.h,
                   { width: columnWidths.variable },
                 ]}
               >
-                Variable
+                {columnWidths.variableHeader}
               </Text>
               <Text
+                numberOfLines={1}
                 style={[
                   styles.cell,
                   styles.h,
@@ -488,18 +776,47 @@ export default function ActivityDashboardScreen() {
                 Predicted
               </Text>
               <Text
+                numberOfLines={2}
                 style={[
                   styles.cell,
                   styles.h,
                   styles.center,
+                  ...(!showExtraCol1 && !showExtraCol2 ? [styles.lastCol] : []),
                   { width: columnWidths.actual },
                 ]}
               >
                 {columnWidths.actualHeader}
               </Text>
+              {showExtraCol1 ? (
+                <Text
+                  numberOfLines={2}
+                  style={[
+                    styles.cell,
+                    styles.h,
+                    ...(!showExtraCol2 ? [styles.lastCol] : []),
+                    { width: columnWidths.extraCol1 },
+                  ]}
+                >
+                  {columnWidths.extraCol1Header}
+                </Text>
+              ) : null}
+              {showExtraCol2 ? (
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.cell,
+                    styles.h,
+                    styles.center,
+                    styles.lastCol,
+                    { width: columnWidths.extraCol2 },
+                  ]}
+                >
+                  {columnWidths.extraCol2Header}
+                </Text>
+              ) : null}
             </View>
-            {rows.map((row) => (
-              <View key={row.variable} style={styles.row}>
+            {tableRows.map((row) => (
+              <View key={`${panelTitle}-${row.variable}`} style={styles.row}>
                 <Text
                   style={[
                     styles.cell,
@@ -522,50 +839,150 @@ export default function ActivityDashboardScreen() {
                   style={[
                     styles.cell,
                     styles.center,
+                    ...(!showExtraCol1 && !showExtraCol2 ? [styles.lastCol] : []),
                     { width: columnWidths.actual },
                   ]}
                 >
                   {row.actual}
                 </Text>
+                {showExtraCol1 ? (
+                  <Text
+                    style={[
+                      styles.cell,
+                      ...(!showExtraCol2 ? [styles.lastCol] : []),
+                      { width: columnWidths.extraCol1 },
+                    ]}
+                  >
+                    {isDecibel
+                      ? (row.hearingRisk ?? "—")
+                      : (row.actualVib ?? "—")}
+                  </Text>
+                ) : null}
+                {showExtraCol2 ? (
+                  <Text
+                    style={[
+                      styles.cell,
+                      styles.center,
+                      styles.lastCol,
+                      { width: columnWidths.extraCol2 },
+                    ]}
+                  >
+                    {row.wereRight ?? "—"}
+                  </Text>
+                ) : null}
               </View>
             ))}
           </View>
         </ScrollView>
       </Panel>
+    );
+  }
+
+  const mainPanelTitle =
+    tableSections.length > 0 ? "Summary" : "Prediction vs. Actual";
+
+  return (
+    <WireScreen
+      footer={
+        <PrimaryButton
+          label="CONTINUE TO REFLECTION"
+          onPress={() => router.push(`/activity/${cfg.id}/reflection`)}
+        />
+      }
+    >
+      <ScreenHeader
+        backLabel="BACK"
+        onBack={() => router.back()}
+        title="Analytical Dashboard"
+        subtitle="Compare your predictions with actual results."
+      />
+      {contextLines.length > 0 ? (
+        <Panel title="Your setup">
+          {contextLines.map((line) => (
+            <View key={line.label} style={styles.contextRow}>
+              <Text style={styles.contextLabel}>{line.label}</Text>
+              <Text style={styles.contextValue}>{line.value}</Text>
+            </View>
+          ))}
+        </Panel>
+      ) : null}
+      {renderDataTable(rows, mainPanelTitle)}
+      {tableSections.map((section) =>
+        renderDataTable(section.rows, section.title),
+      )}
       {cfg.captureKind === "decibel" ? (
         <Text style={styles.note}>
-          Actual dB values come from your phone microphone. Compare which action
-          was loudest and whether your louder/softer predictions were correct.
+          Peak dB is measured with the app microphone (relative scale for
+          classroom comparison). Hearing risk follows standard sound-level bands.
+          “Right?” compares your louder/softer prediction to the previous action
+          (Action 1 uses ~45 dB as a quiet-room reference).
         </Text>
       ) : null}
       {cfg.id === "vibration-analysis" ? (
         <Text style={styles.note}>
-          Actual values come from your phone accelerometer (level + vibration).
-          Lower peak tilt (°) means a more stable, earthquake-resistant design.
+          Peak tilt (°) and vibration (m/s²) come from the app accelerometer
+          during each shake test. Lower tilt means a more stable design. “Right?”
+          compares your predicted tilt to measured (within 2°), or your “moves
+          least” pick to the design with the smallest tilt.
         </Text>
       ) : null}
       {cfg.id === "breathing-pattern" ? (
         <Text style={styles.note}>
-          Outcomes use your phone accelerometer on your chest (time, breaths per
-          minute, and peak movement). Compare rest vs after exercise—did your
-          breathing rate increase?
+          BPM (breaths per minute) is estimated from chest movement while lying
+          down. Recording shows duration and peak movement. “Right?” compares your
+          BPM guess within 4 breaths/min, or your higher-after-exercise pick vs
+          rest vs after-exercise readings.
         </Text>
       ) : null}
       {cfg.id === "surface-smoothness" ? (
         <Text style={styles.note}>
-          Actual values come from your phone accelerometer (vibration sensor).
-          Lower peak vibration (m/s²) means smoother, more coordinated movement.
-          Compare which movement was hardest to keep vibration low—were you
-          right?
+          Attempt 1 records all three movements slowly without buzz feedback.
+          Attempt 2 repeats with buzz when motion is not smooth. Lower peak
+          vibration (m/s²) means smoother movement. “Right?” on the hardest-move
+          row checks your Movement 1/2/3 pick against Attempt 1 data.
         </Text>
       ) : null}
       {cfg.id === "reaction-time" ? (
         <Text style={styles.note}>
-          Reaction time measures how quickly your brain processes information
-          and sends signals to muscles. Practice can improve speed and
-          coordination. Comparing dominant vs non-dominant hand shows how
-          dominance affects performance. Were your predictions right? Any
-          surprises?
+          Phase 1 and 2 use average tap reaction time (ms). Phase 3 tracing shows
+          accuracy (%) and delay (ms). “Right?” compares predictions to measured
+          values (within tolerance). The dominant-hand-faster row checks your
+          Yes/No/About the same pick against both tap averages.
+        </Text>
+      ) : null}
+      {cfg.id === "hand-fan-challenge" &&
+      fanForceResults &&
+      fanForceResults.length > 0 ? (
+        <Panel title="Force estimate (F ≈ k × θ)">
+          {fanForceResults.map(({ label, angleDegrees, stiffnessK, forceN }, i) =>
+            forceN != null ? (
+              <View key={label} style={styles.physicsBlock}>
+                <Text style={styles.physicsTitle}>{label}</Text>
+                <Text style={styles.physicsLine}>
+                  Bend: {angleDegrees}° ({((angleDegrees * Math.PI) / 180).toFixed(3)}{" "}
+                  rad) · k = {stiffnessK} N/rad
+                </Text>
+                <Text style={styles.physicsLine}>
+                  F ≈ k × θ = {formatForceN(forceN)}
+                </Text>
+                {i < fanForceResults.length - 1 ? (
+                  <View style={styles.physicsDivider} />
+                ) : null}
+              </View>
+            ) : null,
+          )}
+          <Text style={styles.note}>
+            Stiffer materials have larger k, so the same bend angle needs more
+            force. Compare 15 cm vs 45 cm — closer fans usually bend the strip
+            more.
+          </Text>
+        </Panel>
+      ) : null}
+      {cfg.id === "hand-fan-challenge" ? (
+        <Text style={styles.note}>
+          Bend angles come from slow-motion video review. “Close?” compares each
+          measured angle to your predicted maximum (within 5°). Force uses
+          classroom k values from your material choice.
         </Text>
       ) : null}
       {cfg.id === "parachute-drop" &&
@@ -623,6 +1040,9 @@ export default function ActivityDashboardScreen() {
 
 const styles = StyleSheet.create({
   center: { textAlign: "center" },
+  tableScrollContent: {
+    flexGrow: 1,
+  },
   table: {
     borderWidth: 1,
     borderColor: Wireframe.border,
@@ -645,6 +1065,9 @@ const styles = StyleSheet.create({
   h: {
     fontWeight: "800",
     backgroundColor: "#f0f0f0",
+  },
+  lastCol: {
+    borderRightWidth: 0,
   },
   var: { fontWeight: "600" },
   note: {
@@ -676,5 +1099,19 @@ const styles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: Wireframe.border,
     marginVertical: 10,
+  },
+  contextRow: {
+    marginBottom: 8,
+  },
+  contextLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Wireframe.text,
+    marginBottom: 2,
+  },
+  contextValue: {
+    fontSize: 13,
+    color: Wireframe.text,
+    lineHeight: 18,
   },
 });

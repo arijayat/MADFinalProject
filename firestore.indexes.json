@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "activityResults",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "activityId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

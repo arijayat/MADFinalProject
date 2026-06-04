@@ -55,8 +55,8 @@ export default function TeamOnboardingScreen() {
       </View>
 
       <Text style={styles.hint}>
-        New teams get a join code to share. Joining only needs that code from your captain or
-        teacher. Data is saved to Firebase Firestore.
+        New teams get a join code to share. Teammates enter the code, pick their name from the
+        roster, then join. Data is saved to Firebase Firestore.
       </Text>
     </WireScreen>
   );

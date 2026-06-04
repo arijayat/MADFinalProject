@@ -5,6 +5,8 @@ import type { ActivityId } from '@/constants/activities';
 export type FirestoreTeamMember = {
   id: string;
   name: string;
+  /** Set when this member has signed in and joined the team */
+  uid?: string;
   email?: string;
 };
 

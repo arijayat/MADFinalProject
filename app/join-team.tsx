@@ -5,26 +5,52 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'rea
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
+import { useAuth } from '@/contexts/AuthContext';
+import { getTeamByJoinCode } from '@/lib/firestore/teams';
+import { getUnclaimedTeamMembers } from '@/lib/team-members';
+import { normalizeTeamCode } from '@/lib/team-code';
 import { Wireframe } from '@/constants/wireframe-theme';
-import { useTeam } from '@/contexts/TeamContext';
 
 export default function JoinTeamScreen() {
   const router = useRouter();
-  const { joinWithTeamCode } = useTeam();
+  const { user } = useAuth();
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const canContinue = code.trim().length > 0 && !submitting;
 
-  async function handleJoin() {
+  async function handleContinue() {
     setSubmitting(true);
     try {
-      await joinWithTeamCode(code.trim());
-      router.replace('/(tabs)');
+      const team = await getTeamByJoinCode(code.trim());
+      if (!team) {
+        Alert.alert('Team not found', 'Check the code from your captain and try again.');
+        return;
+      }
+
+      if (user && team.memberUids.includes(user.uid)) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      const unclaimed = getUnclaimedTeamMembers(team.members ?? []);
+      if (unclaimed.length === 0) {
+        Alert.alert(
+          'No names left to claim',
+          'Every name on this team is already linked. Ask your captain to add your name, then try again.',
+        );
+        return;
+      }
+
+      const normalized = normalizeTeamCode(code.trim());
+      router.push({
+        pathname: '/join-team-pick-name',
+        params: { code: normalized },
+      });
     } catch (error) {
       Alert.alert(
-        'Could not join team',
-        error instanceof Error ? error.message : 'Check the code and try again.',
+        'Could not look up team',
+        error instanceof Error ? error.message : 'Check your connection and try again.',
       );
     } finally {
       setSubmitting(false);
@@ -35,17 +61,17 @@ export default function JoinTeamScreen() {
     <WireScreen
       footer={
         <PrimaryButton
-          label={submitting ? 'JOINING…' : 'JOIN TEAM'}
+          label={submitting ? 'CHECKING…' : 'CONTINUE'}
           style={styles.primaryButton}
           disabled={!canContinue}
-          onPress={handleJoin}
+          onPress={handleContinue}
         />
       }>
       <ScreenHeader
         backLabel="Back"
         onBack={() => router.back()}
         title="Join a team"
-        subtitle="Enter the team code from your captain (letters and numbers)."
+        subtitle="Enter the team code from your captain, then pick your name from the roster."
       />
 
       <View style={styles.field}>
