@@ -1,5 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeInUp,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -11,20 +18,37 @@ type Props = {
   onPress: () => void;
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function ActivityCard({ title, description, requirements, onPress }: Props) {
   const { colors, isDark } = useAppTheme();
+  const scale = useSharedValue(1);
   const requirementColor = isDark ? '#7dd3fc' : Wireframe.requirements;
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
+    <AnimatedPressable
+      entering={FadeInUp.duration(200).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(0.985, { duration: 90 });
+      }}
+      onPressOut={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(1, { duration: 120 });
+      }}
+      style={[
         styles.card,
         {
           backgroundColor: colors.panelBg,
           borderColor: colors.border,
           boxShadow: colors.shadow,
         },
-        pressed && styles.pressed,
+        animatedStyle,
       ]}>
       <View style={styles.topRow}>
         <View style={[styles.iconBubble, { backgroundColor: colors.accentSoft }]}>
@@ -38,7 +62,7 @@ export function ActivityCard({ title, description, requirements, onPress }: Prop
       <Text style={[styles.reqList, { color: requirementColor }]}>
         {requirements.slice(0, 3).join(' · ')}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -52,7 +76,6 @@ const styles = StyleSheet.create({
     marginBottom: 2,
     boxShadow: Wireframe.shadow,
   },
-  pressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',

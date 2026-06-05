@@ -268,7 +268,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
               boxShadow: colors.shadow,
             },
           ]}>
-          <Text style={[styles.breakTitle, { color: colors.accent }]}>Light exercise break</Text>
+          <Text style={[styles.breakTitle, { color: Wireframe.accent }]}>Light exercise break</Text>
           <Text style={[styles.breakText, { color: colors.text }]}>
             Before the next measurement, do light exercise—for example jog on the
             spot for one minute, or do 100 star jumps.

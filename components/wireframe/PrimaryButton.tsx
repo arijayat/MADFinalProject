@@ -5,6 +5,11 @@ import {
     Text,
     ViewStyle,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 
 import { Wireframe } from "@/constants/wireframe-theme";
 import { useAppTheme } from "@/contexts/AppThemeContext";
@@ -17,6 +22,8 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function PrimaryButton({
   label,
   onPress,
@@ -25,15 +32,28 @@ export function PrimaryButton({
   style,
 }: Props) {
   const { colors } = useAppTheme();
+  const scale = useSharedValue(1);
   const dark = variant === "dark";
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       onPress={onPress}
+      onPressIn={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        if (!disabled) scale.value = withTiming(0.975, { duration: 90 });
+      }}
+      onPressOut={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(1, { duration: 120 });
+      }}
       disabled={disabled}
       android_ripple={{ color: "rgba(255,255,255,0.16)" }}
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-      style={({ pressed }) => [
+      style={[
         styles.btn,
         dark
           ? styles.dark
@@ -45,14 +65,14 @@ export function PrimaryButton({
               },
             ],
         disabled && styles.disabled,
-        pressed && !disabled && styles.pressed,
+        animatedStyle,
         style,
       ]}
     >
       <Text style={[styles.label, dark ? styles.labelLight : { color: colors.text }]}>
         {label}
       </Text>
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -77,10 +97,6 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.45,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.99 }],
   },
   label: {
     fontSize: 14,

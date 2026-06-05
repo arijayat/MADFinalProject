@@ -86,7 +86,7 @@ export default function ActivityCaptureScreen() {
               boxShadow: colors.shadow,
             },
           ]}>
-          <Text style={[styles.noneTitle, { color: colors.accent }]}>
+          <Text style={[styles.noneTitle, { color: Wireframe.accent }]}>
             This activity does not open the camera.
           </Text>
           <Text style={[styles.noneText, { color: colors.text }]}>

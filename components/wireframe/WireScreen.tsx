@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeInUp, LinearTransition } from 'react-native-reanimated';
 
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -14,7 +15,9 @@ type Props = {
 export function WireScreen({ children, footer, scroll = true }: Props) {
   const { colors } = useAppTheme();
   const body = scroll ? (
-    <ScrollView
+    <Animated.ScrollView
+      entering={FadeInUp.duration(220).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="always"
@@ -22,9 +25,14 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}>
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   ) : (
-    <View style={styles.flex}>{children}</View>
+    <Animated.View
+      entering={FadeInUp.duration(220).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
+      style={styles.flex}>
+      {children}
+    </Animated.View>
   );
 
   return (
@@ -37,7 +45,14 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}>
         <View style={styles.inner}>
           {body}
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
+          {footer ? (
+            <Animated.View
+              entering={FadeInUp.duration(180)}
+              layout={LinearTransition.duration(160)}
+              style={styles.footer}>
+              {footer}
+            </Animated.View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

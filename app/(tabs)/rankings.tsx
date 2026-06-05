@@ -8,6 +8,15 @@ import {
   Text,
   View,
 } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeInUp,
+  FadeOutDown,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { ACTIVITIES, HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/activities';
@@ -38,6 +47,8 @@ type SelectedRanking = {
   rows: RankingRow[];
   overall?: boolean;
 };
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RankingsListScreen() {
   const { colors } = useAppTheme();
@@ -252,7 +263,9 @@ function RankingSection({
   const shownRows = rows.slice(0, 3);
 
   return (
-    <View
+    <Animated.View
+      entering={FadeInUp.duration(220).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
       style={[
         styles.rankingCard,
         {
@@ -305,7 +318,7 @@ function RankingSection({
           <MaterialIcons name="chevron-right" size={18} color={Wireframe.accent} />
         </Pressable>
       ) : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -343,7 +356,9 @@ function PodiumPlace({
   const { colors } = useAppTheme();
   const isYourTeam = row.teamDocId === teamDocId;
   return (
-    <View
+    <Animated.View
+      entering={FadeInUp.delay(row.rank * 35).duration(180).springify().damping(16)}
+      layout={LinearTransition.duration(180)}
       style={[
         styles.podiumPlace,
         { minHeight: height, backgroundColor: colors.surfaceAlt },
@@ -355,7 +370,7 @@ function PodiumPlace({
         {row.team}
       </Text>
       <Text style={[styles.podiumScore, { color: colors.textMuted }]}>{row.score}</Text>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -371,23 +386,37 @@ function ActivityRankingButton({
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
   const yourRow = teamDocId
     ? rows.find((row) => row.teamDocId === teamDocId)
     : undefined;
   const leader = rows[0];
 
   return (
-    <Pressable
+    <AnimatedPressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [
+      onPressIn={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(0.985, { duration: 90 });
+      }}
+      onPressOut={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(1, { duration: 120 });
+      }}
+      entering={FadeInUp.duration(200).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
+      style={[
         styles.activityButton,
         {
           backgroundColor: colors.panelBg,
           borderColor: colors.border,
           boxShadow: colors.shadow,
         },
-        pressed && styles.pressed,
+        animatedStyle,
       ]}>
       <View style={[styles.cardIcon, { backgroundColor: colors.accentSoft }]}>
         <MaterialIcons name="leaderboard" size={20} color={Wireframe.accent} />
@@ -403,7 +432,7 @@ function ActivityRankingButton({
         </Text>
       </View>
       <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
-    </Pressable>
+    </AnimatedPressable>
   );
 }
 
@@ -423,9 +452,14 @@ function FullRankingModal({
       : undefined;
 
   return (
-    <Modal visible={ranking != null} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.modalBackdrop}>
-        <View style={[styles.modalCard, { backgroundColor: colors.panelBg }]}>
+    <Modal visible={ranking != null} transparent animationType="fade" onRequestClose={onClose}>
+      <Animated.View entering={FadeIn.duration(160)} style={styles.modalBackdrop}>
+        <Animated.View
+          key={ranking?.title ?? 'ranking'}
+          entering={FadeInUp.duration(220).springify().damping(18)}
+          exiting={FadeOutDown.duration(160)}
+          layout={LinearTransition.duration(180)}
+          style={[styles.modalCard, { backgroundColor: colors.panelBg }]}>
           <View style={styles.modalHeader}>
             <View>
               <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>
@@ -463,8 +497,8 @@ function FullRankingModal({
               />
             ))}
           </ScrollView>
-        </View>
-      </View>
+        </Animated.View>
+      </Animated.View>
     </Modal>
   );
 }
@@ -480,7 +514,9 @@ function RankingRowView({
   const isYourTeam = row.teamDocId === teamDocId;
   const completed = 'completed' in row ? ` · ${row.completed} activities` : '';
   return (
-    <View
+    <Animated.View
+      entering={FadeInUp.delay(Math.min(row.rank, 8) * 25).duration(170)}
+      layout={LinearTransition.duration(180)}
       style={[
         styles.rankRow,
         { backgroundColor: colors.surfaceAlt },
@@ -497,7 +533,7 @@ function RankingRowView({
         </Text>
       </View>
       <Text style={[styles.score, { color: colors.text }]}>{row.score}</Text>
-    </View>
+    </Animated.View>
   );
 }
 

@@ -45,7 +45,12 @@ function RootNavigation() {
   return (
     <ThemeProvider value={appTheme}>
       <AuthRedirect />
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: 'slide_from_right',
+          animationDuration: 240,
+        }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="log-in" />
