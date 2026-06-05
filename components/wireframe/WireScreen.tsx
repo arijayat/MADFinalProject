@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     paddingHorizontal: 18,
+    paddingTop: 10,
     paddingBottom: 10,
   },
   flex: {
@@ -61,7 +62,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 6,
+    paddingTop: 12,
     paddingBottom: 32,
     gap: 14,
   },

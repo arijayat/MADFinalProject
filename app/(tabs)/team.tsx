@@ -13,6 +13,7 @@ import {
 import { EditableSection } from '@/components/wireframe/EditableSection';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam, type TeamMember } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
@@ -31,6 +32,7 @@ function memberDisplayEmail(member: TeamMember, authUid?: string, authEmail?: st
 
 export default function TeamTabScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user } = useAuth();
   const {
     teamName,
@@ -178,19 +180,35 @@ export default function TeamTabScreen() {
         subtitle={isTeamOwner ? 'Manage your roster.' : 'View your team roster.'}
       />
 
-      <View style={styles.summaryCard}>
-        <View style={styles.summaryIcon}>
+      <View
+        style={[
+          styles.summaryCard,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <View style={[styles.summaryIcon, { backgroundColor: colors.accentSoft }]}>
           <MaterialIcons name="groups" size={24} color={Wireframe.accent} />
         </View>
         <View style={styles.summaryText}>
-          <Text style={styles.summaryLabel}>Current team</Text>
-          <Text style={styles.summaryName} numberOfLines={1}>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Current team</Text>
+          <Text style={[styles.summaryName, { color: colors.text }]} numberOfLines={1}>
             {teamName}
           </Text>
           <View style={styles.summaryMeta}>
-            <Text style={styles.codePill}>{teamId}</Text>
-            {gradeLevel ? <Text style={styles.memberCount}>{gradeLevel}</Text> : null}
-            <Text style={styles.memberCount}>{members.length} members</Text>
+            <Text style={[styles.codePill, { backgroundColor: colors.accentSoft }]}>
+              {teamId}
+            </Text>
+            {gradeLevel ? (
+              <Text style={[styles.memberCount, { color: colors.textMuted }]}>
+                {gradeLevel}
+              </Text>
+            ) : null}
+            <Text style={[styles.memberCount, { color: colors.textMuted }]}>
+              {members.length} members
+            </Text>
           </View>
         </View>
       </View>
@@ -202,9 +220,16 @@ export default function TeamTabScreen() {
         onCancel={resetTeamDrafts}>
         {(editing) => (
           <>
-            <Text style={styles.label}>Team name</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Team name</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.surfaceAlt,
+                  borderColor: colors.border,
+                },
+              ]}
               value={isTeamOwner && editing ? draftTeamName : teamName}
               onChangeText={setDraftTeamName}
               editable={isTeamOwner && editing}
@@ -212,12 +237,25 @@ export default function TeamTabScreen() {
               placeholderTextColor={Wireframe.placeholder}
             />
             <View style={styles.detailSpacer} />
-            <Text style={styles.label}>Join code</Text>
-            <Text style={styles.readonlyValue}>{teamId || '—'}</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Join code</Text>
+            <Text
+              style={[
+                styles.readonlyValue,
+                { color: colors.text, backgroundColor: colors.surfaceAlt },
+              ]}>
+              {teamId || '—'}
+            </Text>
             <View style={styles.detailSpacer} />
-            <Text style={styles.label}>Grade level</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Grade level</Text>
             <TextInput
-              style={styles.input}
+              style={[
+                styles.input,
+                {
+                  color: colors.text,
+                  backgroundColor: colors.surfaceAlt,
+                  borderColor: colors.border,
+                },
+              ]}
               value={isTeamOwner && editing ? draftGradeLevel : gradeLevel}
               onChangeText={setDraftGradeLevel}
               editable={isTeamOwner && editing}
@@ -225,7 +263,9 @@ export default function TeamTabScreen() {
               placeholderTextColor={Wireframe.placeholder}
             />
             {!isTeamOwner ? (
-              <Text style={styles.ownerHint}>Only the team captain can edit team details.</Text>
+              <Text style={[styles.ownerHint, { color: colors.textMuted }]}>
+                Only the team captain can edit team details.
+              </Text>
             ) : null}
           </>
         )}
@@ -239,19 +279,30 @@ export default function TeamTabScreen() {
         {(editing) => (
           <>
             {draftMembers.length === 0 ? (
-              <Text style={styles.empty}>
+              <Text style={[styles.empty, { color: colors.textMuted }]}>
                 {editing ? 'No members yet. Add one below.' : 'No members listed yet.'}
               </Text>
             ) : (
               draftMembers.map((m) => {
                 const email = memberDisplayEmail(m, user?.uid, user?.email);
                 return (
-                  <View key={m.id} style={styles.memberBlock}>
+                  <View
+                    key={m.id}
+                    style={[styles.memberBlock, { borderBottomColor: colors.border }]}>
                     {editing ? (
                       <>
-                        <Text style={styles.label}>Member name</Text>
+                        <Text style={[styles.label, { color: colors.textMuted }]}>
+                          Member name
+                        </Text>
                         <TextInput
-                          style={styles.input}
+                          style={[
+                            styles.input,
+                            {
+                              color: colors.text,
+                              backgroundColor: colors.surfaceAlt,
+                              borderColor: colors.border,
+                            },
+                          ]}
                           value={m.name}
                           onChangeText={(value) => updateMemberName(m.id, value)}
                           placeholder="Enter member name"
@@ -260,15 +311,25 @@ export default function TeamTabScreen() {
                       </>
                     ) : (
                       <View style={styles.memberRow}>
-                        <View style={styles.avatar}>
+                        <View style={[styles.avatar, { backgroundColor: colors.accentSoft }]}>
                           <Text style={styles.avatarText}>
                             {(m.name.trim()[0] ?? '?').toUpperCase()}
                           </Text>
                         </View>
                         <View style={styles.memberText}>
-                          <Text style={styles.memberName}>{m.name}</Text>
-                          {email ? <Text style={styles.email}>{email}</Text> : null}
-                          {m.uid ? <Text style={styles.linked}>Linked to an account</Text> : null}
+                          <Text style={[styles.memberName, { color: colors.text }]}>
+                            {m.name}
+                          </Text>
+                          {email ? (
+                            <Text style={[styles.email, { color: colors.textMuted }]}>
+                              {email}
+                            </Text>
+                          ) : null}
+                          {m.uid ? (
+                            <Text style={[styles.linked, { color: colors.textMuted }]}>
+                              Linked to an account
+                            </Text>
+                          ) : null}
                         </View>
                       </View>
                     )}
@@ -279,9 +340,16 @@ export default function TeamTabScreen() {
 
             {editing ? (
               <View style={styles.addBlock}>
-                <Text style={styles.label}>New member name</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>New member name</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    {
+                      color: colors.text,
+                      backgroundColor: colors.surfaceAlt,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   value={newMemberName}
                   onChangeText={setNewMemberName}
                   placeholder="Enter the team member name"

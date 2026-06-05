@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text } from 'react-native';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { confirmAction } from '@/utils/confirm-alert';
 
 export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel' }) {
+  const { isDark } = useAppTheme();
   const router = useRouter();
   const { logOut } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -44,7 +46,13 @@ export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel'
       disabled={loggingOut}
       style={({ pressed }) => [
         styles.row,
-        variant === 'panel' && styles.panelRow,
+        variant === 'panel' && [
+          styles.panelRow,
+          {
+            backgroundColor: isDark ? '#39212a' : '#fff1f1',
+            borderColor: isDark ? '#63313d' : '#ffd4d4',
+          },
+        ],
         pressed && !loggingOut && styles.pressed,
       ]}
       hitSlop={8}>

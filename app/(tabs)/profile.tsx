@@ -8,10 +8,12 @@ import { EditableSection } from '@/components/wireframe/EditableSection';
 import { LogOutNav } from '@/components/wireframe/LogOutNav';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProfileTabScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user, profile, updateDisplayName } = useAuth();
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
@@ -46,17 +48,25 @@ export default function ProfileTabScreen() {
         <Text style={styles.headerSubtitle}>Your account and app settings.</Text>
       </View>
 
-      <View style={styles.profileCard}>
-        <View style={styles.profileAvatar}>
+      <View
+        style={[
+          styles.profileCard,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <View style={[styles.profileAvatar, { backgroundColor: colors.accentSoft }]}>
           <Text style={styles.profileInitial}>
             {((profile?.displayName || user?.email || '?').trim()[0] ?? '?').toUpperCase()}
           </Text>
         </View>
         <View style={styles.profileInfo}>
-          <Text style={styles.profileName} numberOfLines={1}>
+          <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>
             {profile?.displayName || 'Student'}
           </Text>
-          <Text style={styles.profileEmail} numberOfLines={1}>
+          <Text style={[styles.profileEmail, { color: colors.textMuted }]} numberOfLines={1}>
             {user?.email ?? profile?.email ?? 'No email'}
           </Text>
         </View>
@@ -66,10 +76,18 @@ export default function ProfileTabScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/settings')}
-          style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+          style={({ pressed }) => [
+            styles.settingsButton,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+            pressed && styles.pressed,
+          ]}>
           <MaterialIcons name="settings" size={20} color={Wireframe.accent} />
-          <Text style={styles.settingsText}>Settings</Text>
-          <MaterialIcons name="chevron-right" size={22} color={Wireframe.textMuted} />
+          <Text style={[styles.settingsText, { color: colors.text }]}>Settings</Text>
+          <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
         </Pressable>
         <LogOutNav variant="panel" />
       </View>

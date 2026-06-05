@@ -12,6 +12,7 @@ import {
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { ACTIVITIES, HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useTeam } from '@/contexts/TeamContext';
 import type { LeaderboardRow } from '@/lib/firestore/results';
 
@@ -39,6 +40,7 @@ type SelectedRanking = {
 };
 
 export default function RankingsListScreen() {
+  const { colors } = useAppTheme();
   const { teamName, teamId, teamDocId } = useTeam();
   const [selectedRanking, setSelectedRanking] = useState<SelectedRanking | null>(
     null,
@@ -69,7 +71,7 @@ export default function RankingsListScreen() {
             <Text style={styles.eyebrow}>Team leaderboard</Text>
             <Text style={styles.title}>Rankings</Text>
           </View>
-          <View style={styles.teamBadge}>
+          <View style={[styles.teamBadge, { backgroundColor: colors.translucent }]}>
             <Text style={styles.teamBadgeLabel}>Team</Text>
             <Text style={styles.teamBadgeName} numberOfLines={1}>
               {displayTeamName}
@@ -246,12 +248,22 @@ function RankingSection({
   onSeeMore?: () => void;
   overall?: boolean;
 }) {
+  const { colors } = useAppTheme();
   const shownRows = rows.slice(0, 3);
 
   return (
-    <View style={[styles.rankingCard, overall && styles.overallCard]}>
+    <View
+      style={[
+        styles.rankingCard,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+        overall && { borderColor: colors.accentSoft },
+      ]}>
       <View style={styles.cardHeader}>
-        <View style={styles.cardIcon}>
+        <View style={[styles.cardIcon, { backgroundColor: colors.accentSoft }]}>
           <MaterialIcons
             name={overall ? 'workspace-premium' : 'leaderboard'}
             size={20}
@@ -259,15 +271,19 @@ function RankingSection({
           />
         </View>
         <View style={styles.cardTitleWrap}>
-          <Text style={styles.cardTitle}>{title}</Text>
-          {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+          <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
+          {subtitle ? (
+            <Text style={[styles.cardSubtitle, { color: colors.textMuted }]}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
       </View>
 
       {overall && shownRows.length > 0 ? (
         <Podium rows={shownRows} teamDocId={teamDocId} />
       ) : shownRows.length === 0 ? (
-        <Text style={styles.emptyText}>{emptyText}</Text>
+        <Text style={[styles.emptyText, { color: colors.textMuted }]}>{emptyText}</Text>
       ) : (
         <View style={styles.rows}>
           {shownRows.map((row) => (
@@ -280,7 +296,11 @@ function RankingSection({
         <Pressable
           accessibilityRole="button"
           onPress={onSeeMore}
-          style={({ pressed }) => [styles.seeMoreButton, pressed && styles.pressed]}>
+          style={({ pressed }) => [
+            styles.seeMoreButton,
+            { backgroundColor: colors.surfaceAlt },
+            pressed && styles.pressed,
+          ]}>
           <Text style={styles.seeMoreText}>See more</Text>
           <MaterialIcons name="chevron-right" size={18} color={Wireframe.accent} />
         </Pressable>
@@ -320,20 +340,21 @@ function PodiumPlace({
   height: number;
   first?: boolean;
 }) {
+  const { colors } = useAppTheme();
   const isYourTeam = row.teamDocId === teamDocId;
   return (
     <View
       style={[
         styles.podiumPlace,
-        { minHeight: height },
-        first && styles.podiumFirst,
-        isYourTeam && styles.podiumYourTeam,
+        { minHeight: height, backgroundColor: colors.surfaceAlt },
+        first && { backgroundColor: colors.accentSoft },
+        isYourTeam && { borderWidth: 1, borderColor: Wireframe.accent },
       ]}>
       <Text style={styles.podiumRank}>#{row.rank}</Text>
-      <Text style={styles.podiumTeam} numberOfLines={2}>
+      <Text style={[styles.podiumTeam, { color: colors.text }]} numberOfLines={2}>
         {row.team}
       </Text>
-      <Text style={styles.podiumScore}>{row.score}</Text>
+      <Text style={[styles.podiumScore, { color: colors.textMuted }]}>{row.score}</Text>
     </View>
   );
 }
@@ -349,6 +370,7 @@ function ActivityRankingButton({
   teamDocId: string | null;
   onPress: () => void;
 }) {
+  const { colors } = useAppTheme();
   const yourRow = teamDocId
     ? rows.find((row) => row.teamDocId === teamDocId)
     : undefined;
@@ -358,13 +380,21 @@ function ActivityRankingButton({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.activityButton, pressed && styles.pressed]}>
-      <View style={styles.cardIcon}>
+      style={({ pressed }) => [
+        styles.activityButton,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+        pressed && styles.pressed,
+      ]}>
+      <View style={[styles.cardIcon, { backgroundColor: colors.accentSoft }]}>
         <MaterialIcons name="leaderboard" size={20} color={Wireframe.accent} />
       </View>
       <View style={styles.activityButtonText}>
-        <Text style={styles.cardTitle}>{title}</Text>
-        <Text style={styles.cardSubtitle} numberOfLines={1}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
           {yourRow
             ? `Your standing: #${yourRow.rank} · ${yourRow.score} pts`
             : leader
@@ -372,7 +402,7 @@ function ActivityRankingButton({
               : 'No ranking data yet'}
         </Text>
       </View>
-      <MaterialIcons name="chevron-right" size={22} color={Wireframe.textMuted} />
+      <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -386,6 +416,7 @@ function FullRankingModal({
   teamDocId: string | null;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
   const currentStanding =
     ranking && teamDocId
       ? ranking.rows.find((row) => row.teamDocId === teamDocId)
@@ -394,28 +425,30 @@ function FullRankingModal({
   return (
     <Modal visible={ranking != null} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, { backgroundColor: colors.panelBg }]}>
           <View style={styles.modalHeader}>
             <View>
-              <Text style={styles.modalEyebrow}>
+              <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>
                 {ranking?.overall ? 'Overall standing' : 'Activity standing'}
               </Text>
-              <Text style={styles.modalTitle}>{ranking?.title}</Text>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>{ranking?.title}</Text>
             </View>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close rankings"
               onPress={onClose}
               hitSlop={8}
-              style={styles.closeButton}>
-              <MaterialIcons name="close" size={22} color={Wireframe.text} />
+              style={[styles.closeButton, { backgroundColor: colors.surfaceAlt }]}>
+              <MaterialIcons name="close" size={22} color={colors.text} />
             </Pressable>
           </View>
 
           {currentStanding ? (
-            <View style={styles.currentStanding}>
-              <Text style={styles.currentLabel}>Your team standing</Text>
-              <Text style={styles.currentValue}>
+            <View style={[styles.currentStanding, { backgroundColor: colors.accentSoft }]}>
+              <Text style={[styles.currentLabel, { color: colors.textMuted }]}>
+                Your team standing
+              </Text>
+              <Text style={[styles.currentValue, { color: colors.text }]}>
                 #{currentStanding.rank} · {currentStanding.score} pts
               </Text>
             </View>
@@ -443,21 +476,27 @@ function RankingRowView({
   row: RankingRow;
   teamDocId: string | null;
 }) {
+  const { colors } = useAppTheme();
   const isYourTeam = row.teamDocId === teamDocId;
   const completed = 'completed' in row ? ` · ${row.completed} activities` : '';
   return (
-    <View style={[styles.rankRow, isYourTeam && styles.yourRow]}>
+    <View
+      style={[
+        styles.rankRow,
+        { backgroundColor: colors.surfaceAlt },
+        isYourTeam && { backgroundColor: colors.accentSoft },
+      ]}>
       <Text style={styles.rankNumber}>#{row.rank}</Text>
       <View style={styles.rankTeam}>
-        <Text style={styles.rankTeamName} numberOfLines={1}>
+        <Text style={[styles.rankTeamName, { color: colors.text }]} numberOfLines={1}>
           {row.team}
         </Text>
-        <Text style={styles.rankMeta}>
+        <Text style={[styles.rankMeta, { color: colors.textMuted }]}>
           {row.id}
           {completed}
         </Text>
       </View>
-      <Text style={styles.score}>{row.score}</Text>
+      <Text style={[styles.score, { color: colors.text }]}>{row.score}</Text>
     </View>
   );
 }

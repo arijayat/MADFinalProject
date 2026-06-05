@@ -7,6 +7,7 @@ import {
 } from "react-native";
 
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 
 type Props = {
   label: string;
@@ -23,6 +24,7 @@ export function PrimaryButton({
   variant = "dark",
   style,
 }: Props) {
+  const { colors } = useAppTheme();
   const dark = variant === "dark";
   return (
     <Pressable
@@ -33,13 +35,21 @@ export function PrimaryButton({
       hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       style={({ pressed }) => [
         styles.btn,
-        dark ? styles.dark : styles.light,
+        dark
+          ? styles.dark
+          : [
+              styles.light,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+              },
+            ],
         disabled && styles.disabled,
         pressed && !disabled && styles.pressed,
         style,
       ]}
     >
-      <Text style={[styles.label, dark ? styles.labelLight : styles.labelDark]}>
+      <Text style={[styles.label, dark ? styles.labelLight : { color: colors.text }]}>
         {label}
       </Text>
     </Pressable>

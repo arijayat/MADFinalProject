@@ -2,6 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   title: string;
@@ -11,17 +12,28 @@ type Props = {
 };
 
 export function ActivityCard({ title, description, requirements, onPress }: Props) {
+  const { colors } = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.topRow}>
-        <View style={styles.iconBubble}>
+        <View style={[styles.iconBubble, { backgroundColor: colors.accentSoft }]}>
           <MaterialIcons name="science" size={20} color={Wireframe.accent} />
         </View>
-        <Text style={styles.title}>{title}</Text>
-        <MaterialIcons name="chevron-right" size={22} color={Wireframe.textMuted} />
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
       </View>
-      <Text style={styles.desc}>{description}</Text>
-      <Text style={styles.reqLabel}>Requirements</Text>
+      <Text style={[styles.desc, { color: colors.textMuted }]}>{description}</Text>
+      <Text style={[styles.reqLabel, { color: colors.text }]}>Requirements</Text>
       <Text style={styles.reqList}>{requirements.slice(0, 3).join(' · ')}</Text>
     </Pressable>
   );

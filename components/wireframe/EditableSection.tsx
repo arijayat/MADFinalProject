@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe, wireframeStyles } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   title: string;
@@ -21,6 +22,7 @@ export function EditableSection({
   onCancel,
   editable = true,
 }: Props) {
+  const { colors } = useAppTheme();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -40,17 +42,29 @@ export function EditableSection({
   }
 
   return (
-    <View style={wireframeStyles.panel}>
+    <View
+      style={[
+        wireframeStyles.panel,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+      ]}>
       <View style={styles.titleRow}>
-        <Text style={styles.panelTitle}>{title}</Text>
+        <Text style={[styles.panelTitle, { color: colors.text }]}>{title}</Text>
         {editable && !editing ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Edit ${title}`}
             onPress={() => setEditing(true)}
             hitSlop={8}
-            style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
-            <MaterialIcons name="edit" size={20} color={Wireframe.textMuted} />
+            style={({ pressed }) => [
+              styles.editButton,
+              { backgroundColor: colors.surfaceAlt },
+              pressed && styles.pressed,
+            ]}>
+            <MaterialIcons name="edit" size={20} color={colors.textMuted} />
           </Pressable>
         ) : null}
       </View>

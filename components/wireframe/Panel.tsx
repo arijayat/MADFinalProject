@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Wireframe, wireframeStyles } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   title?: string;
@@ -9,9 +10,18 @@ type Props = {
 };
 
 export function Panel({ title, children }: Props) {
+  const { colors } = useAppTheme();
   return (
-    <View style={wireframeStyles.panel}>
-      {title ? <Text style={styles.panelTitle}>{title}</Text> : null}
+    <View
+      style={[
+        wireframeStyles.panel,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+      ]}>
+      {title ? <Text style={[styles.panelTitle, { color: colors.text }]}>{title}</Text> : null}
       {children}
     </View>
   );

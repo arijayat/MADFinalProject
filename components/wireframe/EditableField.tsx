@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   label: string;
@@ -17,19 +18,27 @@ export function EditableField({
   editable = true,
   placeholder,
 }: Props) {
+  const { colors } = useAppTheme();
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
       {editable && onChangeText ? (
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              color: colors.text,
+              backgroundColor: colors.surfaceAlt,
+              borderColor: colors.border,
+            },
+          ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder ?? label}
           placeholderTextColor={Wireframe.placeholder}
         />
       ) : (
-        <Text style={styles.value}>{value || '—'}</Text>
+        <Text style={[styles.value, { color: colors.text }]}>{value || '—'}</Text>
       )}
     </View>
   );

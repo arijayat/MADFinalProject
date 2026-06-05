@@ -6,10 +6,12 @@ import { ActivityCard } from '@/components/wireframe/ActivityCard';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { ACTIVITIES, HUB_ACTIVITY_ORDER } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useTeam } from '@/contexts/TeamContext';
 
 export default function HubScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { teamName, teamId, gradeLevel } = useTeam();
   const displayTeamName = teamName.trim() || 'Your team';
   const displayGrade = gradeLevel.trim() || 'Grade not set';
@@ -24,18 +26,30 @@ export default function HubScreen() {
           </View>
         </View>
 
-        <View style={styles.teamCard}>
-          <View style={styles.teamIcon}>
+        <View
+          style={[
+            styles.teamCard,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <View style={[styles.teamIcon, { backgroundColor: colors.accentSoft }]}>
             <MaterialIcons name="groups" size={24} color={Wireframe.accent} />
           </View>
           <View style={styles.teamInfo}>
-            <Text style={styles.teamLabel}>Current team</Text>
-            <Text style={styles.teamName} numberOfLines={1}>
+            <Text style={[styles.teamLabel, { color: colors.textMuted }]}>Current team</Text>
+            <Text style={[styles.teamName, { color: colors.text }]} numberOfLines={1}>
               {displayTeamName}
             </Text>
             <View style={styles.metaRow}>
-              <Text style={styles.metaPill}>{teamId}</Text>
-              <Text style={styles.metaText}>{displayGrade}</Text>
+              <Text style={[styles.metaPill, { backgroundColor: colors.accentSoft }]}>
+                {teamId}
+              </Text>
+              <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                {displayGrade}
+              </Text>
             </View>
           </View>
         </View>

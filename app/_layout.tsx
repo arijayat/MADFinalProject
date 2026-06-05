@@ -17,9 +17,9 @@ function RootNavigation() {
     colors: {
       primary: Wireframe.accent,
       background: colors.screenBg,
-      card: Wireframe.panelBg,
-      text: Wireframe.text,
-      border: Wireframe.border,
+      card: colors.panelBg,
+      text: colors.text,
+      border: colors.border,
       notification: Wireframe.accentRed,
     },
     fonts: {

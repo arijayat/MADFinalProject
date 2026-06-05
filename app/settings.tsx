@@ -8,7 +8,7 @@ import { useAppTheme } from '@/contexts/AppThemeContext';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { isDark, mode, toggleMode } = useAppTheme();
+  const { colors, isDark, mode, toggleMode } = useAppTheme();
 
   return (
     <WireScreen>
@@ -22,8 +22,16 @@ export default function SettingsScreen() {
         <Text style={styles.subtitle}>Adjust how the app looks on this device.</Text>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.settingIcon}>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <View style={[styles.settingIcon, { backgroundColor: colors.accentSoft }]}>
           <MaterialIcons
             name={isDark ? 'dark-mode' : 'light-mode'}
             size={22}
@@ -31,16 +39,16 @@ export default function SettingsScreen() {
           />
         </View>
         <View style={styles.settingText}>
-          <Text style={styles.settingTitle}>Dark mode</Text>
-          <Text style={styles.settingSubtitle}>
+          <Text style={[styles.settingTitle, { color: colors.text }]}>Dark mode</Text>
+          <Text style={[styles.settingSubtitle, { color: colors.textMuted }]}>
             Current mode: {mode === 'dark' ? 'Dark' : 'Light'}
           </Text>
         </View>
         <Switch
           value={isDark}
           onValueChange={toggleMode}
-          trackColor={{ false: Wireframe.border, true: Wireframe.accentSoft }}
-          thumbColor={isDark ? Wireframe.accent : Wireframe.panelBg}
+          trackColor={{ false: colors.border, true: colors.accentSoft }}
+          thumbColor={isDark ? Wireframe.accent : colors.panelBg}
         />
       </View>
     </WireScreen>

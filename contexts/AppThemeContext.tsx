@@ -6,6 +6,13 @@ export type AppThemeMode = 'light' | 'dark';
 
 type AppThemeColors = {
   screenBg: string;
+  panelBg: string;
+  surfaceAlt: string;
+  text: string;
+  textMuted: string;
+  border: string;
+  accentSoft: string;
+  shadow: string;
   headerText: string;
   headerSubtle: string;
   translucent: string;
@@ -21,6 +28,13 @@ type AppThemeContextValue = {
 
 const lightColors: AppThemeColors = {
   screenBg: Wireframe.screenBg,
+  panelBg: Wireframe.panelBg,
+  surfaceAlt: Wireframe.surfaceAlt,
+  text: Wireframe.text,
+  textMuted: Wireframe.textMuted,
+  border: Wireframe.border,
+  accentSoft: Wireframe.accentSoft,
+  shadow: Wireframe.shadow,
   headerText: Wireframe.panelBg,
   headerSubtle: 'rgba(255,255,255,0.76)',
   translucent: 'rgba(255,255,255,0.12)',
@@ -28,6 +42,13 @@ const lightColors: AppThemeColors = {
 
 const darkColors: AppThemeColors = {
   screenBg: '#101828',
+  panelBg: '#182235',
+  surfaceAlt: '#223047',
+  text: '#f8fafc',
+  textMuted: '#b6c2d2',
+  border: '#34435c',
+  accentSoft: '#1f4654',
+  shadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
   headerText: Wireframe.panelBg,
   headerSubtle: 'rgba(255,255,255,0.7)',
   translucent: 'rgba(255,255,255,0.1)',
