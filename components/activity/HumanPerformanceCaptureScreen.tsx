@@ -14,6 +14,7 @@ import {
   useActivitySession,
   type PerformanceReading,
 } from '@/contexts/ActivitySessionContext';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatVibration, vibrationMs2 } from '@/utils/vibration';
 
@@ -29,6 +30,7 @@ type ScreenPhase = 'idle' | 'recording' | 'attempt2_prompt' | 'all_done';
 
 export function HumanPerformanceCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { setPerformanceReadings } = useActivitySession();
   const movements = cfg.movementActions ?? ['Movement test'];
   const totalSteps = movements.length * 2;
@@ -349,14 +351,26 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
         </Text>
       ) : null}
 
-      <View style={styles.meterWrap}>
+      <View
+        style={[
+          styles.meterWrap,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
         <View
           style={[
             styles.meterCircle,
+            {
+              backgroundColor: colors.accentSoft,
+              borderColor: colors.border,
+            },
             recording && styles.meterActive,
             hapticActive && styles.meterHaptic,
           ]}>
-          <Text style={styles.meterText}>
+          <Text style={[styles.meterText, { color: colors.text }]}>
             {allDone && smoothest
               ? formatVibration(smoothest.peakVibrationMs2)
               : formatVibration(
@@ -365,11 +379,11 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
                     : peakVibrationDisplay,
                 )}
           </Text>
-          <Text style={styles.meterSub}>
+          <Text style={[styles.meterSub, { color: colors.textMuted }]}>
             {recording ? 'live vibration' : 'live / last peak'}
           </Text>
         </View>
-        <Text style={styles.meterCaption}>
+        <Text style={[styles.meterCaption, { color: colors.textMuted }]}>
           {recording
             ? `Recording… ${elapsedS}s — ${hapticActive ? 'move smoothly to avoid buzzes' : 'move slowly and smoothly'}`
             : 'Shake test: values update live. Lower m/s² = smoother movement.'}

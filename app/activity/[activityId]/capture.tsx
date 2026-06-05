@@ -14,11 +14,13 @@ import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
 import { getActivity } from "@/constants/activities";
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 
 type Phase = "idle" | "recording" | "done" | "wait_reaction";
 
 export default function ActivityCaptureScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
   const [phase, setPhase] = useState<Phase>("idle");
@@ -35,7 +37,7 @@ export default function ActivityCaptureScreen() {
   if (!cfg) {
     return (
       <WireScreen>
-        <Text style={{ color: Wireframe.panelBg }}>Activity not found.</Text>
+        <Text style={{ color: colors.text }}>Activity not found.</Text>
       </WireScreen>
     );
   }
@@ -75,11 +77,19 @@ export default function ActivityCaptureScreen() {
           title="No Camera Needed"
           subtitle="Record your observations manually."
         />
-        <View style={styles.noneWrap}>
-          <Text style={styles.noneTitle}>
+        <View
+          style={[
+            styles.noneWrap,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <Text style={[styles.noneTitle, { color: colors.accent }]}>
             This activity does not open the camera.
           </Text>
-          <Text style={styles.noneText}>
+          <Text style={[styles.noneText, { color: colors.text }]}>
             Use the app to record your predictions and observations. If you want
             to check a bend angle, use your phone’s own camera app in slow
             motion and then enter the observation here.
@@ -179,7 +189,15 @@ export default function ActivityCaptureScreen() {
   const viewport = () => {
     if (cfg.captureKind === "camera") {
       return (
-        <View style={styles.viewfinder}>
+        <View
+          style={[
+            styles.viewfinder,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
           {phase === "recording" && cfg.showRecordingTimer ? (
             <View style={styles.recordingBar}>
               <Text style={styles.recording}>RECORDING</Text>
@@ -201,13 +219,28 @@ export default function ActivityCaptureScreen() {
     }
     if (cfg.captureKind === "decibel" || cfg.captureKind === "vibration_hz") {
       return (
-        <View style={styles.meterWrap}>
-          <View style={styles.meterCircle}>
-            <Text style={styles.meterText}>
+        <View
+          style={[
+            styles.meterWrap,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <View
+            style={[
+              styles.meterCircle,
+              {
+                backgroundColor: colors.accentSoft,
+                borderColor: colors.border,
+              },
+            ]}>
+            <Text style={[styles.meterText, { color: colors.text }]}>
               {done ? cfg.captureDoneLabel : cfg.captureIdleLabel}
             </Text>
           </View>
-          <Text style={styles.meterCaption}>
+          <Text style={[styles.meterCaption, { color: colors.textMuted }]}>
             {cfg.captureKind === "decibel"
               ? "Live Decibels Reading"
               : "Live vibration reading"}
@@ -217,9 +250,22 @@ export default function ActivityCaptureScreen() {
     }
     if (cfg.captureKind === "waveform") {
       return (
-        <View style={styles.waveBox}>
-          <View style={styles.waveInner} />
-          <Text style={styles.waveCaption}>
+        <View
+          style={[
+            styles.waveBox,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <View
+            style={[
+              styles.waveInner,
+              { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+            ]}
+          />
+          <Text style={[styles.waveCaption, { color: colors.textMuted }]}>
             Accelerometer Waveform Visualization
           </Text>
         </View>
@@ -228,8 +274,16 @@ export default function ActivityCaptureScreen() {
     if (cfg.captureKind === "reaction") {
       if (phase === "done") {
         return (
-          <View style={styles.reactionWrap}>
-            <Text style={styles.reactionHint}>Tap when the color changes.</Text>
+          <View
+            style={[
+              styles.reactionWrap,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}>
+            <Text style={[styles.reactionHint, { color: colors.text }]}>Tap when the color changes.</Text>
             <View
               style={[styles.reactionSquare, { backgroundColor: "#2e7d32" }]}
             />
@@ -239,10 +293,17 @@ export default function ActivityCaptureScreen() {
       if (phase === "wait_reaction") {
         return (
           <Pressable
-            style={styles.reactionWrap}
+            style={[
+              styles.reactionWrap,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}
             onPress={() => setPhase("done")}
           >
-            <Text style={styles.reactionHint}>Tap when the color changes.</Text>
+            <Text style={[styles.reactionHint, { color: colors.text }]}>Tap when the color changes.</Text>
             <View
               style={[styles.reactionSquare, { backgroundColor: "#c62828" }]}
             />
@@ -250,8 +311,16 @@ export default function ActivityCaptureScreen() {
         );
       }
       return (
-        <View style={styles.reactionWrap}>
-          <Text style={styles.reactionHint}>Tap START CAPTURE to begin.</Text>
+        <View
+          style={[
+            styles.reactionWrap,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <Text style={[styles.reactionHint, { color: colors.text }]}>Tap START CAPTURE to begin.</Text>
           <View
             style={[styles.reactionSquare, { backgroundColor: "#9e9e9e" }]}
           />

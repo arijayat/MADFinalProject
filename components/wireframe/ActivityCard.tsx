@@ -12,7 +12,8 @@ type Props = {
 };
 
 export function ActivityCard({ title, description, requirements, onPress }: Props) {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
+  const requirementColor = isDark ? '#7dd3fc' : Wireframe.requirements;
   return (
     <Pressable
       onPress={onPress}
@@ -34,7 +35,9 @@ export function ActivityCard({ title, description, requirements, onPress }: Prop
       </View>
       <Text style={[styles.desc, { color: colors.textMuted }]}>{description}</Text>
       <Text style={[styles.reqLabel, { color: colors.text }]}>Requirements</Text>
-      <Text style={styles.reqList}>{requirements.slice(0, 3).join(' · ')}</Text>
+      <Text style={[styles.reqList, { color: requirementColor }]}>
+        {requirements.slice(0, 3).join(' · ')}
+      </Text>
     </Pressable>
   );
 }

@@ -41,12 +41,12 @@ const lightColors: AppThemeColors = {
 };
 
 const darkColors: AppThemeColors = {
-  screenBg: '#101828',
-  panelBg: '#182235',
-  surfaceAlt: '#223047',
-  text: '#f8fafc',
-  textMuted: '#b6c2d2',
-  border: '#34435c',
+  screenBg: '#0b1220',
+  panelBg: '#111827',
+  surfaceAlt: '#1f2937',
+  text: '#ffffff',
+  textMuted: '#d1d5db',
+  border: '#374151',
   accentSoft: '#1f4654',
   shadow: '0 8px 24px rgba(0, 0, 0, 0.28)',
   headerText: Wireframe.panelBg,

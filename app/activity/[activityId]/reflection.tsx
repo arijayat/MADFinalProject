@@ -9,6 +9,7 @@ import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { getActivity } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
@@ -22,6 +23,7 @@ export default function ActivityReflectionScreen() {
   const { user } = useAuth();
   const { teamDocId } = useTeam();
   const { getSession } = useActivitySession();
+  const { colors } = useAppTheme();
   const [stars, setStars] = useState(0);
   const [insights, setInsights] = useState('');
   const [saving, setSaving] = useState(false);
@@ -91,21 +93,32 @@ export default function ActivityReflectionScreen() {
         subtitle="Document your findings and thoughts."
       />
       <Panel>
-        <Text style={styles.q}>How much did you enjoy this activity?</Text>
+        <Text style={[styles.q, { color: colors.text }]}>
+          How much did you enjoy this activity?
+        </Text>
         <View style={styles.stars}>
           {[1, 2, 3, 4, 5].map((n) => (
             <Pressable key={n} onPress={() => setStars(n)} hitSlop={6} disabled={saving}>
               <MaterialIcons
                 name={n <= stars ? 'star' : 'star-border'}
                 size={32}
-                color={Wireframe.text}
+                color={colors.text}
               />
             </Pressable>
           ))}
         </View>
-        <Text style={[styles.q, { marginTop: 16 }]}>Any surprises or insights?</Text>
+        <Text style={[styles.q, { color: colors.text, marginTop: 16 }]}>
+          Any surprises or insights?
+        </Text>
         <TextInput
-          style={styles.area}
+          style={[
+            styles.area,
+            {
+              color: colors.text,
+              backgroundColor: colors.surfaceAlt,
+              borderColor: colors.border,
+            },
+          ]}
           multiline
           placeholder="What did you learn? Were the results what you expected? ..."
           placeholderTextColor={Wireframe.placeholder}
@@ -114,12 +127,12 @@ export default function ActivityReflectionScreen() {
           editable={!saving}
         />
         <View style={styles.note}>
-          <MaterialIcons name="cloud-upload" size={18} color={Wireframe.textMuted} />
-          <Text style={styles.noteText}>
+          <MaterialIcons name="cloud-upload" size={18} color={colors.textMuted} />
+          <Text style={[styles.noteText, { color: colors.textMuted }]}>
             Activity data is saved to Firebase. Your local SQLite draft is cleared after a successful save.
           </Text>
         </View>
-        {saving ? <ActivityIndicator style={styles.spinner} color={Wireframe.text} /> : null}
+        {saving ? <ActivityIndicator style={styles.spinner} color={colors.text} /> : null}
       </Panel>
     </WireScreen>
   );

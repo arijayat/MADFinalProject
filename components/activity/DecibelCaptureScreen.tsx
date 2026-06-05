@@ -15,6 +15,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useActivitySession, type DecibelReading } from '@/contexts/ActivitySessionContext';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatDisplayDb, meteringToDisplayDb } from '@/utils/decibels';
@@ -30,6 +31,7 @@ type Props = {
 
 export function DecibelCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { setDecibelReadings } = useActivitySession();
   const actions = cfg.decibelActions ?? ['Measurement'];
   const [actionIndex, setActionIndex] = useState(0);
@@ -178,11 +180,27 @@ export function DecibelCaptureScreen({ cfg }: Props) {
       </Text>
       <Text style={styles.actionLabel}>{allDone ? 'All actions measured' : currentLabel}</Text>
 
-      <View style={styles.meterWrap}>
-        <View style={[styles.meterCircle, isRecording && styles.meterActive]}>
-          <Text style={styles.meterText}>{meterLabel()}</Text>
+      <View
+        style={[
+          styles.meterWrap,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <View
+          style={[
+            styles.meterCircle,
+            {
+              backgroundColor: colors.accentSoft,
+              borderColor: colors.border,
+            },
+            isRecording && styles.meterActive,
+          ]}>
+          <Text style={[styles.meterText, { color: colors.text }]}>{meterLabel()}</Text>
         </View>
-        <Text style={styles.meterCaption}>
+        <Text style={[styles.meterCaption, { color: colors.textMuted }]}>
           {isRecording ? 'Listening… make the sound now' : 'Live decibel reading (approximate)'}
         </Text>
       </View>

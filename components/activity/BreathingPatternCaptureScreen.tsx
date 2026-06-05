@@ -13,6 +13,7 @@ import {
   useActivitySession,
   type BreathingReading,
 } from '@/contexts/ActivitySessionContext';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import {
   analyzeBreathing,
   formatBreathingOutcome,
@@ -32,6 +33,7 @@ type Phase = 'ready' | 'recording' | 'exercise_break' | 'all_done';
 
 export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { setBreathingReadings } = useActivitySession();
   const phases = cfg.breathingPhases ?? ['Breathing measurement'];
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -257,13 +259,21 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
       ) : null}
 
       {exerciseBreak ? (
-        <View style={styles.breakBox}>
-          <Text style={styles.breakTitle}>Light exercise break</Text>
-          <Text style={styles.breakText}>
+        <View
+          style={[
+            styles.breakBox,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <Text style={[styles.breakTitle, { color: colors.accent }]}>Light exercise break</Text>
+          <Text style={[styles.breakText, { color: colors.text }]}>
             Before the next measurement, do light exercise—for example jog on the
             spot for one minute, or do 100 star jumps.
           </Text>
-          <Text style={styles.breakText}>
+          <Text style={[styles.breakText, { color: colors.text }]}>
             Then lie down again, place the phone gently on your chest (screen
             facing up), and tap the button below when you are ready to record
             chest movement.
@@ -290,13 +300,25 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
             </Text>
           ) : null}
 
-          <View style={styles.meterWrap}>
+          <View
+            style={[
+              styles.meterWrap,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}>
             <View
               style={[
                 styles.meterCircle,
+                {
+                  backgroundColor: colors.accentSoft,
+                  borderColor: colors.border,
+                },
                 recording && styles.meterActive,
               ]}>
-              <Text style={styles.meterText}>
+              <Text style={[styles.meterText, { color: colors.text }]}>
                 {recording
                   ? liveBreathsPerMin != null
                     ? `${liveBreathsPerMin}`
@@ -305,21 +327,29 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
                     ? `${saved[saved.length - 1].breathsPerMinute}`
                     : '—'}
               </Text>
-              <Text style={styles.meterSub}>breaths / min</Text>
+              <Text style={[styles.meterSub, { color: colors.textMuted }]}>breaths / min</Text>
             </View>
-            <Text style={styles.meterCaption}>
+            <Text style={[styles.meterCaption, { color: colors.textMuted }]}>
               {recording
                 ? `Recording ${elapsedS}s / ${RECORD_SECONDS}s`
                 : 'Estimated from chest rise/fall, not heartbeat'}
             </Text>
             {recording && liveRotation != null ? (
-              <Text style={styles.rotationCaption}>
+              <Text style={[styles.rotationCaption, { color: colors.textMuted }]}>
                 Gyro stability: {liveRotation.toFixed(2)} rad/s
               </Text>
             ) : null}
           </View>
 
-          <View style={styles.waveBox}>
+          <View
+            style={[
+              styles.waveBox,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}>
             <View style={styles.waveRow}>
               {waveform.length === 0
                 ? Array.from({ length: WAVEFORM_POINTS }).map((_, i) => (
@@ -335,7 +365,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
                     );
                   })}
             </View>
-            <Text style={styles.waveCaption}>
+            <Text style={[styles.waveCaption, { color: colors.textMuted }]}>
               Accelerometer waveform with gyroscope stability check
             </Text>
           </View>

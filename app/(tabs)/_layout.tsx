@@ -3,10 +3,13 @@ import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
+import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const { user, isLoading } = useAuth();
+  const { colors, isDark } = useAppTheme();
 
   if (!isLoading && !user) {
     return <Redirect href="/sign-in" />;
@@ -15,11 +18,11 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#2f6f88',
-        tabBarInactiveTintColor: '#7b8a9a',
+        tabBarActiveTintColor: isDark ? '#7dd3fc' : Wireframe.accent,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: '#dbe4ee',
+          backgroundColor: colors.panelBg,
+          borderTopColor: colors.border,
           height: 64,
           paddingTop: 6,
         },
