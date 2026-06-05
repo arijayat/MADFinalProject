@@ -34,6 +34,65 @@ export function getUnclaimedTeamMembers(members: FirestoreTeamMember[]): Firesto
   return members.filter((m) => !m.uid);
 }
 
+function defaultCaptainName(
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+): string {
+  const fromDisplay = displayName?.trim();
+  if (fromDisplay) return fromDisplay;
+
+  const fromEmail = email?.split('@')[0]?.trim();
+  if (fromEmail) return fromEmail;
+
+  return 'Captain';
+}
+
+/** Ensure the team creator is linked to a roster row when registering a team. */
+export function ensureCaptainOnRoster(
+  members: FirestoreTeamMember[],
+  uid: string,
+  email: string | null | undefined,
+  displayName: string | null | undefined,
+): FirestoreTeamMember[] {
+  const linked = linkAuthUserToMembers(members, uid, email, displayName);
+  if (linked.some((member) => member.uid === uid)) {
+    return linked;
+  }
+
+  const captainName = defaultCaptainName(displayName, email);
+  const authEmail = email?.trim() || undefined;
+
+  return [
+    {
+      id: `m-captain-${uid}`,
+      name: captainName,
+      uid,
+      ...(authEmail ? { email: authEmail } : {}),
+    },
+    ...linked,
+  ];
+}
+
+/** Suggest an unclaimed roster row for the signed-in user (display name or email). */
+export function findSuggestedMemberId(
+  members: FirestoreTeamMember[],
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+): string | null {
+  const normalizedDisplay = displayName?.trim().toLowerCase();
+  const emailLocal = email?.split('@')[0]?.trim().toLowerCase();
+
+  const match = members.find((member) => {
+    if (member.uid) return false;
+    const normalized = member.name.trim().toLowerCase();
+    if (normalizedDisplay && normalized === normalizedDisplay) return true;
+    if (emailLocal && normalized === emailLocal) return true;
+    return false;
+  });
+
+  return match?.id ?? null;
+}
+
 export function claimMemberSlot(
   members: FirestoreTeamMember[],
   memberId: string,

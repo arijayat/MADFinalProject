@@ -1,17 +1,45 @@
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
+
+function captainDefaultName(
+  displayName: string | null | undefined,
+  email: string | null | undefined,
+): string {
+  return displayName?.trim() || email?.split('@')[0]?.trim() || '';
+}
 
 export default function TeamMembersScreen() {
   const router = useRouter();
+  const { user, profile } = useAuth();
   const { teamName, members, addMember, registerTeam } = useTeam();
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const suggestedCaptainName = captainDefaultName(profile?.displayName, user?.email);
+  const captainSeeded = useRef(false);
+
+  useEffect(() => {
+    if (captainSeeded.current || !suggestedCaptainName || !user?.uid) return;
+
+    const alreadyListed = members.some(
+      (member) =>
+        member.uid === user.uid ||
+        member.name.trim().toLowerCase() === suggestedCaptainName.toLowerCase(),
+    );
+
+    if (!alreadyListed) {
+      addMember(suggestedCaptainName);
+    }
+
+    captainSeeded.current = true;
+  }, [suggestedCaptainName, user?.uid, members, addMember]);
 
   async function handleContinue() {
     setSubmitting(true);
@@ -44,7 +72,12 @@ export default function TeamMembersScreen() {
       }>
       <View style={styles.content}>
         <Text style={styles.heading}>TEAM MEMBERS</Text>
-        <Text style={styles.sub}>Add all members of {teamName || 'your team'}</Text>
+        <Text style={styles.sub}>
+          Add all members of {teamName || 'your team'}, including your own name.
+          {suggestedCaptainName
+            ? ` We added "${suggestedCaptainName}" for you — edit the list if needed.`
+            : ''}
+        </Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Member name</Text>

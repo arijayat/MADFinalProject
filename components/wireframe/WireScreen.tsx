@@ -15,7 +15,7 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
-      keyboardShouldPersistTaps="handled"
+      keyboardShouldPersistTaps="always"
       keyboardDismissMode="on-drag"
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}>

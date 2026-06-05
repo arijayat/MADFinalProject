@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Pressable,
+  Platform,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 
@@ -13,17 +14,25 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
+import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { getTeamByJoinCode } from '@/lib/firestore/teams';
-import { getUnclaimedTeamMembers } from '@/lib/team-members';
+import { findSuggestedMemberId, getUnclaimedTeamMembers } from '@/lib/team-members';
 import type { FirestoreTeamMember } from '@/types/firestore';
-import { Wireframe } from '@/constants/wireframe-theme';
+
+function showErrorAlert(title: string, message: string) {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+}
 
 export default function JoinTeamPickNameScreen() {
   const router = useRouter();
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { joinWithTeamCode } = useTeam();
 
   const [teamName, setTeamName] = useState('');
@@ -33,46 +42,90 @@ export default function JoinTeamPickNameScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadRoster = useCallback(async () => {
-    if (!code?.trim()) {
-      setLoadError('Missing team code. Go back and enter your code again.');
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const team = await getTeamByJoinCode(code);
-      if (!team) {
-        setLoadError('Team not found. Check the code and try again.');
-        setUnclaimed([]);
-        return;
-      }
-
-      if (user && team.memberUids.includes(user.uid)) {
-        router.replace('/(tabs)');
-        return;
-      }
-
-      setTeamName(team.name);
-      const open = getUnclaimedTeamMembers(team.members ?? []);
-      setUnclaimed(open);
-      if (open.length === 1) {
-        setSelectedId(open[0].id);
-      }
-    } catch (error) {
-      setLoadError(
-        error instanceof Error ? error.message : 'Could not load team roster.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [code, user, router]);
+  const loadedForCode = useRef<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+    const normalizedCode = code?.trim() ?? '';
+
+    async function loadRoster() {
+      if (!normalizedCode) {
+        if (!cancelled) {
+          setLoadError('Missing team code. Go back and enter your code again.');
+          setLoading(false);
+        }
+        return;
+      }
+
+      const isFirstLoadForCode = loadedForCode.current !== normalizedCode;
+      if (isFirstLoadForCode) {
+        loadedForCode.current = normalizedCode;
+        if (!cancelled) {
+          setLoading(true);
+          setLoadError(null);
+        }
+      }
+
+      try {
+        const team = await getTeamByJoinCode(normalizedCode);
+        if (!team) {
+          if (!cancelled) {
+            setLoadError('Team not found. Check the code and try again.');
+            setUnclaimed([]);
+            setSelectedId(null);
+          }
+          return;
+        }
+
+        if (user?.uid && team.memberUids.includes(user.uid)) {
+          router.replace('/(tabs)');
+          return;
+        }
+
+        const open = getUnclaimedTeamMembers(team.members ?? []);
+        const suggestedId = findSuggestedMemberId(
+          open,
+          profile?.displayName ?? user?.displayName ?? null,
+          user?.email ?? profile?.email ?? null,
+        );
+
+        if (!cancelled) {
+          setTeamName(team.name);
+          setUnclaimed(open);
+          setSelectedId((current) => {
+            if (current && open.some((member) => member.id === current)) {
+              return current;
+            }
+            return suggestedId ?? (open.length === 1 ? open[0].id : null);
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setLoadError(
+            error instanceof Error ? error.message : 'Could not load team roster.',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
     void loadRoster();
-  }, [loadRoster]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    code,
+    user?.uid,
+    user?.displayName,
+    user?.email,
+    profile?.displayName,
+    profile?.email,
+    router,
+  ]);
 
   async function handleJoin() {
     if (!code?.trim() || !selectedId) return;
@@ -82,7 +135,7 @@ export default function JoinTeamPickNameScreen() {
       await joinWithTeamCode(code.trim(), selectedId);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert(
+      showErrorAlert(
         'Could not join team',
         error instanceof Error ? error.message : 'Check your connection and try again.',
       );
@@ -91,13 +144,21 @@ export default function JoinTeamPickNameScreen() {
     }
   }
 
+  function selectMember(memberId: string) {
+    if (submitting) return;
+    setSelectedId(memberId);
+  }
+
+  const showSpinner = loading && unclaimed.length === 0 && !loadError;
+
   return (
     <WireScreen
+      scroll={false}
       footer={
         <PrimaryButton
           label={submitting ? 'JOINING…' : 'CONFIRM & JOIN TEAM'}
           style={styles.primaryButton}
-          disabled={!selectedId || submitting || loading || unclaimed.length === 0}
+          disabled={!selectedId || submitting || showSpinner || unclaimed.length === 0}
           onPress={handleJoin}
         />
       }>
@@ -112,7 +173,7 @@ export default function JoinTeamPickNameScreen() {
         }
       />
 
-      {loading ? (
+      {showSpinner ? (
         <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} />
       ) : loadError ? (
         <Text style={styles.error}>{loadError}</Text>
@@ -129,18 +190,25 @@ export default function JoinTeamPickNameScreen() {
           {unclaimed.map((member) => {
             const selected = selectedId === member.id;
             return (
-              <Pressable
+              <TouchableOpacity
                 key={member.id}
-                onPress={() => setSelectedId(member.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                activeOpacity={0.85}
+                onPress={() => selectMember(member.id)}
                 disabled={submitting}
-                style={[styles.nameWrap, selected && styles.nameWrapSelected]}>
-                <Panel>
-                  <Text style={styles.memberName}>{member.name}</Text>
-                  {selected ? (
-                    <Text style={styles.selectedHint}>Selected — this will be your roster name</Text>
-                  ) : null}
-                </Panel>
-              </Pressable>
+                style={[
+                  styles.nameCard,
+                  selected && styles.nameCardSelected,
+                  Platform.OS === 'web' && styles.nameCardWeb,
+                ]}>
+                <Text style={styles.memberName}>{member.name}</Text>
+                {selected ? (
+                  <Text style={styles.selectedHint}>Selected — this will be your roster name</Text>
+                ) : (
+                  <Text style={styles.tapHint}>Tap to select</Text>
+                )}
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -155,14 +223,20 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
+    flex: 1,
   },
-  nameWrap: {
+  nameCard: {
+    backgroundColor: Wireframe.panelBg,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: 'transparent',
+    borderColor: Wireframe.border,
+    padding: 12,
   },
-  nameWrapSelected: {
-    borderColor: Wireframe.panelBg,
+  nameCardSelected: {
+    borderColor: '#ffffff',
+  },
+  nameCardWeb: {
+    cursor: 'pointer',
   },
   memberName: {
     fontSize: 16,
@@ -173,6 +247,11 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: Wireframe.textMuted,
+  },
+  tapHint: {
+    marginTop: 6,
+    fontSize: 12,
+    color: Wireframe.placeholder,
   },
   primaryButton: {
     width: '100%',

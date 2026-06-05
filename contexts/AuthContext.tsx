@@ -7,7 +7,7 @@ import {
 } from 'firebase/auth';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { ensureUserProfile } from '@/lib/firestore/users';
+import { ensureUserProfile, updateUserDisplayName } from '@/lib/firestore/users';
 import { getAuthErrorMessage } from '@/lib/firebase-errors';
 import { getFirebaseAuth } from '@/lib/firebase';
 import type { UserProfile } from '@/types/firestore';
@@ -21,6 +21,7 @@ type AuthContextValue = {
   signUp: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
+  updateDisplayName: (displayName: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -92,9 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logOut = useCallback(async () => {
-    await signOut(getFirebaseAuth());
+    setUser(null);
     setProfile(null);
+    await signOut(getFirebaseAuth());
   }, []);
+
+  const updateDisplayName = useCallback(
+    async (displayName: string) => {
+      const current = getFirebaseAuth().currentUser;
+      if (!current) throw new Error('You must be signed in to update your profile.');
+      await updateUserDisplayName(current.uid, displayName);
+      await refreshProfile();
+    },
+    [refreshProfile],
+  );
 
   const value = useMemo(
     () => ({
@@ -106,8 +118,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       logOut,
       refreshProfile,
+      updateDisplayName,
     }),
-    [user, profile, isLoading, configError, signIn, signUp, logOut, refreshProfile],
+    [user, profile, isLoading, configError, signIn, signUp, logOut, refreshProfile, updateDisplayName],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -14,8 +14,9 @@ import {
   getTeamById,
   getTeamByJoinCode,
   syncTeamMemberAuthInfo,
+  updateTeamDetails,
 } from '@/lib/firestore/teams';
-import { linkAuthUserToMembers } from '@/lib/team-members';
+import { ensureCaptainOnRoster, linkAuthUserToMembers } from '@/lib/team-members';
 import { setUserTeamId } from '@/lib/firestore/users';
 import { normalizeTeamCode } from '@/lib/team-code';
 import type { FirestoreTeamMember } from '@/types/firestore';
@@ -41,6 +42,8 @@ type TeamContextValue = {
   /** Join by join code and claim a roster name the captain added. */
   joinWithTeamCode: (code: string, memberId: string) => Promise<void>;
   refreshTeamFromFirestore: () => Promise<void>;
+  saveTeamDetails: (name: string, gradeLevel: string) => Promise<void>;
+  saveTeamMembers: (members: TeamMember[]) => Promise<void>;
 };
 
 const TeamContext = createContext<TeamContextValue | null>(null);
@@ -142,7 +145,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const registerTeam = useCallback(async () => {
     if (!user) throw new Error('You must be signed in to register a team.');
 
-    const linkedMembers = linkAuthUserToMembers(
+    const linkedMembers = ensureCaptainOnRoster(
       members,
       user.uid,
       user.email,
@@ -168,6 +171,41 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
     return { teamDocId: teamId, code };
   }, [user, teamName, gradeLevel, members, refreshProfile, applyTeamDocument]);
+
+  const saveTeamDetails = useCallback(
+    async (name: string, gradeLevel: string) => {
+      if (!teamDocId) throw new Error('No team to update.');
+      const trimmedName = name.trim();
+      const trimmedGrade = gradeLevel.trim();
+      if (!trimmedName) throw new Error('Team name cannot be empty.');
+
+      await updateTeamDetails(teamDocId, {
+        name: trimmedName,
+        gradeLevel: trimmedGrade,
+      });
+      setTeamName(trimmedName);
+      setGradeLevel(trimmedGrade);
+    },
+    [teamDocId],
+  );
+
+  const saveTeamMembers = useCallback(
+    async (nextMembers: TeamMember[]) => {
+      if (!teamDocId) throw new Error('No team to update.');
+      const normalized = nextMembers.map((member) => ({
+        ...member,
+        name: member.name.trim(),
+      }));
+
+      if (normalized.some((member) => !member.name)) {
+        throw new Error('Every team member needs a name.');
+      }
+
+      await updateTeamDetails(teamDocId, { members: normalized });
+      setMembers(normalized);
+    },
+    [teamDocId],
+  );
 
   const joinWithTeamCode = useCallback(
     async (rawCode: string, memberId: string) => {
@@ -228,6 +266,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       registerTeam,
       joinWithTeamCode,
       refreshTeamFromFirestore,
+      saveTeamDetails,
+      saveTeamMembers,
     }),
     [
       teamName,
@@ -241,6 +281,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       registerTeam,
       joinWithTeamCode,
       refreshTeamFromFirestore,
+      saveTeamDetails,
+      saveTeamMembers,
     ],
   );
 

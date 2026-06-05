@@ -74,6 +74,31 @@ export async function updateTeamMembers(
   });
 }
 
+export async function updateTeamDetails(
+  teamId: string,
+  updates: {
+    name?: string;
+    gradeLevel?: string;
+    members?: FirestoreTeamMember[];
+  },
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    updatedAt: serverTimestamp(),
+  };
+
+  if (updates.name !== undefined) {
+    payload.name = updates.name.trim();
+  }
+  if (updates.gradeLevel !== undefined) {
+    payload.gradeLevel = updates.gradeLevel.trim();
+  }
+  if (updates.members !== undefined) {
+    payload.members = updates.members;
+  }
+
+  await updateDoc(doc(getFirebaseDb(), 'teams', teamId), payload);
+}
+
 export async function addMemberToTeam(
   teamId: string,
   uid: string,

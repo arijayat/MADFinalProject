@@ -1,4 +1,4 @@
-import { User } from 'firebase/auth';
+import { User, updateProfile } from 'firebase/auth';
 import {
   doc,
   getDoc,
@@ -7,7 +7,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 
-import { getFirebaseDb } from '@/lib/firebase';
+import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
 import type { UserProfile } from '@/types/firestore';
 
 const usersCollection = () => 'users';
@@ -54,6 +54,23 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
 export async function setUserTeamId(uid: string, teamId: string | null): Promise<void> {
   await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), {
     teamId,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateUserDisplayName(
+  uid: string,
+  displayName: string,
+): Promise<void> {
+  const trimmed = displayName.trim();
+  const authUser = getFirebaseAuth().currentUser;
+
+  if (authUser?.uid === uid) {
+    await updateProfile(authUser, { displayName: trimmed || null });
+  }
+
+  await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), {
+    displayName: trimmed || null,
     updatedAt: serverTimestamp(),
   });
 }
