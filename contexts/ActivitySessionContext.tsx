@@ -45,6 +45,10 @@ export type ParachuteReading = {
   reboundTimeS: number | null;
   /** What you saw on landing (from slow-motion review) */
   observedBounce: BounceObservation | null;
+  /** Cloud Storage URL for this drop video */
+  videoUrl: string | null;
+  /** Unix ms when the Storage video may be deleted */
+  videoExpiresAtMs: number | null;
 };
 
 export type TapReactionReading = {
@@ -73,6 +77,10 @@ export type BreathingReading = {
 export type FanAngleReading = {
   label: string;
   angleDegrees: number;
+  /** Cloud Storage URL for this trial video */
+  videoUrl: string | null;
+  /** Unix ms when the Storage video may be deleted */
+  videoExpiresAtMs: number | null;
 };
 
 type ActivitySession = {
@@ -87,6 +95,9 @@ type ActivitySession = {
   fanAngleReadings: FanAngleReading[];
   /** Landing bounce observed on best-design drop (Action 3), if set on dashboard */
   bounceActual: BounceObservation | null;
+  /** Photo of revised parachute design before Action 3 drop */
+  parachuteDesignPhotoUrl: string | null;
+  parachuteDesignPhotoExpiresAtMs: number | null;
 };
 
 type ActivitySessionContextValue = {
@@ -114,6 +125,10 @@ type ActivitySessionContextValue = {
   setBounceActual: (
     activityId: ActivityId,
     value: BounceObservation | null,
+  ) => void;
+  setParachuteDesignPhoto: (
+    activityId: ActivityId,
+    photo: { url: string; expiresAtMs: number } | null,
   ) => void;
   setTapReactionReadings: (
     activityId: ActivityId,
@@ -145,6 +160,8 @@ const emptySession = (): ActivitySession => ({
   breathingReadings: [],
   fanAngleReadings: [],
   bounceActual: null,
+  parachuteDesignPhotoUrl: null,
+  parachuteDesignPhotoExpiresAtMs: null,
 });
 
 const ActivitySessionContext =
@@ -211,6 +228,12 @@ export function ActivitySessionProvider({
             bounceActual:
               local.bounceActual ??
               (fromCloud.bounceActual as BounceObservation | null),
+            parachuteDesignPhotoUrl:
+              local.parachuteDesignPhotoUrl ??
+              fromCloud.parachuteDesignPhotoUrl,
+            parachuteDesignPhotoExpiresAtMs:
+              local.parachuteDesignPhotoExpiresAtMs ??
+              fromCloud.parachuteDesignPhotoExpiresAtMs,
           };
         }
         return next;
@@ -302,6 +325,20 @@ export function ActivitySessionProvider({
     [],
   );
 
+  const setParachuteDesignPhoto = useCallback(
+    (activityId: ActivityId, photo: { url: string; expiresAtMs: number } | null) => {
+      setSessions((prev) => ({
+        ...prev,
+        [activityId]: {
+          ...(prev[activityId] ?? emptySession()),
+          parachuteDesignPhotoUrl: photo?.url ?? null,
+          parachuteDesignPhotoExpiresAtMs: photo?.expiresAtMs ?? null,
+        },
+      }));
+    },
+    [],
+  );
+
   const setTapReactionReadings = useCallback(
     (activityId: ActivityId, readings: TapReactionReading[]) => {
       setSessions((prev) => ({
@@ -381,6 +418,7 @@ export function ActivitySessionProvider({
       setPerformanceReadings,
       setParachuteReadings,
       setBounceActual,
+      setParachuteDesignPhoto,
       setTapReactionReadings,
       setTracingReadings,
       setBreathingReadings,
@@ -395,6 +433,7 @@ export function ActivitySessionProvider({
       setPerformanceReadings,
       setParachuteReadings,
       setBounceActual,
+      setParachuteDesignPhoto,
       setTapReactionReadings,
       setTracingReadings,
       setBreathingReadings,

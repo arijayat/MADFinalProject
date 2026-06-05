@@ -14,6 +14,8 @@ type SessionLike = {
   breathingReadings: unknown[];
   fanAngleReadings: unknown[];
   bounceActual: string | null;
+  parachuteDesignPhotoUrl: string | null;
+  parachuteDesignPhotoExpiresAtMs: number | null;
 };
 
 export function toActivitySessionSnapshot(session: SessionLike): ActivitySessionSnapshot {
@@ -28,6 +30,8 @@ export function toActivitySessionSnapshot(session: SessionLike): ActivitySession
     breathingReadings: session.breathingReadings,
     fanAngleReadings: session.fanAngleReadings,
     bounceActual: session.bounceActual,
+    parachuteDesignPhotoUrl: session.parachuteDesignPhotoUrl,
+    parachuteDesignPhotoExpiresAtMs: session.parachuteDesignPhotoExpiresAtMs,
   };
 }
 
@@ -45,6 +49,8 @@ export function sessionFromActivityResult(
     breathingReadings: doc.breathingReadings ?? [],
     fanAngleReadings: doc.fanAngleReadings ?? [],
     bounceActual: (doc.bounceActual as BounceObservation | null) ?? null,
+    parachuteDesignPhotoUrl: doc.parachuteDesignPhotoUrl ?? null,
+    parachuteDesignPhotoExpiresAtMs: doc.parachuteDesignPhotoExpiresAtMs ?? null,
   };
 }
 

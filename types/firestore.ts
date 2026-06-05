@@ -51,6 +51,10 @@ export type ActivityResultDocument = {
   breathingReadings: unknown[];
   fanAngleReadings: unknown[];
   bounceActual: string | null;
+  /** Download URL for Action 3 revised parachute design photo (Storage, not inline bytes) */
+  parachuteDesignPhotoUrl: string | null;
+  /** Unix ms when the Storage object may be deleted (30 days after upload) */
+  parachuteDesignPhotoExpiresAtMs: number | null;
   reflection: ActivityReflection | null;
   updatedAt: Timestamp;
 };

@@ -1,0 +1,49 @@
+rules_version = '2';
+
+// Paste into Firebase Console → Storage → Rules → Publish
+// Firestore stores download URLs + expiry timestamps only (not file bytes).
+//
+// Auto-delete after 30 days: apply storage.lifecycle.json to your bucket once:
+//   gcloud storage buckets update gs://YOUR_PROJECT.appspot.com --lifecycle-file=storage.lifecycle.json
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isTeamMember(teamId) {
+      let team = firestore.get(/databases/(default)/documents/teams/$(teamId)).data;
+      return isSignedIn()
+        && (
+          team.ownerUid == request.auth.uid
+          || request.auth.uid in team.memberUids
+        );
+    }
+
+    match /teams/{teamId}/parachute-designs/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeamMember(teamId)
+        && request.resource.size < 1024 * 1024
+        && request.resource.contentType.matches('image/jpeg');
+      allow delete: if false;
+    }
+
+    match /teams/{teamId}/parachute-videos/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeamMember(teamId)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if false;
+    }
+
+    match /teams/{teamId}/fan-videos/{fileName} {
+      allow read: if isSignedIn();
+      allow create, update: if isTeamMember(teamId)
+        && request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('video/.*');
+      allow delete: if false;
+    }
+  }
+}

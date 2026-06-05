@@ -1,7 +1,10 @@
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -12,11 +15,20 @@ import {
 } from 'react-native';
 
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
+import { VideoUploadBanner } from '@/components/activity/VideoUploadBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTeam } from '@/contexts/TeamContext';
+import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
+import { uploadParachuteDesignPhoto } from '@/lib/storage/parachute-design';
+import {
+  formatActivityMediaExpiry,
+  isActivityMediaExpired,
+} from '@/lib/storage/activity-media-expiry';
 import { parsePositiveSeconds } from '@/utils/parse-number';
 import {
   useActivitySession,
@@ -28,17 +40,42 @@ type Props = {
   cfg: ActivityConfig;
 };
 
-type Phase = 'preview' | 'recording' | 'review' | 'times';
+type Phase = 'preview' | 'recording' | 'review' | 'times' | 'design-upload';
 
 type RecordingResult = { uri: string };
 
+/** Action 3 (revised design) is the third drop — index 2. */
+const ACTION_3_INDEX = 2;
+
 /** Quarter-speed playback when reviewing drops for precise landing timestamps. */
 const REVIEW_PLAYBACK_RATE = 0.25;
+const VIDEO_RECORD_OPTIONS = { maxDuration: 30 } as const;
 
 export function ParachuteCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setParachuteReadings, setBounceActual, clearCapture, getSession } = useActivitySession();
-  const expectsBounce = getSession(cfg.id).predictions.bounce === 'Bounce';
+  const { user } = useAuth();
+  const { teamDocId } = useTeam();
+  const {
+    setParachuteReadings,
+    setBounceActual,
+    setParachuteDesignPhoto,
+    clearCapture,
+    getSession,
+  } = useActivitySession();
+  const session = getSession(cfg.id);
+  const designPhotoExpired = isActivityMediaExpired(session.parachuteDesignPhotoExpiresAtMs);
+  const designPhotoUrl = designPhotoExpired ? null : session.parachuteDesignPhotoUrl;
+  const designPhotoExpiresAtMs = designPhotoExpired ? null : session.parachuteDesignPhotoExpiresAtMs;
+  const {
+    canUpload: canUploadVideo,
+    uploading: uploadingVideo,
+    uploaded: uploadedVideo,
+    uploadError: videoUploadError,
+    startUpload: startVideoUpload,
+    retryUpload: retryVideoUpload,
+    resetUpload: resetVideoUpload,
+    requireUploadedBeforeSave,
+  } = useActivityVideoUpload('parachute-videos');
   const actions = cfg.parachuteDropActions ?? ['Drop'];
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<RecordingResult | undefined> | null>(null);
@@ -55,8 +92,13 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   const [contactTimeInput, setContactTimeInput] = useState('');
   const [reboundTimeInput, setReboundTimeInput] = useState('');
   const [observedBounce, setObservedBounce] = useState<BounceObservation | null>(null);
+  const [designPreviewUri, setDesignPreviewUri] = useState<string | null>(null);
+  const [uploadingDesign, setUploadingDesign] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expectsBounce = session.predictions.bounce === 'Bounce';
   const isLastAction = actionIndex === actions.length - 1;
+  const needsDesignUpload =
+    actionIndex === ACTION_3_INDEX && !designPhotoUrl && phase !== 'design-upload';
 
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
@@ -105,7 +147,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     setTick(0);
     timerRef.current = setInterval(() => setTick((t) => t + 1), 1000);
     try {
-      recordingPromiseRef.current = cameraRef.current?.recordAsync({ maxDuration: 30 }) ?? null;
+      recordingPromiseRef.current = cameraRef.current?.recordAsync(VIDEO_RECORD_OPTIONS) ?? null;
     } catch {
       Alert.alert('Could not record', 'Try again with the camera pointed at the full drop path.');
       setPhase('preview');
@@ -149,10 +191,96 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   const reRecord = useCallback(() => {
     setVideoUri(null);
+    resetVideoUpload();
     setPhase('preview');
-  }, []);
+  }, [resetVideoUpload]);
+
+  useEffect(() => {
+    if (needsDesignUpload && phase === 'preview') {
+      setPhase('design-upload');
+    }
+  }, [needsDesignUpload, phase]);
+
+  useEffect(() => {
+    if (!videoUri || phase === 'preview' || phase === 'recording' || phase === 'design-upload') {
+      return;
+    }
+    if (!canUploadVideo) return;
+    void startVideoUpload(videoUri, actionIndex);
+  }, [videoUri, actionIndex, phase, canUploadVideo, startVideoUpload]);
+
+  const uploadDesignPhoto = useCallback(
+    async (localUri: string) => {
+      if (!user) {
+        Alert.alert('Not signed in', 'Log in to upload your revised parachute design.');
+        return;
+      }
+      if (!teamDocId) {
+        Alert.alert('No team', 'Register or join a team before uploading your design.');
+        return;
+      }
+
+      setDesignPreviewUri(localUri);
+      setUploadingDesign(true);
+      try {
+        const upload = await uploadParachuteDesignPhoto({ teamId: teamDocId, localUri });
+        setParachuteDesignPhoto(cfg.id, upload);
+      } catch (error) {
+        setDesignPreviewUri(null);
+        Alert.alert(
+          'Upload failed',
+          error instanceof Error
+            ? error.message
+            : 'Could not upload the design photo. Check Storage rules and your connection.',
+        );
+      } finally {
+        setUploadingDesign(false);
+      }
+    },
+    [user, teamDocId, setParachuteDesignPhoto, cfg.id],
+  );
+
+  const pickDesignPhoto = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Photos needed', 'Allow photo library access to upload your parachute design.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      await uploadDesignPhoto(result.assets[0].uri);
+    }
+  }, [uploadDesignPhoto]);
+
+  const takeDesignPhoto = useCallback(async () => {
+    if (!(await ensurePermissions())) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      await uploadDesignPhoto(result.assets[0].uri);
+    }
+  }, [ensurePermissions, uploadDesignPhoto]);
+
+  const continueAfterDesignUpload = useCallback(() => {
+    if (!designPhotoUrl) {
+      Alert.alert('Upload your design', 'Add a photo of your revised parachute before recording Action 3.');
+      return;
+    }
+    setPhase('preview');
+  }, [designPhotoUrl]);
 
   const saveTimes = useCallback(() => {
+    if (!requireUploadedBeforeSave()) return;
+
     const fall = parsePositiveSeconds(fallTimeInput);
     if (fall == null) {
       Alert.alert(
@@ -194,14 +322,22 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       contactTimeS: contact,
       reboundTimeS: rebound,
       observedBounce: isLastAction ? observedBounce : null,
+      videoUrl: uploadedVideo?.url ?? null,
+      videoExpiresAtMs: uploadedVideo?.expiresAtMs ?? null,
     };
     const nextSaved = [...saved, reading];
     setSaved(nextSaved);
     setVideoUri(null);
+    resetVideoUpload();
 
     if (actionIndex + 1 < actions.length) {
-      setActionIndex((i) => i + 1);
-      setPhase('preview');
+      const nextIndex = actionIndex + 1;
+      setActionIndex(nextIndex);
+      if (nextIndex === ACTION_3_INDEX && !designPhotoUrl) {
+        setPhase('design-upload');
+      } else {
+        setPhase('preview');
+      }
     } else {
       setParachuteReadings(cfg.id, nextSaved);
       if (observedBounce) setBounceActual(cfg.id, observedBounce);
@@ -220,6 +356,10 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     setParachuteReadings,
     setBounceActual,
     cfg.id,
+    designPhotoUrl,
+    uploadedVideo,
+    requireUploadedBeforeSave,
+    resetVideoUpload,
   ]);
 
   const permissionsReady =
@@ -230,12 +370,32 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     footer = (
       <PrimaryButton label="VIEW RESULTS" onPress={() => router.push(`/activity/${cfg.id}/dashboard`)} />
     );
+  } else if (phase === 'design-upload') {
+    footer = (
+      <PrimaryButton
+        label="CONTINUE TO ACTION 3 RECORDING"
+        onPress={continueAfterDesignUpload}
+        disabled={!designPhotoUrl || uploadingDesign}
+      />
+    );
   } else if (phase === 'recording') {
     footer = <PrimaryButton label="STOP RECORDING" onPress={stopRecording} />;
   } else if (phase === 'review') {
-    footer = <PrimaryButton label="ENTER TIMES" onPress={goToTimesEntry} />;
+    footer = (
+      <PrimaryButton
+        label="ENTER TIMES"
+        onPress={goToTimesEntry}
+        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
+      />
+    );
   } else if (phase === 'times') {
-    footer = <PrimaryButton label="SAVE TIMES & CONTINUE" onPress={saveTimes} />;
+    footer = (
+      <PrimaryButton
+        label="SAVE TIMES & CONTINUE"
+        onPress={saveTimes}
+        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
+      />
+    );
   } else if (!permissionsReady && Platform.OS !== 'web') {
     footer = <PrimaryButton label="ALLOW CAMERA" onPress={ensurePermissions} />;
   } else {
@@ -245,6 +405,47 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   const showCamera = phase === 'preview' || phase === 'recording';
 
   const viewfinder = () => {
+    if (phase === 'design-upload') {
+      const preview = designPreviewUri ?? designPhotoUrl;
+      return (
+        <View style={styles.designPanel}>
+          <Text style={styles.designTitle}>Step 5 — upload your revised design</Text>
+          <Text style={styles.designHint}>
+            Before recording Action 3, photograph your redesigned parachute. Photos are compressed
+            for storage and kept for 30 days.
+          </Text>
+          {designPhotoExpired ? (
+            <Text style={styles.designExpired}>
+              Your previous design photo expired — upload a new one to continue.
+            </Text>
+          ) : null}
+          {preview ? (
+            <Image source={{ uri: preview }} style={styles.designPreview} contentFit="contain" />
+          ) : (
+            <View style={styles.designPlaceholder}>
+              <Text style={styles.designPlaceholderText}>No design photo yet</Text>
+            </View>
+          )}
+          {uploadingDesign ? (
+            <ActivityIndicator style={styles.designSpinner} color={Wireframe.text} />
+          ) : (
+            <View style={styles.designActions}>
+              <PrimaryButton label="TAKE PHOTO" onPress={takeDesignPhoto} variant="light" />
+              <PrimaryButton label="CHOOSE FROM LIBRARY" onPress={pickDesignPhoto} variant="light" />
+            </View>
+          )}
+          {designPhotoUrl ? (
+            <Text style={styles.designSaved}>
+              ✓ Design uploaded — available until{' '}
+              {designPhotoExpiresAtMs
+                ? formatActivityMediaExpiry(designPhotoExpiresAtMs)
+                : 'expiry date unknown'}
+            </Text>
+          ) : null}
+        </View>
+      );
+    }
+
     if (phase === 'review' && videoUri) {
       return (
         <View>
@@ -256,6 +457,15 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           <Pressable onPress={reRecord} hitSlop={8}>
             <Text style={styles.reRecordLink}>Re-record this drop</Text>
           </Pressable>
+          <VideoUploadBanner
+            canUpload={canUploadVideo}
+            uploading={uploadingVideo}
+            uploaded={uploadedVideo}
+            uploadError={videoUploadError}
+            onRetry={
+              videoUri ? () => retryVideoUpload(videoUri, actionIndex) : undefined
+            }
+          />
         </View>
       );
     }
@@ -285,7 +495,13 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
     return (
       <View style={styles.viewfinder}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" />
+        <CameraView
+          ref={cameraRef}
+          style={styles.camera}
+          facing="back"
+          mode="video"
+          videoQuality="720p"
+        />
         {phase === 'recording' ? (
           <View style={styles.recordingBar}>
             <Text style={styles.recording}>RECORDING</Text>
@@ -304,16 +520,18 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={phase === 'times' || phase === 'review'}
+      scroll={phase === 'times' || phase === 'review' || phase === 'design-upload'}
       footer={footer}>
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}
-        title="Video capture"
+        title={phase === 'design-upload' ? 'Upload revised design' : 'Video capture'}
         subtitle={
-          phase === 'review'
-            ? 'Review your recording, then enter fall and landing times.'
-            : 'Film each drop with your phone camera.'
+          phase === 'design-upload'
+            ? 'Photograph your redesigned parachute before the third drop.'
+            : phase === 'review'
+              ? 'Review your recording, then enter fall and landing times.'
+              : 'Film each drop with your phone camera.'
         }
       />
 
@@ -328,7 +546,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       </Text>
       <Text style={styles.actionLabel}>{allDone ? 'All drops recorded' : currentLabel}</Text>
 
-      {phase !== 'review' && phase !== 'times' ? (
+      {phase !== 'review' && phase !== 'times' && phase !== 'design-upload' ? (
         <Text style={styles.hint}>
           Place the phone on the floor facing the drop path. Drop from the same height each time.
         </Text>
@@ -340,6 +558,13 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
         <View style={styles.inlineReview}>
           <Text style={styles.inlineReviewLabel}>Your recording</Text>
           <DropVideoReview uri={videoUri} playbackRate={REVIEW_PLAYBACK_RATE} />
+          <VideoUploadBanner
+            canUpload={canUploadVideo}
+            uploading={uploadingVideo}
+            uploaded={uploadedVideo}
+            uploadError={videoUploadError}
+            onRetry={() => retryVideoUpload(videoUri, actionIndex)}
+          />
         </View>
       ) : null}
 
@@ -571,4 +796,53 @@ const styles = StyleSheet.create({
   },
   bounceBtnText: { fontSize: 13, color: Wireframe.text },
   bounceBtnTextActive: { color: Wireframe.panelBg, fontWeight: '700' },
+  designPanel: {
+    marginTop: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: Wireframe.border,
+    backgroundColor: Wireframe.panelBg,
+  },
+  designTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Wireframe.text,
+    marginBottom: 8,
+  },
+  designHint: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Wireframe.textMuted,
+    marginBottom: 12,
+  },
+  designExpired: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: Wireframe.accentYellow,
+    marginBottom: 10,
+  },
+  designPreview: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#eee',
+    marginBottom: 12,
+  },
+  designPlaceholder: {
+    height: 220,
+    backgroundColor: '#eee',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Wireframe.border,
+  },
+  designPlaceholderText: { color: Wireframe.textMuted, fontSize: 13 },
+  designActions: { gap: 8 },
+  designSpinner: { marginVertical: 12 },
+  designSaved: {
+    marginTop: 10,
+    fontSize: 13,
+    color: Wireframe.text,
+    fontWeight: '600',
+  },
 });

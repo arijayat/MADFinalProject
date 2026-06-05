@@ -1,8 +1,10 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { Image } from "expo-image";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenHeader } from "@/components/wireframe/BackNav";
+import { StoredActivityVideos } from "@/components/activity/StoredActivityVideos";
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
@@ -12,6 +14,10 @@ import {
     useActivitySession,
     type BounceObservation,
 } from "@/contexts/ActivitySessionContext";
+import {
+  formatActivityMediaExpiry,
+  isActivityMediaExpired,
+} from "@/lib/storage/activity-media-expiry";
 import {
   BREATHING_PHASE_SHORT,
   bpmPredictionMatches,
@@ -76,6 +82,9 @@ type DashboardData = {
   contextLines: ContextLine[];
   rows: DashboardRow[];
   sections: TableSection[];
+  designPhotoUrl?: string | null;
+  designPhotoExpiresAtMs?: number | null;
+  designPhotoExpired?: boolean;
 };
 
 const DECIBEL_ACTION_LABELS = [
@@ -537,7 +546,30 @@ export default function ActivityDashboardScreen() {
         predicted: session.predictions.bounce ?? "—",
         actual: bounceActual ?? "—",
       });
-      return { contextLines: [], rows, sections: [] };
+      const designUrl = session.parachuteDesignPhotoUrl;
+      const designExpiresAtMs = session.parachuteDesignPhotoExpiresAtMs;
+      const designExpired = isActivityMediaExpired(designExpiresAtMs);
+      const activeDesignUrl = designExpired ? null : designUrl;
+      const contextLines: ContextLine[] = [];
+      if (activeDesignUrl && designExpiresAtMs) {
+        contextLines.push({
+          label: "Action 3 — design photo available until",
+          value: formatActivityMediaExpiry(designExpiresAtMs),
+        });
+      } else if (designUrl && designExpired) {
+        contextLines.push({
+          label: "Action 3 — design photo",
+          value: "Expired (removed from storage after 30 days)",
+        });
+      }
+      return {
+        contextLines,
+        rows,
+        sections: [],
+        designPhotoUrl: activeDesignUrl,
+        designPhotoExpiresAtMs: designExpiresAtMs,
+        designPhotoExpired: designExpired,
+      };
     }
 
     return {
@@ -554,6 +586,7 @@ export default function ActivityDashboardScreen() {
   const rows = dashboardData.rows;
   const tableSections = dashboardData.sections;
   const contextLines = dashboardData.contextLines;
+  const parachuteDesignPhotoUrl = dashboardData.designPhotoUrl;
 
   const session = cfg ? getSession(cfg.id) : null;
   const parachutePhysics = useMemo(() => {
@@ -978,6 +1011,16 @@ export default function ActivityDashboardScreen() {
           </Text>
         </Panel>
       ) : null}
+      {cfg.id === "hand-fan-challenge" && session ? (
+        <StoredActivityVideos
+          title="Fan trial videos"
+          entries={session.fanAngleReadings.map((reading) => ({
+            title: reading.label,
+            videoUrl: reading.videoUrl,
+            videoExpiresAtMs: reading.videoExpiresAtMs,
+          }))}
+        />
+      ) : null}
       {cfg.id === "hand-fan-challenge" ? (
         <Text style={styles.note}>
           Bend angles come from slow-motion video review. “Close?” compares each
@@ -1026,6 +1069,37 @@ export default function ActivityDashboardScreen() {
             (baseline) with your parachute designs.
           </Text>
         </Panel>
+      ) : null}
+      {cfg.id === "parachute-drop" && parachuteDesignPhotoUrl ? (
+        <Panel>
+          <Text style={styles.designPhotoTitle}>Action 3 — revised parachute design</Text>
+          {dashboardData.designPhotoExpiresAtMs ? (
+            <Text style={styles.designPhotoExpiry}>
+              Stored until {formatActivityMediaExpiry(dashboardData.designPhotoExpiresAtMs)}
+            </Text>
+          ) : null}
+          <Image
+            source={{ uri: parachuteDesignPhotoUrl }}
+            style={styles.designPhoto}
+            contentFit="contain"
+          />
+        </Panel>
+      ) : null}
+      {cfg.id === "parachute-drop" && dashboardData.designPhotoExpired ? (
+        <Text style={styles.note}>
+          Your design photo has expired and was removed from cloud storage. Fall times and other
+          results are still saved.
+        </Text>
+      ) : null}
+      {cfg.id === "parachute-drop" && session ? (
+        <StoredActivityVideos
+          title="Drop videos"
+          entries={session.parachuteReadings.map((reading, index) => ({
+            title: PARACHUTE_ACTION_LABELS[index] ?? reading.label,
+            videoUrl: reading.videoUrl,
+            videoExpiresAtMs: reading.videoExpiresAtMs,
+          }))}
+        />
       ) : null}
       {cfg.id === "parachute-drop" ? (
         <Text style={styles.note}>
@@ -1113,5 +1187,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Wireframe.text,
     lineHeight: 18,
+  },
+  designPhotoTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Wireframe.text,
+    marginBottom: 10,
+  },
+  designPhotoExpiry: {
+    fontSize: 12,
+    color: Wireframe.textMuted,
+    marginBottom: 8,
+  },
+  designPhoto: {
+    width: "100%",
+    height: 240,
+    backgroundColor: "#eee",
   },
 });
