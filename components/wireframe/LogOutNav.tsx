@@ -7,7 +7,7 @@ import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { confirmAction } from '@/utils/confirm-alert';
 
-export function LogOutNav() {
+export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel' }) {
   const router = useRouter();
   const { logOut } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -42,10 +42,20 @@ export function LogOutNav() {
     <Pressable
       onPress={handlePress}
       disabled={loggingOut}
-      style={({ pressed }) => [styles.row, pressed && !loggingOut && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        variant === 'panel' && styles.panelRow,
+        pressed && !loggingOut && styles.pressed,
+      ]}
       hitSlop={8}>
-      <MaterialIcons name="logout" size={22} color={Wireframe.panelBg} />
-      <Text style={styles.text}>{loggingOut ? 'Signing out…' : 'Log out'}</Text>
+      <MaterialIcons
+        name="logout"
+        size={22}
+        color={variant === 'panel' ? Wireframe.accentRed : Wireframe.panelBg}
+      />
+      <Text style={[styles.text, variant === 'panel' && styles.panelText]}>
+        {loggingOut ? 'Signing out...' : 'Log out'}
+      </Text>
     </Pressable>
   );
 }
@@ -61,6 +71,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: 'rgba(255,255,255,0.12)',
   },
+  panelRow: {
+    minHeight: 54,
+    justifyContent: 'center',
+    backgroundColor: '#fff1f1',
+    borderWidth: 1,
+    borderColor: '#ffd4d4',
+    flex: 1,
+  },
   pressed: {
     opacity: 0.85,
   },
@@ -68,5 +86,9 @@ const styles = StyleSheet.create({
     color: Wireframe.panelBg,
     fontSize: 13,
     fontWeight: '700',
+  },
+  panelText: {
+    color: Wireframe.accentRed,
+    fontWeight: '900',
   },
 });

@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ActivityCard } from '@/components/wireframe/ActivityCard';
-import { LogOutNav } from '@/components/wireframe/LogOutNav';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { ACTIVITIES, HUB_ACTIVITY_ORDER } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
@@ -23,7 +22,6 @@ export default function HubScreen() {
             <Text style={styles.eyebrow}>Science Activity Hub</Text>
             <Text style={styles.title}>Home</Text>
           </View>
-          <LogOutNav />
         </View>
 
         <View style={styles.teamCard}>

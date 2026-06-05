@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   children: ReactNode;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export function WireScreen({ children, footer, scroll = true }: Props) {
+  const { colors } = useAppTheme();
   const body = scroll ? (
     <ScrollView
       style={styles.scroll}
@@ -26,7 +28,9 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.screenBg }]}
+      edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

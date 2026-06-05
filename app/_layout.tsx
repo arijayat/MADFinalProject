@@ -4,44 +4,46 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { AuthRedirect } from '@/components/AuthRedirect';
+import { AppThemeProvider, useAppTheme } from '@/contexts/AppThemeContext';
 import { ActivitySessionProvider } from '@/contexts/ActivitySessionContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { TeamProvider } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
 
-const AppTheme = {
-  dark: false,
-  colors: {
-    primary: Wireframe.accent,
-    background: Wireframe.screenBg,
-    card: Wireframe.panelBg,
-    text: Wireframe.text,
-    border: Wireframe.border,
-    notification: Wireframe.accentRed,
-  },
-  fonts: {
-    regular: {
-      fontFamily: 'System',
-      fontWeight: '400' as const,
-    },
-    medium: {
-      fontFamily: 'System',
-      fontWeight: '500' as const,
-    },
-    bold: {
-      fontFamily: 'System',
-      fontWeight: '700' as const,
-    },
-    heavy: {
-      fontFamily: 'System',
-      fontWeight: '800' as const,
-    },
-  },
-};
-
 function RootNavigation() {
+  const { colors, isDark } = useAppTheme();
+  const appTheme = {
+    dark: isDark,
+    colors: {
+      primary: Wireframe.accent,
+      background: colors.screenBg,
+      card: Wireframe.panelBg,
+      text: Wireframe.text,
+      border: Wireframe.border,
+      notification: Wireframe.accentRed,
+    },
+    fonts: {
+      regular: {
+        fontFamily: 'System',
+        fontWeight: '400' as const,
+      },
+      medium: {
+        fontFamily: 'System',
+        fontWeight: '500' as const,
+      },
+      bold: {
+        fontFamily: 'System',
+        fontWeight: '700' as const,
+      },
+      heavy: {
+        fontFamily: 'System',
+        fontWeight: '800' as const,
+      },
+    },
+  };
+
   return (
-    <ThemeProvider value={AppTheme}>
+    <ThemeProvider value={appTheme}>
       <AuthRedirect />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
@@ -54,6 +56,7 @@ function RootNavigation() {
         <Stack.Screen name="leave-team-captain" />
         <Stack.Screen name="team-registration" />
         <Stack.Screen name="team-members" />
+        <Stack.Screen name="settings" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="activity/[activityId]" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
@@ -65,12 +68,14 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <TeamProvider>
-        <ActivitySessionProvider>
-          <RootNavigation />
-        </ActivitySessionProvider>
-      </TeamProvider>
-    </AuthProvider>
+    <AppThemeProvider>
+      <AuthProvider>
+        <TeamProvider>
+          <ActivitySessionProvider>
+            <RootNavigation />
+          </ActivitySessionProvider>
+        </TeamProvider>
+      </AuthProvider>
+    </AppThemeProvider>
   );
 }

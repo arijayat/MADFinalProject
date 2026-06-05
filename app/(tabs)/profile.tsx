@@ -1,55 +1,28 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EditableField } from '@/components/wireframe/EditableField';
 import { EditableSection } from '@/components/wireframe/EditableSection';
-import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
-import { TabScreenHeader } from '@/components/wireframe/TabScreenHeader';
+import { LogOutNav } from '@/components/wireframe/LogOutNav';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { useTeam } from '@/contexts/TeamContext';
 
 export default function ProfileTabScreen() {
   const router = useRouter();
   const { user, profile, updateDisplayName } = useAuth();
-  const {
-    teamName,
-    teamId,
-    gradeLevel,
-    members,
-    isLoadingTeam,
-    teamDocId,
-    saveTeamDetails,
-    leaveTeam,
-    isTeamOwner,
-  } = useTeam();
-
-  const [leaving, setLeaving] = useState(false);
-
-  const myMember = members.find((m) => m.uid === user?.uid);
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
-  const [draftTeamName, setDraftTeamName] = useState(teamName);
-  const [draftGradeLevel, setDraftGradeLevel] = useState(gradeLevel);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDisplayName(profile?.displayName ?? '');
   }, [profile?.displayName]);
 
-  useEffect(() => {
-    setDraftTeamName(teamName);
-    setDraftGradeLevel(gradeLevel);
-  }, [teamName, gradeLevel]);
-
   function resetAccountDrafts() {
     setDisplayName(profile?.displayName ?? '');
-  }
-
-  function resetTeamDrafts() {
-    setDraftTeamName(teamName);
-    setDraftGradeLevel(gradeLevel);
   }
 
   async function handleSaveAccount() {
@@ -65,59 +38,41 @@ export default function ProfileTabScreen() {
     }
   }
 
-  async function handleSaveTeam() {
-    try {
-      await saveTeamDetails(draftTeamName, draftGradeLevel);
-      Alert.alert('Saved', 'Team details were updated.');
-    } catch (error) {
-      Alert.alert(
-        'Could not save team',
-        error instanceof Error ? error.message : 'Try again.',
-      );
-      throw error;
-    }
-  }
-
-  function handleLeaveTeam() {
-    if (isTeamOwner) {
-      router.push('/leave-team-captain');
-      return;
-    }
-
-    Alert.alert(
-      'Leave team?',
-      'You will be removed from the roster. You can rejoin later with the team code.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Leave team',
-          style: 'destructive',
-          onPress: () => {
-            void confirmLeaveTeam();
-          },
-        },
-      ],
-    );
-  }
-
-  async function confirmLeaveTeam() {
-    setLeaving(true);
-    try {
-      await leaveTeam();
-      router.replace('/team-onboarding');
-    } catch (error) {
-      Alert.alert(
-        'Could not leave team',
-        error instanceof Error ? error.message : 'Try again.',
-      );
-    } finally {
-      setLeaving(false);
-    }
-  }
-
   return (
     <WireScreen>
-      <TabScreenHeader title="Profile" subtitle="Your account and team details" />
+      <View style={styles.header}>
+        <Text style={styles.eyebrow}>Account</Text>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerSubtitle}>Your account and app settings.</Text>
+      </View>
+
+      <View style={styles.profileCard}>
+        <View style={styles.profileAvatar}>
+          <Text style={styles.profileInitial}>
+            {((profile?.displayName || user?.email || '?').trim()[0] ?? '?').toUpperCase()}
+          </Text>
+        </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.profileName} numberOfLines={1}>
+            {profile?.displayName || 'Student'}
+          </Text>
+          <Text style={styles.profileEmail} numberOfLines={1}>
+            {user?.email ?? profile?.email ?? 'No email'}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.quickActions}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/settings')}
+          style={({ pressed }) => [styles.settingsButton, pressed && styles.pressed]}>
+          <MaterialIcons name="settings" size={20} color={Wireframe.accent} />
+          <Text style={styles.settingsText}>Settings</Text>
+          <MaterialIcons name="chevron-right" size={22} color={Wireframe.textMuted} />
+        </Pressable>
+        <LogOutNav variant="panel" />
+      </View>
 
       <EditableSection
         title="Account"
@@ -137,102 +92,100 @@ export default function ProfileTabScreen() {
               editable={editing}
               placeholder="Enter your display name"
             />
-            {myMember ? (
-              <EditableField
-                label="Team member name"
-                value={myMember.name}
-                editable={false}
-              />
-            ) : null}
           </>
         )}
       </EditableSection>
-
-      {isLoadingTeam ? (
-        <View style={styles.loadingPanel}>
-          <ActivityIndicator color={Wireframe.textMuted} size="small" />
-          <Text style={styles.loadingText}>Loading team…</Text>
-        </View>
-      ) : profile?.teamId && teamDocId ? (
-        <EditableSection
-          title="Team"
-          editable={isTeamOwner}
-          onSave={handleSaveTeam}
-          onCancel={resetTeamDrafts}>
-          {(editing) => (
-            <>
-              <EditableField
-                label="Team name"
-                value={isTeamOwner && editing ? draftTeamName : teamName}
-                onChangeText={setDraftTeamName}
-                editable={isTeamOwner && editing}
-                placeholder="Enter team name"
-              />
-              <EditableField label="Join code" value={teamId || '—'} editable={false} />
-              <EditableField
-                label="Grade level"
-                value={isTeamOwner && editing ? draftGradeLevel : gradeLevel}
-                onChangeText={setDraftGradeLevel}
-                editable={isTeamOwner && editing}
-                placeholder="Enter grade level"
-              />
-              {!isTeamOwner ? (
-                <Text style={styles.ownerHint}>Only the team captain can edit team details.</Text>
-              ) : null}
-            </>
-          )}
-        </EditableSection>
-      ) : (
-        <View style={styles.emptyPanel}>
-          <Text style={styles.empty}>You have not joined a team yet.</Text>
-        </View>
-      )}
-
-      {profile?.teamId && teamDocId ? (
-        <PrimaryButton
-          label={leaving ? 'LEAVING…' : 'LEAVE TEAM'}
-          variant="light"
-          disabled={leaving || isLoadingTeam}
-          style={styles.leaveButton}
-          onPress={handleLeaveTeam}
-        />
-      ) : null}
     </WireScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingPanel: {
+  header: {
+    marginBottom: 4,
+  },
+  eyebrow: {
+    color: 'rgba(255,255,255,0.74)',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    color: Wireframe.panelBg,
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: 0,
+    marginTop: 2,
+  },
+  headerSubtitle: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     backgroundColor: Wireframe.panelBg,
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    padding: 12,
+    padding: 14,
+    boxShadow: Wireframe.shadow,
   },
-  loadingText: {
+  profileAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Wireframe.accentSoft,
+  },
+  profileInitial: {
+    color: Wireframe.accent,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  profileInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  profileName: {
+    color: Wireframe.text,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  profileEmail: {
+    color: Wireframe.textMuted,
     fontSize: 13,
-    color: Wireframe.textMuted,
+    fontWeight: '700',
+    marginTop: 4,
   },
-  emptyPanel: {
+  quickActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  settingsButton: {
+    minHeight: 54,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     backgroundColor: Wireframe.panelBg,
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    padding: 12,
+    paddingHorizontal: 12,
+    boxShadow: Wireframe.shadow,
   },
-  empty: {
-    fontSize: 14,
-    color: Wireframe.textMuted,
+  pressed: {
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
-  leaveButton: {
-    marginTop: 8,
-  },
-  ownerHint: {
-    marginTop: 8,
-    fontSize: 12,
-    color: Wireframe.textMuted,
+  settingsText: {
+    color: Wireframe.text,
+    fontSize: 13,
+    fontWeight: '900',
   },
 });
