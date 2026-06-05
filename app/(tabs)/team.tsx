@@ -30,7 +30,8 @@ function memberDisplayEmail(member: TeamMember, authUid?: string, authEmail?: st
 
 export default function TeamTabScreen() {
   const { user } = useAuth();
-  const { teamName, teamId, members, isLoadingTeam, teamDocId, saveTeamMembers } = useTeam();
+  const { teamName, teamId, members, isLoadingTeam, teamDocId, saveTeamMembers, isTeamOwner } =
+    useTeam();
 
   const [draftMembers, setDraftMembers] = useState<TeamMember[]>(members);
   const [newMemberName, setNewMemberName] = useState('');
@@ -98,9 +99,17 @@ export default function TeamTabScreen() {
 
   return (
     <WireScreen>
-      <TabScreenHeader title={`${teamName} ${teamId}`} subtitle="Team members" />
+      <TabScreenHeader
+        title={`${teamName} ${teamId}`}
+        subtitle={
+          isTeamOwner
+            ? 'Team members'
+            : 'Team members — only the captain can edit the roster'
+        }
+      />
       <EditableSection
         title="Team members"
+        editable={isTeamOwner}
         onSave={handleSaveMembers}
         onCancel={resetDrafts}>
         {(editing) => (

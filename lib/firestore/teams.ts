@@ -12,7 +12,15 @@ import {
 } from 'firebase/firestore';
 
 import { getFirebaseDb } from '@/lib/firebase';
-import { claimMemberSlot, linkAuthUserToMembers } from '@/lib/team-members';
+import {
+  claimMemberSlot,
+  getLinkedTeamMembersExcept,
+  linkAuthUserToMembers,
+  releaseMemberFromRoster,
+} from '@/lib/team-members';
+
+/** Written to ownerUid when the captain leaves and no members remain on the team. */
+export const ABANDONED_OWNER_UID = '';
 import { generateTeamCode, normalizeTeamCode } from '@/lib/team-code';
 import type { FirestoreTeamMember, TeamDocument } from '@/types/firestore';
 
@@ -111,6 +119,68 @@ export async function addMemberToTeam(
 
   await updateDoc(doc(getFirebaseDb(), 'teams', teamId), {
     members,
+    memberUids,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Captain leaves: transfer captaincy or abandon the team when no one else has joined. */
+export async function captainLeaveTeam(params: {
+  teamId: string;
+  uid: string;
+  newCaptainUid?: string;
+}): Promise<void> {
+  const team = await getTeamById(params.teamId);
+  if (!team) throw new Error('Team not found.');
+  if (team.ownerUid !== params.uid) {
+    throw new Error('Only the team captain can leave this way.');
+  }
+
+  const linkedOthers = getLinkedTeamMembersExcept(team.members ?? [], params.uid);
+
+  if (linkedOthers.length > 0) {
+    if (!params.newCaptainUid) {
+      throw new Error('Choose a team member to become the new captain.');
+    }
+    if (!linkedOthers.some((member) => member.uid === params.newCaptainUid)) {
+      throw new Error('That member cannot become captain.');
+    }
+    if (!team.memberUids.includes(params.newCaptainUid)) {
+      throw new Error('The new captain must be an active team member.');
+    }
+
+    const memberUids = team.memberUids.filter((memberUid) => memberUid !== params.uid);
+    const nextMembers = releaseMemberFromRoster(team.members ?? [], params.uid);
+
+    await updateDoc(doc(getFirebaseDb(), 'teams', params.teamId), {
+      ownerUid: params.newCaptainUid,
+      members: nextMembers,
+      memberUids,
+      updatedAt: serverTimestamp(),
+    });
+    return;
+  }
+
+  const nextMembers = releaseMemberFromRoster(team.members ?? [], params.uid);
+
+  await updateDoc(doc(getFirebaseDb(), 'teams', params.teamId), {
+    ownerUid: ABANDONED_OWNER_UID,
+    members: nextMembers,
+    memberUids: [],
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Remove a member from the team and free their roster slot for rejoining. */
+export async function removeMemberFromTeam(teamId: string, uid: string): Promise<void> {
+  const team = await getTeamById(teamId);
+  if (!team) throw new Error('Team not found.');
+
+  const memberUids = team.memberUids.filter((memberUid) => memberUid !== uid);
+  const nextMembers = releaseMemberFromRoster(team.members ?? [], uid);
+
+  await updateDoc(doc(getFirebaseDb(), 'teams', teamId), {
+    members: nextMembers,
     memberUids,
     updatedAt: serverTimestamp(),
   });

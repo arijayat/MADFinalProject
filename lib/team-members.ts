@@ -93,6 +93,27 @@ export function findSuggestedMemberId(
   return match?.id ?? null;
 }
 
+/** Roster rows linked to an account, excluding one uid (e.g. the current captain). */
+export function getLinkedTeamMembersExcept(
+  members: FirestoreTeamMember[],
+  uid: string,
+): FirestoreTeamMember[] {
+  return members.filter((member) => member.uid && member.uid !== uid);
+}
+
+/** Unlink a signed-in user from their roster row so they can rejoin later. */
+export function releaseMemberFromRoster(
+  members: FirestoreTeamMember[],
+  uid: string,
+): FirestoreTeamMember[] {
+  return members.map((member) => {
+    if (member.uid === uid) {
+      return { id: member.id, name: member.name };
+    }
+    return member;
+  });
+}
+
 export function claimMemberSlot(
   members: FirestoreTeamMember[],
   memberId: string,

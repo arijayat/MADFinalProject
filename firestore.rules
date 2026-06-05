@@ -23,6 +23,23 @@ service cloud.firestore {
         );
     }
 
+    function isTeamOwner(teamId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/teams/$(teamId)).data.ownerUid == request.auth.uid;
+    }
+
+    // Join code and owner are fixed after team creation.
+    function teamIdentityLocked(before) {
+      return request.resource.data.code == before.code
+        && request.resource.data.ownerUid == before.ownerUid;
+    }
+
+    // Captain edits team name, grade, or roster.
+    function isOwnerMaintainingTeam(teamId) {
+      let before = get(/databases/$(database)/documents/teams/$(teamId)).data;
+      return isTeamOwner(teamId) && teamIdentityLocked(before);
+    }
+
     // First-time join: add your uid to memberUids and claim a roster name.
     function isJoiningTeam(teamId) {
       let before = get(/databases/$(database)/documents/teams/$(teamId)).data;
@@ -30,7 +47,49 @@ service cloud.firestore {
         && !(request.auth.uid in before.memberUids)
         && request.auth.uid in request.resource.data.memberUids
         && request.resource.data.memberUids.size() == before.memberUids.size() + 1
-        && request.resource.data.ownerUid == before.ownerUid
+        && teamIdentityLocked(before)
+        && request.resource.data.name == before.name
+        && request.resource.data.gradeLevel == before.gradeLevel;
+    }
+
+    // Non-captain leaves: remove uid from memberUids and free their roster slot.
+    function isLeavingTeam(teamId) {
+      let before = get(/databases/$(database)/documents/teams/$(teamId)).data;
+      return isSignedIn()
+        && before.ownerUid != request.auth.uid
+        && request.auth.uid in before.memberUids
+        && !(request.auth.uid in request.resource.data.memberUids)
+        && request.resource.data.memberUids.size() == before.memberUids.size() - 1
+        && teamIdentityLocked(before)
+        && request.resource.data.name == before.name
+        && request.resource.data.gradeLevel == before.gradeLevel;
+    }
+
+    // Captain leaves and promotes another joined member.
+    function isCaptainTransferringOwnership(teamId) {
+      let before = get(/databases/$(database)/documents/teams/$(teamId)).data;
+      let newOwner = request.resource.data.ownerUid;
+      return isSignedIn()
+        && before.ownerUid == request.auth.uid
+        && request.auth.uid in before.memberUids
+        && !(request.auth.uid in request.resource.data.memberUids)
+        && request.resource.data.memberUids.size() == before.memberUids.size() - 1
+        && newOwner != request.auth.uid
+        && newOwner in before.memberUids
+        && newOwner in request.resource.data.memberUids
+        && request.resource.data.code == before.code
+        && request.resource.data.name == before.name
+        && request.resource.data.gradeLevel == before.gradeLevel;
+    }
+
+    // Captain leaves alone: team remains with roster names but no linked users.
+    function isCaptainAbandoningTeam(teamId) {
+      let before = get(/databases/$(database)/documents/teams/$(teamId)).data;
+      return isSignedIn()
+        && before.ownerUid == request.auth.uid
+        && request.auth.uid in before.memberUids
+        && request.resource.data.memberUids.size() == 0
+        && request.resource.data.ownerUid == ''
         && request.resource.data.code == before.code
         && request.resource.data.name == before.name
         && request.resource.data.gradeLevel == before.gradeLevel;
@@ -46,7 +105,11 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.ownerUid == request.auth.uid;
-      allow update: if isTeamMember(teamId) || isJoiningTeam(teamId);
+      allow update: if isOwnerMaintainingTeam(teamId)
+        || isJoiningTeam(teamId)
+        || isLeavingTeam(teamId)
+        || isCaptainTransferringOwnership(teamId)
+        || isCaptainAbandoningTeam(teamId);
       allow delete: if false;
 
       match /activityResults/{activityId} {

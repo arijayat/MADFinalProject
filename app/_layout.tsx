@@ -23,6 +23,7 @@ function RootNavigation() {
         <Stack.Screen name="team-onboarding" />
         <Stack.Screen name="join-team" />
         <Stack.Screen name="join-team-pick-name" />
+        <Stack.Screen name="leave-team-captain" />
         <Stack.Screen name="team-registration" />
         <Stack.Screen name="team-members" />
         <Stack.Screen name="(tabs)" />

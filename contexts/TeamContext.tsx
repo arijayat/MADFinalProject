@@ -13,6 +13,8 @@ import {
   createTeam,
   getTeamById,
   getTeamByJoinCode,
+  captainLeaveTeam,
+  removeMemberFromTeam,
   syncTeamMemberAuthInfo,
   updateTeamDetails,
 } from '@/lib/firestore/teams';
@@ -31,6 +33,10 @@ type TeamContextValue = {
   teamDocId: string | null;
   gradeLevel: string;
   members: TeamMember[];
+  /** Firebase uid of the user who created the team. */
+  ownerUid: string | null;
+  /** True when the signed-in user created this team. */
+  isTeamOwner: boolean;
   isLoadingTeam: boolean;
   setTeamName: (v: string) => void;
   setGradeLevel: (v: string) => void;
@@ -44,6 +50,8 @@ type TeamContextValue = {
   refreshTeamFromFirestore: () => Promise<void>;
   saveTeamDetails: (name: string, gradeLevel: string) => Promise<void>;
   saveTeamMembers: (members: TeamMember[]) => Promise<void>;
+  /** Leave the current team and clear local team state. Captains must pass newCaptainUid when others have joined. */
+  leaveTeam: (newCaptainUid?: string) => Promise<void>;
 };
 
 const TeamContext = createContext<TeamContextValue | null>(null);
@@ -61,15 +69,26 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const [teamCode, setTeamCode] = useState('');
   const [gradeLevel, setGradeLevel] = useState('');
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [ownerUid, setOwnerUid] = useState<string | null>(null);
   const [isLoadingTeam, setIsLoadingTeam] = useState(false);
 
+  const isTeamOwner = Boolean(user?.uid && ownerUid && user.uid === ownerUid);
+
   const applyTeamDocument = useCallback(
-    (team: { id: string; name: string; code: string; gradeLevel: string; members: TeamMember[] }) => {
+    (team: {
+      id: string;
+      name: string;
+      code: string;
+      gradeLevel: string;
+      members: TeamMember[];
+      ownerUid: string;
+    }) => {
       setTeamDocId(team.id);
       setTeamName(team.name);
       setTeamCode(team.code);
       setGradeLevel(team.gradeLevel);
       setMembers(team.members);
+      setOwnerUid(team.ownerUid);
     },
     [],
   );
@@ -81,6 +100,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setTeamCode('');
       setGradeLevel('');
       setMembers([]);
+      setOwnerUid(null);
       return;
     }
 
@@ -91,12 +111,14 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
       let roster = team.members ?? [];
       if (user) {
-        roster = await syncTeamMemberAuthInfo(
-          profile.teamId,
-          user.uid,
-          user.email,
-          user.displayName,
-        );
+        if (team.ownerUid === user.uid) {
+          roster = await syncTeamMemberAuthInfo(
+            profile.teamId,
+            user.uid,
+            user.email,
+            user.displayName,
+          );
+        }
         roster = linkAuthUserToMembers(
           roster,
           user.uid,
@@ -111,6 +133,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         code: team.code,
         gradeLevel: team.gradeLevel,
         members: roster,
+        ownerUid: team.ownerUid,
       });
     } finally {
       setIsLoadingTeam(false);
@@ -124,6 +147,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setTeamCode('');
       setGradeLevel('');
       setMembers([]);
+      setOwnerUid(null);
       return;
     }
     void refreshTeamFromFirestore();
@@ -140,6 +164,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     setTeamCode('');
     setGradeLevel('');
     setMembers([]);
+    setOwnerUid(null);
   }, []);
 
   const registerTeam = useCallback(async () => {
@@ -167,6 +192,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       code,
       gradeLevel,
       members: linkedMembers,
+      ownerUid: user.uid,
     });
 
     return { teamDocId: teamId, code };
@@ -175,6 +201,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const saveTeamDetails = useCallback(
     async (name: string, gradeLevel: string) => {
       if (!teamDocId) throw new Error('No team to update.');
+      if (!isTeamOwner) throw new Error('Only the team captain can edit team details.');
       const trimmedName = name.trim();
       const trimmedGrade = gradeLevel.trim();
       if (!trimmedName) throw new Error('Team name cannot be empty.');
@@ -186,12 +213,13 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setTeamName(trimmedName);
       setGradeLevel(trimmedGrade);
     },
-    [teamDocId],
+    [teamDocId, isTeamOwner],
   );
 
   const saveTeamMembers = useCallback(
     async (nextMembers: TeamMember[]) => {
       if (!teamDocId) throw new Error('No team to update.');
+      if (!isTeamOwner) throw new Error('Only the team captain can edit team members.');
       const normalized = nextMembers.map((member) => ({
         ...member,
         name: member.name.trim(),
@@ -204,7 +232,29 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       await updateTeamDetails(teamDocId, { members: normalized });
       setMembers(normalized);
     },
-    [teamDocId],
+    [teamDocId, isTeamOwner],
+  );
+
+  const leaveTeam = useCallback(
+    async (newCaptainUid?: string) => {
+      if (!user) throw new Error('You must be signed in to leave a team.');
+      if (!teamDocId) throw new Error('You are not on a team.');
+
+      if (isTeamOwner) {
+        await captainLeaveTeam({
+          teamId: teamDocId,
+          uid: user.uid,
+          newCaptainUid,
+        });
+      } else {
+        await removeMemberFromTeam(teamDocId, user.uid);
+      }
+
+      await setUserTeamId(user.uid, null);
+      await refreshProfile();
+      resetForNewTeam();
+    },
+    [user, teamDocId, isTeamOwner, refreshProfile, resetForNewTeam],
   );
 
   const joinWithTeamCode = useCallback(
@@ -226,6 +276,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           code: team.code,
           gradeLevel: team.gradeLevel,
           members: team.members ?? [],
+          ownerUid: team.ownerUid,
         });
         return;
       }
@@ -245,6 +296,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         code: team.code,
         gradeLevel: team.gradeLevel,
         members: nextMembers,
+        ownerUid: team.ownerUid,
       });
     },
     [user, refreshProfile, applyTeamDocument],
@@ -257,6 +309,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       teamDocId,
       gradeLevel,
       members,
+      ownerUid,
+      isTeamOwner,
       isLoadingTeam,
       setTeamName,
       setGradeLevel,
@@ -268,6 +322,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       refreshTeamFromFirestore,
       saveTeamDetails,
       saveTeamMembers,
+      leaveTeam,
     }),
     [
       teamName,
@@ -275,6 +330,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       teamDocId,
       gradeLevel,
       members,
+      ownerUid,
+      isTeamOwner,
       isLoadingTeam,
       addMember,
       resetForNewTeam,
@@ -283,6 +340,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       refreshTeamFromFirestore,
       saveTeamDetails,
       saveTeamMembers,
+      leaveTeam,
     ],
   );
 

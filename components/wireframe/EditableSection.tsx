@@ -10,9 +10,17 @@ type Props = {
   children: (editing: boolean) => ReactNode;
   onSave: () => Promise<void>;
   onCancel: () => void;
+  /** When false, the section is view-only (no edit control). Defaults to true. */
+  editable?: boolean;
 };
 
-export function EditableSection({ title, children, onSave, onCancel }: Props) {
+export function EditableSection({
+  title,
+  children,
+  onSave,
+  onCancel,
+  editable = true,
+}: Props) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -35,7 +43,7 @@ export function EditableSection({ title, children, onSave, onCancel }: Props) {
     <View style={wireframeStyles.panel}>
       <View style={styles.titleRow}>
         <Text style={styles.panelTitle}>{title}</Text>
-        {!editing ? (
+        {editable && !editing ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Edit ${title}`}

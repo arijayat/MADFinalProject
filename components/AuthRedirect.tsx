@@ -8,6 +8,7 @@ const PROTECTED_ROOTS = new Set([
   'team-onboarding',
   'join-team',
   'join-team-pick-name',
+  'leave-team-captain',
   'team-registration',
   'team-members',
   'activity',
