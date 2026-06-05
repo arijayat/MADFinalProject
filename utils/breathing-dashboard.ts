@@ -1,6 +1,6 @@
 import type { BreathingReading } from "@/contexts/ActivitySessionContext";
 
-const BPM_TOLERANCE = 4;
+const BREATHING_RATE_TOLERANCE = 4;
 
 export const BREATHING_PHASE_SHORT = [
   "At rest",
@@ -8,17 +8,27 @@ export const BREATHING_PHASE_SHORT = [
   "After Exercise 2",
 ];
 
-export function bpmPredictionMatches(
-  predictedBpm: string | undefined,
-  actualBpm: number | undefined,
+export function breathingRatePredictionMatches(
+  predictedRate: string | undefined,
+  actualRate: number | undefined,
 ): string {
-  const predicted = parseFloat(predictedBpm ?? "");
-  if (!Number.isFinite(predicted) || actualBpm == null) return "—";
-  return Math.abs(predicted - actualBpm) <= BPM_TOLERANCE ? "Yes" : "No";
+  const predicted = parseFloat(predictedRate ?? "");
+  if (!Number.isFinite(predicted) || actualRate == null) return "—";
+  return Math.abs(predicted - actualRate) <= BREATHING_RATE_TOLERANCE
+    ? "Yes"
+    : "No";
 }
 
 export function formatRecordingDetail(reading: BreathingReading): string {
-  return `${reading.durationS}s · peak ${reading.peakMovementMs2.toFixed(2)} m/s²`;
+  const movementRange =
+    reading.movementRangeG != null
+      ? ` · chest range ${reading.movementRangeG.toFixed(3)} g`
+      : "";
+  const rotation =
+    reading.peakRotationRadS != null
+      ? ` · gyro ${reading.peakRotationRadS.toFixed(2)} rad/s`
+      : "";
+  return `${reading.durationS}s · peak ${reading.peakMovementMs2.toFixed(2)} m/s²${movementRange}${rotation}`;
 }
 
 export function higherAfterExerciseActual(

@@ -20,7 +20,7 @@ import {
 } from "@/lib/storage/parachute-design-expiry";
 import {
   BREATHING_PHASE_SHORT,
-  bpmPredictionMatches,
+  breathingRatePredictionMatches,
   formatRecordingDetail,
   higherAfterExerciseActual,
   higherAfterExerciseMatches,
@@ -423,12 +423,12 @@ export default function ActivityDashboardScreen() {
         const pred = session.predictions[predKeys[i]];
         return {
           variable: BREATHING_PHASE_SHORT[i] ?? cfg.breathingPhases![i],
-          predicted: pred ? `${pred} BPM` : "—",
+          predicted: pred ? `${pred} breaths/min` : "—",
           actual:
-            reading != null ? `${reading.breathsPerMinute} BPM` : "—",
+            reading != null ? `${reading.breathsPerMinute} breaths/min` : "—",
           actualVib:
             reading != null ? formatRecordingDetail(reading) : "—",
-          wereRight: bpmPredictionMatches(
+          wereRight: breathingRatePredictionMatches(
             pred,
             reading?.breathsPerMinute,
           ),
@@ -442,7 +442,7 @@ export default function ActivityDashboardScreen() {
       if (ex2) contextLines.push({ label: "Exercise 2", value: ex2 });
 
       phaseRows.push({
-        variable: "Higher BPM after exercise?",
+        variable: "Higher breathing rate after exercise?",
         predicted: session.predictions.higher_after_exercise ?? "—",
         actual: higherAfterExerciseActual(readings),
         actualVib: "—",
@@ -676,7 +676,7 @@ export default function ActivityDashboardScreen() {
                 : isReaction
                   ? "Measured"
                   : isBreathing
-                    ? "BPM"
+                    ? "Breaths/min"
                     : "Actual";
 
     const variableHeader = isDecibel
@@ -961,9 +961,10 @@ export default function ActivityDashboardScreen() {
       ) : null}
       {cfg.id === "breathing-pattern" ? (
         <Text style={styles.note}>
-          BPM (breaths per minute) is estimated from chest movement while lying
-          down. Recording shows duration and peak movement. “Right?” compares your
-          BPM guess within 4 breaths/min, or your higher-after-exercise pick vs
+          Breathing rate is estimated from chest rise/fall while lying down with
+          the phone on the chest. Recording shows duration, movement range, and
+          gyroscope stability when available. “Right?” compares your breathing
+          rate guess within 4 breaths/min, or your higher-after-exercise pick vs
           rest vs after-exercise readings.
         </Text>
       ) : null}

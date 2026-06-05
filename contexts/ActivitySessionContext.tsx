@@ -80,6 +80,10 @@ export type BreathingReading = {
   breathsPerMinute: number;
   durationS: number;
   peakMovementMs2: number;
+  movementRangeG?: number;
+  peakRotationRadS?: number;
+  averageRotationRadS?: number;
+  motionQuality?: 'low' | 'steady' | 'active';
 };
 
 export type FanAngleReading = {

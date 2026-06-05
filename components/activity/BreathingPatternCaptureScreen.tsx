@@ -1,4 +1,4 @@
-import { Accelerometer } from 'expo-sensors';
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
@@ -16,7 +16,8 @@ import {
 import {
   analyzeBreathing,
   formatBreathingOutcome,
-  sampleFromAccel,
+  sampleFromMotion,
+  type GyroSample,
 } from '@/utils/breathing';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 
@@ -38,11 +39,14 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [screenPhase, setScreenPhase] = useState<Phase>('ready');
   const [elapsedS, setElapsedS] = useState(0);
-  const [liveBpm, setLiveBpm] = useState<number | null>(null);
+  const [liveBreathsPerMin, setLiveBreathsPerMin] = useState<number | null>(null);
+  const [liveRotation, setLiveRotation] = useState<number | null>(null);
   const [waveform, setWaveform] = useState<number[]>([]);
 
-  const samplesRef = useRef<ReturnType<typeof sampleFromAccel>[]>([]);
-  const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const samplesRef = useRef<ReturnType<typeof sampleFromMotion>[]>([]);
+  const accelerometerSubscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const gyroscopeSubscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const latestGyroRef = useRef<GyroSample | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartRef = useRef<number | null>(null);
   const screenPhaseRef = useRef<Phase>('ready');
@@ -57,8 +61,10 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   }, [screenPhase]);
 
   const stopSubscription = useCallback(() => {
-    subscriptionRef.current?.remove();
-    subscriptionRef.current = null;
+    accelerometerSubscriptionRef.current?.remove();
+    accelerometerSubscriptionRef.current = null;
+    gyroscopeSubscriptionRef.current?.remove();
+    gyroscopeSubscriptionRef.current = null;
   }, []);
 
   const stopElapsedTimer = useCallback(() => {
@@ -71,19 +77,29 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const startSubscription = useCallback(() => {
     stopSubscription();
     Accelerometer.setUpdateInterval(50);
-    subscriptionRef.current = Accelerometer.addListener((accel) => {
+    Gyroscope.setUpdateInterval(50);
+    latestGyroRef.current = null;
+    gyroscopeSubscriptionRef.current = Gyroscope.addListener((gyro) => {
+      latestGyroRef.current = gyro;
+      if (screenPhaseRef.current === 'recording') {
+        setLiveRotation(
+          Math.sqrt(gyro.x * gyro.x + gyro.y * gyro.y + gyro.z * gyro.z),
+        );
+      }
+    });
+    accelerometerSubscriptionRef.current = Accelerometer.addListener((accel) => {
       if (screenPhaseRef.current !== 'recording') return;
       const t = Date.now();
-      const sample = sampleFromAccel(t, accel);
+      const sample = sampleFromMotion(t, accel, latestGyroRef.current);
       samplesRef.current.push(sample);
 
       const recent = samplesRef.current.slice(-120);
       if (recent.length >= 20) {
         const partial = analyzeBreathing(recent);
-        setLiveBpm(partial.breathsPerMinute);
+        setLiveBreathsPerMin(partial.breathsPerMinute);
       }
 
-      const signal = sample.z;
+      const signal = sample.chestMovement;
       setWaveform((prev) => {
         const next = [...prev, signal];
         return next.length > WAVEFORM_POINTS
@@ -99,8 +115,11 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
         setAvailable(false);
         return;
       }
-      const isAvailable = await Accelerometer.isAvailableAsync();
-      setAvailable(isAvailable);
+      const [hasAccelerometer, hasGyroscope] = await Promise.all([
+        Accelerometer.isAvailableAsync(),
+        Gyroscope.isAvailableAsync(),
+      ]);
+      setAvailable(hasAccelerometer && hasGyroscope);
     })();
     return () => {
       stopSubscription();
@@ -119,7 +138,9 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
     const nextSaved = [...saved, reading];
     setSaved(nextSaved);
     samplesRef.current = [];
-    setLiveBpm(null);
+    latestGyroRef.current = null;
+    setLiveBreathsPerMin(null);
+    setLiveRotation(null);
     setWaveform([]);
     setElapsedS(0);
 
@@ -152,7 +173,9 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
     if (!batteryOk) return;
 
     samplesRef.current = [];
-    setLiveBpm(null);
+    latestGyroRef.current = null;
+    setLiveBreathsPerMin(null);
+    setLiveRotation(null);
     setWaveform([]);
     setElapsedS(0);
     recordStartRef.current = Date.now();
@@ -218,8 +241,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}
-        title="Chest breathing capture"
-        subtitle="Accelerometer detects chest rise and fall."
+        title="Chest movement capture"
+        subtitle="Accelerometer and gyroscope detect breathing motion."
       />
 
       {Platform.OS === 'web' ? (
@@ -229,7 +252,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
         </Text>
       ) : available === false ? (
         <Text style={styles.warn}>
-          Motion sensors are not available on this device.
+          Accelerometer and gyroscope sensors are not available on this device.
         </Text>
       ) : null}
 
@@ -242,7 +265,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           </Text>
           <Text style={styles.breakText}>
             Then lie down again, place the phone gently on your chest (screen
-            facing up), and tap the button below when you are ready to record.
+            facing up), and tap the button below when you are ready to record
+            chest movement.
           </Text>
           <PrimaryButton
             label="READY — START NEXT RECORDING"
@@ -261,8 +285,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           {!recording && !allDone ? (
             <Text style={styles.hint}>
               Lie flat on your back. Rest the phone gently on the centre of your
-              chest. Breathe normally. Each recording lasts {RECORD_SECONDS}{' '}
-              seconds.
+              chest with the screen facing up. Breathe normally and keep your
+              body still. Each recording lasts {RECORD_SECONDS} seconds.
             </Text>
           ) : null}
 
@@ -274,8 +298,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
               ]}>
               <Text style={styles.meterText}>
                 {recording
-                  ? liveBpm != null
-                    ? `${liveBpm}`
+                  ? liveBreathsPerMin != null
+                    ? `${liveBreathsPerMin}`
                     : '…'
                   : allDone && saved.length > 0
                     ? `${saved[saved.length - 1].breathsPerMinute}`
@@ -286,8 +310,13 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
             <Text style={styles.meterCaption}>
               {recording
                 ? `Recording ${elapsedS}s / ${RECORD_SECONDS}s`
-                : 'Live estimate from chest movement'}
+                : 'Estimated from chest rise/fall, not heartbeat'}
             </Text>
+            {recording && liveRotation != null ? (
+              <Text style={styles.rotationCaption}>
+                Gyro stability: {liveRotation.toFixed(2)} rad/s
+              </Text>
+            ) : null}
           </View>
 
           <View style={styles.waveBox}>
@@ -307,7 +336,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
                   })}
             </View>
             <Text style={styles.waveCaption}>
-              Accelerometer waveform (chest movement)
+              Accelerometer waveform with gyroscope stability check
             </Text>
           </View>
 
@@ -333,7 +362,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
       <Text style={styles.disclaimer}>
         Breaths per minute are classroom estimates from phone motion—not medical
-        spirometry. Compare trends at rest vs after exercise.
+        heart-rate or spirometry measurements. Compare breathing movement trends
+        at rest vs after exercise.
       </Text>
     </WireScreen>
   );
@@ -389,6 +419,12 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: '#cfcfcf',
     fontSize: 13,
+    textAlign: 'center',
+  },
+  rotationCaption: {
+    marginTop: 6,
+    color: '#aaa',
+    fontSize: 11,
     textAlign: 'center',
   },
   waveBox: {
