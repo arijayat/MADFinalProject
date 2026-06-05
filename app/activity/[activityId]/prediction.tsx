@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
@@ -10,14 +10,22 @@ import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { getActivity } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { isActivityId } from '@/lib/activity-snapshot';
 import { useActivitySession } from '@/contexts/ActivitySessionContext';
 
 export default function ActivityPredictionScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
-  const { setPredictions } = useActivitySession();
+  const { getSession, setPredictions } = useActivitySession();
   const [values, setValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!activityId || !isActivityId(activityId)) return;
+    const saved = getSession(activityId).predictions;
+    if (Object.keys(saved).length === 0) return;
+    setValues((prev) => (Object.keys(prev).length === 0 ? saved : prev));
+  }, [activityId, getSession]);
 
   const complete = useMemo(() => {
     if (!cfg) return false;

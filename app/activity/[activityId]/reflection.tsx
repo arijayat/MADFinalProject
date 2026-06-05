@@ -13,6 +13,7 @@ import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { isActivityId, toActivitySessionSnapshot } from '@/lib/activity-snapshot';
+import { deleteActivityDraft } from '@/lib/db/activity-drafts';
 import { saveActivityResult } from '@/lib/firestore/results';
 
 export default function ActivityReflectionScreen() {
@@ -52,6 +53,7 @@ export default function ActivityReflectionScreen() {
           insights: insights.trim(),
         },
       });
+      await deleteActivityDraft(teamDocId, activityId);
       router.push(`/activity/${cfg.id}/leaderboard`);
     } catch (error) {
       Alert.alert(
@@ -114,7 +116,7 @@ export default function ActivityReflectionScreen() {
         <View style={styles.note}>
           <MaterialIcons name="cloud-upload" size={18} color={Wireframe.textMuted} />
           <Text style={styles.noteText}>
-            Activity data and this reflection are saved to Firebase when you continue.
+            Activity data is saved to Firebase. Your local SQLite draft is cleared after a successful save.
           </Text>
         </View>
         {saving ? <ActivityIndicator style={styles.spinner} color={Wireframe.text} /> : null}

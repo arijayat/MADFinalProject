@@ -63,7 +63,8 @@
           "photosPermission": "Allow STEMM Lab to upload photos of your revised parachute design.",
           "cameraPermission": "Allow STEMM Lab to photograph your revised parachute design."
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

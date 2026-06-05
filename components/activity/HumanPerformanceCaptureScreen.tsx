@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -13,6 +14,7 @@ import {
   useActivitySession,
   type PerformanceReading,
 } from '@/contexts/ActivitySessionContext';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatVibration, vibrationMs2 } from '@/utils/vibration';
 
 type Props = {
@@ -27,7 +29,7 @@ type ScreenPhase = 'idle' | 'recording' | 'attempt2_prompt' | 'all_done';
 
 export function HumanPerformanceCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setPerformanceReadings, clearCapture } = useActivitySession();
+  const { setPerformanceReadings } = useActivitySession();
   const movements = cfg.movementActions ?? ['Movement test'];
   const totalSteps = movements.length * 2;
 
@@ -134,7 +136,6 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
   }, [stopSubscription, maybeHapticPulse]);
 
   useEffect(() => {
-    clearCapture(cfg.id);
     (async () => {
       if (Platform.OS === 'web') {
         setAvailable(false);
@@ -150,15 +151,15 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
       stopSubscription();
       stopElapsedTimer();
     };
-  }, [
-    cfg.id,
-    clearCapture,
-    startSubscription,
-    stopSubscription,
-    stopElapsedTimer,
-  ]);
+  }, [cfg.id, startSubscription, stopSubscription, stopElapsedTimer]);
 
-  const beginRecording = useCallback(() => {
+  const beginRecording = useCallback(async () => {
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'movement and vibration recording',
+      strictBlock: true,
+    });
+    if (!batteryOk) return;
+
     peakVibrationRef.current = null;
     setPeakVibrationDisplay(null);
     setLiveVibration(null);
@@ -289,6 +290,8 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
           disabled={footerDisabled}
         />
       }>
+      <BatteryCaptureBanner />
+
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

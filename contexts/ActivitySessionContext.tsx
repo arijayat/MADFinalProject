@@ -4,13 +4,22 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import type { ActivityId } from "@/constants/activities";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
-import { sessionFromActivityResult } from "@/lib/activity-snapshot";
+import {
+  sessionFromActivityResult,
+  toActivitySessionSnapshot,
+} from "@/lib/activity-snapshot";
+import {
+  loadAllActivityDrafts,
+  saveActivityDraft,
+  sessionFromDraftOrCloud,
+} from "@/lib/db/activity-drafts";
 import { listTeamActivityResults } from "@/lib/firestore/results";
 import type { StoredActivityMedia } from "@/lib/storage/media-expiry";
 
@@ -161,6 +170,54 @@ const emptySession = (): ActivitySession => ({
   parachuteDesignPhotoExpiresAtMs: null,
 });
 
+function overlayLocalSession(
+  base: ReturnType<typeof sessionFromActivityResult>,
+  local: ActivitySession,
+): ActivitySession {
+  return {
+    predictions: { ...base.predictions, ...local.predictions },
+    decibelReadings:
+      local.decibelReadings.length > 0
+        ? local.decibelReadings
+        : (base.decibelReadings as DecibelReading[]),
+    vibrationReadings:
+      local.vibrationReadings.length > 0
+        ? local.vibrationReadings
+        : (base.vibrationReadings as VibrationReading[]),
+    performanceReadings:
+      local.performanceReadings.length > 0
+        ? local.performanceReadings
+        : (base.performanceReadings as PerformanceReading[]),
+    parachuteReadings:
+      local.parachuteReadings.length > 0
+        ? local.parachuteReadings
+        : (base.parachuteReadings as ParachuteReading[]),
+    tapReactionReadings:
+      local.tapReactionReadings.length > 0
+        ? local.tapReactionReadings
+        : (base.tapReactionReadings as TapReactionReading[]),
+    tracingReadings:
+      local.tracingReadings.length > 0
+        ? local.tracingReadings
+        : (base.tracingReadings as TracingReading[]),
+    breathingReadings:
+      local.breathingReadings.length > 0
+        ? local.breathingReadings
+        : (base.breathingReadings as BreathingReading[]),
+    fanAngleReadings:
+      local.fanAngleReadings.length > 0
+        ? local.fanAngleReadings
+        : (base.fanAngleReadings as FanAngleReading[]),
+    bounceActual:
+      local.bounceActual ?? (base.bounceActual as BounceObservation | null),
+    parachuteDesignPhotoUrl:
+      local.parachuteDesignPhotoUrl ?? base.parachuteDesignPhotoUrl,
+    parachuteDesignPhotoExpiresAtMs:
+      local.parachuteDesignPhotoExpiresAtMs ??
+      base.parachuteDesignPhotoExpiresAtMs,
+  };
+}
+
 const ActivitySessionContext =
   createContext<ActivitySessionContextValue | null>(null);
 
@@ -171,71 +228,69 @@ export function ActivitySessionProvider({
 }) {
   const { user } = useAuth();
   const { teamDocId } = useTeam();
+  const teamDocIdRef = useRef(teamDocId);
+  teamDocIdRef.current = teamDocId;
   const [sessions, setSessions] = useState<
     Partial<Record<ActivityId, ActivitySession>>
   >({});
+
+  const persistDraft = useCallback(
+    (activityId: ActivityId, session: ActivitySession) => {
+      const teamId = teamDocIdRef.current;
+      if (!teamId) return;
+      void saveActivityDraft(
+        teamId,
+        activityId,
+        toActivitySessionSnapshot(session),
+      );
+    },
+    [],
+  );
+
+  const patchSession = useCallback(
+    (
+      activityId: ActivityId,
+      patch: Partial<ActivitySession> | ((current: ActivitySession) => ActivitySession),
+    ) => {
+      setSessions((prev) => {
+        const current = prev[activityId] ?? emptySession();
+        const updated =
+          typeof patch === "function" ? patch(current) : { ...current, ...patch };
+        persistDraft(activityId, updated);
+        return { ...prev, [activityId]: updated };
+      });
+    },
+    [persistDraft],
+  );
 
   useEffect(() => {
     if (!user || !teamDocId) return;
 
     let cancelled = false;
 
-    void listTeamActivityResults(teamDocId).then((saved) => {
+    void (async () => {
+      const [drafts, cloudResults] = await Promise.all([
+        loadAllActivityDrafts(teamDocId),
+        listTeamActivityResults(teamDocId),
+      ]);
       if (cancelled) return;
+
       setSessions((prev) => {
         const next = { ...prev };
-        for (const [activityId, doc] of Object.entries(saved)) {
+        const activityIds = new Set([
+          ...Object.keys(drafts),
+          ...Object.keys(cloudResults),
+        ]);
+
+        for (const activityId of activityIds) {
           const id = activityId as ActivityId;
-          const fromCloud = sessionFromActivityResult(doc);
+          const base = sessionFromDraftOrCloud(drafts[id], cloudResults[id]);
           const local = prev[id] ?? emptySession();
-          next[id] = {
-            predictions: { ...fromCloud.predictions, ...local.predictions },
-            decibelReadings:
-              local.decibelReadings.length > 0
-                ? local.decibelReadings
-                : (fromCloud.decibelReadings as DecibelReading[]),
-            vibrationReadings:
-              local.vibrationReadings.length > 0
-                ? local.vibrationReadings
-                : (fromCloud.vibrationReadings as VibrationReading[]),
-            performanceReadings:
-              local.performanceReadings.length > 0
-                ? local.performanceReadings
-                : (fromCloud.performanceReadings as PerformanceReading[]),
-            parachuteReadings:
-              local.parachuteReadings.length > 0
-                ? local.parachuteReadings
-                : (fromCloud.parachuteReadings as ParachuteReading[]),
-            tapReactionReadings:
-              local.tapReactionReadings.length > 0
-                ? local.tapReactionReadings
-                : (fromCloud.tapReactionReadings as TapReactionReading[]),
-            tracingReadings:
-              local.tracingReadings.length > 0
-                ? local.tracingReadings
-                : (fromCloud.tracingReadings as TracingReading[]),
-            breathingReadings:
-              local.breathingReadings.length > 0
-                ? local.breathingReadings
-                : (fromCloud.breathingReadings as BreathingReading[]),
-            fanAngleReadings:
-              local.fanAngleReadings.length > 0
-                ? local.fanAngleReadings
-                : (fromCloud.fanAngleReadings as FanAngleReading[]),
-            bounceActual:
-              local.bounceActual ??
-              (fromCloud.bounceActual as BounceObservation | null),
-            parachuteDesignPhotoUrl:
-              local.parachuteDesignPhotoUrl ??
-              fromCloud.parachuteDesignPhotoUrl,
-            parachuteDesignPhotoExpiresAtMs:
-              local.parachuteDesignPhotoExpiresAtMs ??
-              fromCloud.parachuteDesignPhotoExpiresAtMs,
-          };
+          next[id] = overlayLocalSession(base, local);
         }
         return next;
       });
-    });
+    })();
 
     return () => {
       cancelled = true;
@@ -249,150 +304,88 @@ export function ActivitySessionProvider({
 
   const setPredictions = useCallback(
     (activityId: ActivityId, predictions: Record<string, string>) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: { ...(prev[activityId] ?? emptySession()), predictions },
-      }));
+      patchSession(activityId, { predictions });
     },
-    [],
+    [patchSession],
   );
 
   const setDecibelReadings = useCallback(
     (activityId: ActivityId, readings: DecibelReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          decibelReadings: readings,
-        },
-      }));
+      patchSession(activityId, { decibelReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setVibrationReadings = useCallback(
     (activityId: ActivityId, readings: VibrationReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          vibrationReadings: readings,
-        },
-      }));
+      patchSession(activityId, { vibrationReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setPerformanceReadings = useCallback(
     (activityId: ActivityId, readings: PerformanceReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          performanceReadings: readings,
-        },
-      }));
+      patchSession(activityId, { performanceReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setParachuteReadings = useCallback(
     (activityId: ActivityId, readings: ParachuteReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          parachuteReadings: readings,
-        },
-      }));
+      patchSession(activityId, { parachuteReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setBounceActual = useCallback(
     (activityId: ActivityId, value: BounceObservation | null) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          bounceActual: value,
-        },
-      }));
+      patchSession(activityId, { bounceActual: value });
     },
-    [],
+    [patchSession],
   );
 
   const setParachuteDesignPhoto = useCallback(
     (activityId: ActivityId, photo: { url: string; expiresAtMs: number } | null) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          parachuteDesignPhotoUrl: photo?.url ?? null,
-          parachuteDesignPhotoExpiresAtMs: photo?.expiresAtMs ?? null,
-        },
-      }));
+      patchSession(activityId, {
+        parachuteDesignPhotoUrl: photo?.url ?? null,
+        parachuteDesignPhotoExpiresAtMs: photo?.expiresAtMs ?? null,
+      });
     },
-    [],
+    [patchSession],
   );
 
   const setTapReactionReadings = useCallback(
     (activityId: ActivityId, readings: TapReactionReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          tapReactionReadings: readings,
-        },
-      }));
+      patchSession(activityId, { tapReactionReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setTracingReadings = useCallback(
     (activityId: ActivityId, readings: TracingReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          tracingReadings: readings,
-        },
-      }));
+      patchSession(activityId, { tracingReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setBreathingReadings = useCallback(
     (activityId: ActivityId, readings: BreathingReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          breathingReadings: readings,
-        },
-      }));
+      patchSession(activityId, { breathingReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
   const setFanAngleReadings = useCallback(
     (activityId: ActivityId, readings: FanAngleReading[]) => {
-      setSessions((prev) => ({
-        ...prev,
-        [activityId]: {
-          ...(prev[activityId] ?? emptySession()),
-          fanAngleReadings: readings,
-        },
-      }));
+      patchSession(activityId, { fanAngleReadings: readings });
     },
-    [],
+    [patchSession],
   );
 
-  const clearCapture = useCallback((activityId: ActivityId) => {
-    setSessions((prev) => ({
-      ...prev,
-      [activityId]: {
-        ...(prev[activityId] ?? emptySession()),
+  const clearCapture = useCallback(
+    (activityId: ActivityId) => {
+      patchSession(activityId, (current) => ({
+        ...current,
         decibelReadings: [],
         vibrationReadings: [],
         performanceReadings: [],
@@ -402,9 +395,10 @@ export function ActivitySessionProvider({
         breathingReadings: [],
         fanAngleReadings: [],
         bounceActual: null,
-      },
-    }));
-  }, []);
+      }));
+    },
+    [patchSession],
+  );
 
   const value = useMemo(
     () => ({

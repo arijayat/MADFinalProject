@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -21,6 +22,7 @@ import {
   vibrationMs2,
   type LevelStatus,
 } from '@/utils/vibration';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 
 type Props = {
   cfg: ActivityConfig;
@@ -30,7 +32,7 @@ type Phase = 'level' | 'recording' | 'between';
 
 export function VibrationCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setVibrationReadings, clearCapture } = useActivitySession();
+  const { setVibrationReadings } = useActivitySession();
   const actions = cfg.vibrationDesignActions ?? ['Design test'];
   const [actionIndex, setActionIndex] = useState(0);
   const [saved, setSaved] = useState<VibrationReading[]>([]);
@@ -89,7 +91,6 @@ export function VibrationCaptureScreen({ cfg }: Props) {
   );
 
   useEffect(() => {
-    clearCapture(cfg.id);
     (async () => {
       if (Platform.OS === 'web') {
         setAvailable(false);
@@ -102,9 +103,15 @@ export function VibrationCaptureScreen({ cfg }: Props) {
       }
     })();
     return () => stopSubscription();
-  }, [cfg.id, clearCapture, startSubscription, stopSubscription]);
+  }, [cfg.id, startSubscription, stopSubscription]);
 
-  const beginRecording = useCallback(() => {
+  const beginRecording = useCallback(async () => {
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'accelerometer recording',
+      strictBlock: true,
+    });
+    if (!batteryOk) return;
+
     if (levelState === 'unlevel') {
       Alert.alert(
         'Surface not level',
@@ -204,6 +211,8 @@ export function VibrationCaptureScreen({ cfg }: Props) {
           disabled={footerDisabled}
         />
       }>
+      <BatteryCaptureBanner />
+
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

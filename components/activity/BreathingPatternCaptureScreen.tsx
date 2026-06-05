@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -17,6 +18,7 @@ import {
   formatBreathingOutcome,
   sampleFromAccel,
 } from '@/utils/breathing';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 
 type Props = {
   cfg: ActivityConfig;
@@ -29,7 +31,7 @@ type Phase = 'ready' | 'recording' | 'exercise_break' | 'all_done';
 
 export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setBreathingReadings, clearCapture } = useActivitySession();
+  const { setBreathingReadings } = useActivitySession();
   const phases = cfg.breathingPhases ?? ['Breathing measurement'];
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [saved, setSaved] = useState<BreathingReading[]>([]);
@@ -92,7 +94,6 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   }, [stopSubscription]);
 
   useEffect(() => {
-    clearCapture(cfg.id);
     (async () => {
       if (Platform.OS === 'web') {
         setAvailable(false);
@@ -105,7 +106,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
       stopSubscription();
       stopElapsedTimer();
     };
-  }, [cfg.id, clearCapture, stopSubscription, stopElapsedTimer]);
+  }, [cfg.id, stopSubscription, stopElapsedTimer]);
 
   const finishRecording = useCallback(() => {
     stopElapsedTimer();
@@ -143,7 +144,13 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
     cfg.id,
   ]);
 
-  const beginRecording = useCallback(() => {
+  const beginRecording = useCallback(async () => {
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'the 30-second breathing recording',
+      strictBlock: true,
+    });
+    if (!batteryOk) return;
+
     samplesRef.current = [];
     setLiveBpm(null);
     setWaveform([]);
@@ -206,6 +213,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           />
         )
       }>
+      <BatteryCaptureBanner />
+
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

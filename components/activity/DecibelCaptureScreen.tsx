@@ -9,12 +9,14 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useActivitySession, type DecibelReading } from '@/contexts/ActivitySessionContext';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatDisplayDb, meteringToDisplayDb } from '@/utils/decibels';
 
 const METERING_OPTIONS = {
@@ -28,7 +30,7 @@ type Props = {
 
 export function DecibelCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setDecibelReadings, clearCapture } = useActivitySession();
+  const { setDecibelReadings } = useActivitySession();
   const actions = cfg.decibelActions ?? ['Measurement'];
   const [actionIndex, setActionIndex] = useState(0);
   const [saved, setSaved] = useState<DecibelReading[]>([]);
@@ -45,7 +47,6 @@ export function DecibelCaptureScreen({ cfg }: Props) {
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
 
   useEffect(() => {
-    clearCapture(cfg.id);
     (async () => {
       if (Platform.OS === 'web') {
         setPermissionGranted(false);
@@ -57,7 +58,7 @@ export function DecibelCaptureScreen({ cfg }: Props) {
         await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
       }
     })();
-  }, [cfg.id, clearCapture]);
+  }, [cfg.id]);
 
   useEffect(() => {
     if (!isRecording || recorderState.metering == null) return;
@@ -70,6 +71,12 @@ export function DecibelCaptureScreen({ cfg }: Props) {
   }, [isRecording, recorderState.metering]);
 
   const startMeasurement = useCallback(async () => {
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'microphone measurement',
+      strictBlock: true,
+    });
+    if (!batteryOk) return;
+
     if (Platform.OS === 'web') {
       Alert.alert('Use a phone', 'Sound measurement requires the iOS or Android app on a real device.');
       return;
@@ -151,6 +158,8 @@ export function DecibelCaptureScreen({ cfg }: Props) {
           <PrimaryButton label={footerLabel} onPress={footerAction} disabled={permissionGranted === false} />
         )
       }>
+      <BatteryCaptureBanner />
+
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

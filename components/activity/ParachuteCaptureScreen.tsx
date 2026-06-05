@@ -16,6 +16,7 @@ import {
 
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
 import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -24,6 +25,7 @@ import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { uploadParachuteDesignPhoto } from '@/lib/storage/parachute-design';
 import {
   formatParachuteDesignPhotoExpiry,
@@ -58,7 +60,6 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     setParachuteReadings,
     setBounceActual,
     setParachuteDesignPhoto,
-    clearCapture,
     getSession,
   } = useActivitySession();
   const session = getSession(cfg.id);
@@ -106,10 +107,6 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
 
   useEffect(() => {
-    clearCapture(cfg.id);
-  }, [cfg.id, clearCapture]);
-
-  useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -149,6 +146,11 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   const startRecording = useCallback(async () => {
     if (!(await ensurePermissions())) return;
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'video recording',
+      strictBlock: false,
+    });
+    if (!batteryOk) return;
     setVideoUri(null);
     setPhase('recording');
     setTick(0);
@@ -517,6 +519,8 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
               : 'Film each drop with your phone camera.'
         }
       />
+
+      <BatteryCaptureBanner />
 
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>

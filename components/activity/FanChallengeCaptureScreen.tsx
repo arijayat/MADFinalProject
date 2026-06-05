@@ -24,9 +24,11 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
+import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
 import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
+import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -52,7 +54,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
   const router = useRouter();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
-  const { setFanAngleReadings, clearCapture } = useActivitySession();
+  const { setFanAngleReadings } = useActivitySession();
   const {
     uploadState,
     uploadedVideo,
@@ -85,10 +87,6 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
-
-  useEffect(() => {
-    clearCapture(cfg.id);
-  }, [cfg.id, clearCapture]);
 
   useEffect(() => {
     return () => {
@@ -144,6 +142,11 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
   const startRecording = useCallback(async () => {
     if (!(await ensurePermissions())) return;
+    const batteryOk = await confirmBatteryForCapture({
+      activityLabel: 'video recording',
+      strictBlock: false,
+    });
+    if (!batteryOk) return;
     setVideoUri(null);
     setPhase('recording');
     setTick(0);
@@ -349,6 +352,8 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
             : 'Record how the paper bends when you fan air at it.'
         }
       />
+
+      <BatteryCaptureBanner />
 
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
