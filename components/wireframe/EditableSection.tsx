@@ -83,15 +83,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   panelTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: Wireframe.text,
   },
   editButton: {
-    padding: 4,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Wireframe.surfaceAlt,
   },
   pressed: {
     opacity: 0.75,
@@ -99,7 +101,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 10,
-    marginTop: 8,
+    marginTop: 10,
   },
   actionButton: {
     flex: 1,

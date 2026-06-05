@@ -48,30 +48,34 @@ export function PrimaryButton({
 
 const styles = StyleSheet.create({
   btn: {
+    minHeight: 50,
     paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: 2,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: Wireframe.text,
+    borderColor: "transparent",
   },
   dark: {
     backgroundColor: Wireframe.primaryButton,
+    boxShadow: "0 6px 16px rgba(15, 23, 42, 0.18)",
   },
   light: {
     backgroundColor: Wireframe.secondaryButton,
+    borderColor: Wireframe.border,
   },
   disabled: {
     opacity: 0.45,
   },
   pressed: {
-    opacity: 0.88,
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
   label: {
-    fontSize: 15,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0,
   },
   labelLight: { color: Wireframe.primaryButtonText },
   labelDark: { color: Wireframe.text },

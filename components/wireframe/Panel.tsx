@@ -19,9 +19,9 @@ export function Panel({ title, children }: Props) {
 
 const styles = StyleSheet.create({
   panelTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: Wireframe.text,
-    marginBottom: 8,
+    marginBottom: 10,
   },
 });

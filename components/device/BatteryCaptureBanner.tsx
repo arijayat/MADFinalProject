@@ -68,7 +68,8 @@ const styles = StyleSheet.create({
     backgroundColor: Wireframe.panelBg,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    borderRadius: 4,
+    borderRadius: 8,
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
   },
   rowLow: {
     borderColor: Wireframe.accentYellow,

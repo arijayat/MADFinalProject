@@ -24,7 +24,8 @@ export function TabScreenHeader({ title, subtitle }: Props) {
 
 const styles = StyleSheet.create({
   header: {
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingTop: 4,
   },
   topRow: {
     flexDirection: 'row',
@@ -35,12 +36,14 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     color: Wireframe.panelBg,
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '800',
+    letterSpacing: 0,
   },
   sub: {
-    color: '#cfcfcf',
+    color: 'rgba(255,255,255,0.76)',
     fontSize: 13,
-    marginTop: 4,
+    lineHeight: 18,
+    marginTop: 6,
   },
 });

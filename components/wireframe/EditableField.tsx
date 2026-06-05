@@ -37,22 +37,23 @@ export function EditableField({
 
 const styles = StyleSheet.create({
   field: {
-    marginBottom: 10,
+    marginBottom: 12,
   },
   label: {
     fontSize: 12,
+    fontWeight: '700',
     color: Wireframe.textMuted,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   input: {
     borderWidth: 1,
     borderColor: Wireframe.border,
-    borderRadius: 2,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 14,
     color: Wireframe.text,
-    backgroundColor: '#fafafa',
+    backgroundColor: Wireframe.surfaceAlt,
   },
   value: {
     fontSize: 15,

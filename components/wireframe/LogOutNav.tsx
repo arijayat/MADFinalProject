@@ -55,14 +55,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 2,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   pressed: {
     opacity: 0.85,
   },
   text: {
     color: Wireframe.panelBg,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

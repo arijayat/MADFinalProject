@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingBottom: 10,
   },
   flex: {
     flex: 1,
@@ -57,12 +57,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: 6,
     paddingBottom: 32,
-    gap: 12,
+    gap: 14,
   },
   footer: {
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#444',
+    borderTopColor: 'rgba(255,255,255,0.18)',
   },
 });
