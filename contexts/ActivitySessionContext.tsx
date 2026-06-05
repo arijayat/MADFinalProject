@@ -12,6 +12,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { sessionFromActivityResult } from "@/lib/activity-snapshot";
 import { listTeamActivityResults } from "@/lib/firestore/results";
+import type { StoredActivityMedia } from "@/lib/storage/media-expiry";
 
 export type DecibelReading = {
   label: string;
@@ -45,10 +46,8 @@ export type ParachuteReading = {
   reboundTimeS: number | null;
   /** What you saw on landing (from slow-motion review) */
   observedBounce: BounceObservation | null;
-  /** Cloud Storage URL for this drop video */
-  videoUrl: string | null;
-  /** Unix ms when the Storage video may be deleted */
-  videoExpiresAtMs: number | null;
+  /** Cloud recording for this drop (30-day retention) */
+  video: StoredActivityMedia | null;
 };
 
 export type TapReactionReading = {
@@ -77,10 +76,8 @@ export type BreathingReading = {
 export type FanAngleReading = {
   label: string;
   angleDegrees: number;
-  /** Cloud Storage URL for this trial video */
-  videoUrl: string | null;
-  /** Unix ms when the Storage video may be deleted */
-  videoExpiresAtMs: number | null;
+  /** Cloud recording for this trial (30-day retention) */
+  video: StoredActivityMedia | null;
 };
 
 type ActivitySession = {

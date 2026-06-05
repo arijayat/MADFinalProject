@@ -1,104 +1,97 @@
 import { useCallback, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 
-import { useAuth } from '@/contexts/AuthContext';
-import { useTeam } from '@/contexts/TeamContext';
-import type { StoredActivityMedia } from '@/lib/storage/activity-media-expiry';
-import {
-  uploadActivityVideo,
-  type ActivityVideoFolder,
-} from '@/lib/storage/activity-video';
+import type { VideoActivityId } from '@/lib/storage/activity-video';
+import { uploadActivityVideo } from '@/lib/storage/activity-video';
+import type { StoredActivityMedia } from '@/lib/storage/media-expiry';
 
-export function useActivityVideoUpload(folder: ActivityVideoFolder) {
-  const { user } = useAuth();
-  const { teamDocId } = useTeam();
-  const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState<StoredActivityMedia | null>(null);
+export type VideoUploadState = 'idle' | 'uploading' | 'done' | 'failed';
+
+export function useActivityVideoUpload(params: {
+  activityId: VideoActivityId;
+  teamId: string | null;
+  isSignedIn: boolean;
+}) {
+  const [uploadState, setUploadState] = useState<VideoUploadState>('idle');
+  const [uploadedVideo, setUploadedVideo] = useState<StoredActivityMedia | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const inFlightUriRef = useRef<string | null>(null);
-
-  const canUpload = Boolean(user && teamDocId);
+  const actionIndexRef = useRef(0);
 
   const resetUpload = useCallback(() => {
-    setUploading(false);
-    setUploaded(null);
+    setUploadState('idle');
+    setUploadedVideo(null);
     setUploadError(null);
-    inFlightUriRef.current = null;
   }, []);
 
   const startUpload = useCallback(
     async (localUri: string, actionIndex: number) => {
-      if (!user) {
+      if (!params.isSignedIn) {
+        setUploadState('failed');
         setUploadError('Sign in to upload videos to the cloud.');
         return;
       }
-      if (!teamDocId) {
-        setUploadError('Join a team to upload videos to the cloud.');
-        return;
-      }
-      if (inFlightUriRef.current === localUri) {
+      if (!params.teamId) {
+        setUploadState('failed');
+        setUploadError('Register or join a team before uploading videos.');
         return;
       }
 
-      inFlightUriRef.current = localUri;
-      setUploading(true);
+      actionIndexRef.current = actionIndex;
+      setUploadState('uploading');
       setUploadError(null);
-      setUploaded(null);
+      setUploadedVideo(null);
 
       try {
         const result = await uploadActivityVideo({
-          teamId: teamDocId,
+          teamId: params.teamId,
+          activityId: params.activityId,
+          actionIndex,
           localUri,
-          folder,
-          fileName: `action-${actionIndex + 1}.mp4`,
         });
-        setUploaded(result);
+        setUploadedVideo(result);
+        setUploadState('done');
       } catch (error) {
-        inFlightUriRef.current = null;
-        const message =
+        setUploadState('failed');
+        setUploadError(
           error instanceof Error
             ? error.message
-            : 'Could not upload video. Check Storage rules and your connection.';
-        setUploadError(message);
-      } finally {
-        setUploading(false);
+            : 'Could not upload video. Check Storage rules and your connection.',
+        );
       }
     },
-    [user, teamDocId, folder],
+    [params.activityId, params.isSignedIn, params.teamId],
   );
 
   const retryUpload = useCallback(
-    (localUri: string, actionIndex: number) => {
-      inFlightUriRef.current = null;
-      void startUpload(localUri, actionIndex);
+    async (localUri: string) => {
+      await startUpload(localUri, actionIndexRef.current);
     },
     [startUpload],
   );
 
-  const requireUploadedBeforeSave = useCallback((): boolean => {
-    if (!canUpload) return true;
-    if (uploading) {
-      Alert.alert('Video uploading', 'Wait for the video to finish uploading before continuing.');
-      return false;
+  const requireUploadComplete = useCallback((): StoredActivityMedia | null => {
+    if (uploadState === 'uploading') {
+      Alert.alert('Upload in progress', 'Wait for the video to finish uploading to the cloud.');
+      return null;
     }
-    if (!uploaded) {
+    if (uploadState !== 'done' || !uploadedVideo) {
       Alert.alert(
         'Video upload needed',
-        uploadError ?? 'Your recording must upload to the cloud before you continue.',
+        uploadError ?? 'Your recording must be uploaded before you continue.',
+        [{ text: 'OK' }],
       );
-      return false;
+      return null;
     }
-    return true;
-  }, [canUpload, uploading, uploaded, uploadError]);
+    return uploadedVideo;
+  }, [uploadState, uploadedVideo, uploadError]);
 
   return {
-    canUpload,
-    uploading,
-    uploaded,
+    uploadState,
+    uploadedVideo,
     uploadError,
     startUpload,
-    retryUpload,
     resetUpload,
-    requireUploadedBeforeSave,
+    retryUpload,
+    requireUploadComplete,
   };
 }

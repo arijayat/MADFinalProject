@@ -1,4 +1,4 @@
-/** Activity media (photos/videos) are removed from Storage after 30 days (see storage.lifecycle.json). */
+/** Team media in Storage is removed after 30 days (see storage.lifecycle.json). */
 export const ACTIVITY_MEDIA_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type StoredActivityMedia = {
@@ -18,18 +18,18 @@ export function isActivityMediaExpired(
   return nowMs >= expiresAtMs;
 }
 
+export function activeStoredMediaUrl(
+  media: StoredActivityMedia | null | undefined,
+): string | null {
+  if (!media?.url) return null;
+  if (isActivityMediaExpired(media.expiresAtMs)) return null;
+  return media.url;
+}
+
 export function formatActivityMediaExpiry(expiresAtMs: number): string {
   return new Date(expiresAtMs).toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
-}
-
-export function activeActivityMediaUrl(
-  url: string | null | undefined,
-  expiresAtMs: number | null | undefined,
-): string | null {
-  if (!url || isActivityMediaExpired(expiresAtMs)) return null;
-  return url;
 }

@@ -2,7 +2,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
 import { getFirebaseStorage } from '@/lib/firebase';
-import { parachuteDesignPhotoExpiresAtMs } from '@/lib/storage/activity-media-expiry';
+import { activityMediaExpiresAtMs } from '@/lib/storage/media-expiry';
 
 /** Longest edge after resize — enough to review a parachute on a phone. */
 const MAX_EDGE_PX = 1024;
@@ -41,6 +41,6 @@ export async function uploadParachuteDesignPhoto(params: {
   const uploadedAtMs = Date.now();
   return {
     url: await getDownloadURL(objectRef),
-    expiresAtMs: parachuteDesignPhotoExpiresAtMs(uploadedAtMs),
+    expiresAtMs: activityMediaExpiresAtMs(uploadedAtMs),
   };
 }

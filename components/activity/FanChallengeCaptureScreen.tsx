@@ -21,8 +21,12 @@ import {
   View,
 } from 'react-native';
 
+import { useAuth } from '@/contexts/AuthContext';
+import { useTeam } from '@/contexts/TeamContext';
+import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
+
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
-import { VideoUploadBanner } from '@/components/activity/VideoUploadBanner';
+import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -32,7 +36,6 @@ import {
   useActivitySession,
   type FanAngleReading,
 } from '@/contexts/ActivitySessionContext';
-import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
 
 type Props = {
   cfg: ActivityConfig;
@@ -44,21 +47,25 @@ type RecordingResult = { uri: string };
 
 /** Quarter-speed playback when reviewing bends for precise angle measurement. */
 const REVIEW_PLAYBACK_RATE = 0.25;
-const VIDEO_RECORD_OPTIONS = { maxDuration: 30 } as const;
 
 export function FanChallengeCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { user } = useAuth();
+  const { teamDocId } = useTeam();
   const { setFanAngleReadings, clearCapture } = useActivitySession();
   const {
-    canUpload: canUploadVideo,
-    uploading: uploadingVideo,
-    uploaded: uploadedVideo,
-    uploadError: videoUploadError,
-    startUpload: startVideoUpload,
-    retryUpload: retryVideoUpload,
-    resetUpload: resetVideoUpload,
-    requireUploadedBeforeSave,
-  } = useActivityVideoUpload('fan-videos');
+    uploadState,
+    uploadedVideo,
+    uploadError,
+    startUpload,
+    resetUpload,
+    retryUpload,
+    requireUploadComplete,
+  } = useActivityVideoUpload({
+    activityId: 'hand-fan-challenge',
+    teamId: teamDocId,
+    isSignedIn: !!user,
+  });
   const actions = cfg.fanChallengeActions ?? ['Record bend'];
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<RecordingResult | undefined> | null>(
@@ -90,10 +97,9 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!videoUri || phase === 'preview' || phase === 'recording') return;
-    if (!canUploadVideo) return;
-    void startVideoUpload(videoUri, actionIndex);
-  }, [videoUri, actionIndex, phase, canUploadVideo, startVideoUpload]);
+    if (!videoUri) return;
+    void startUpload(videoUri, actionIndex);
+  }, [videoUri, actionIndex, startUpload]);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -144,7 +150,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
     timerRef.current = setInterval(() => setTick((t) => t + 1), 1000);
     try {
       recordingPromiseRef.current =
-        cameraRef.current?.recordAsync(VIDEO_RECORD_OPTIONS) ?? null;
+        cameraRef.current?.recordAsync({ maxDuration: 30 }) ?? null;
     } catch {
       Alert.alert(
         'Could not record',
@@ -188,29 +194,29 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
   const reRecord = useCallback(() => {
     setVideoUri(null);
-    resetVideoUpload();
+    resetUpload();
     setPhase('preview');
-  }, [resetVideoUpload]);
+  }, [resetUpload]);
 
   const saveAngle = useCallback(() => {
-    if (!requireUploadedBeforeSave()) return;
-
     const angle = parseFloat(angleInput);
     if (!Number.isFinite(angle) || angle < 0 || angle > 180) {
       Alert.alert('Invalid angle', 'Enter a bend angle between 0 and 180 degrees.');
       return;
     }
 
+    const video = requireUploadComplete();
+    if (!video) return;
+
     const reading: FanAngleReading = {
       label: currentLabel,
       angleDegrees: angle,
-      videoUrl: uploadedVideo?.url ?? null,
-      videoExpiresAtMs: uploadedVideo?.expiresAtMs ?? null,
+      video,
     };
     const nextSaved = [...saved, reading];
     setSaved(nextSaved);
     setVideoUri(null);
-    resetVideoUpload();
+    resetUpload();
 
     if (actionIndex + 1 < actions.length) {
       setActionIndex((i) => i + 1);
@@ -227,9 +233,8 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
     currentLabel,
     setFanAngleReadings,
     cfg.id,
-    requireUploadedBeforeSave,
-    uploadedVideo,
-    resetVideoUpload,
+    requireUploadComplete,
+    resetUpload,
   ]);
 
   const permissionsReady =
@@ -247,19 +252,13 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
   } else if (phase === 'recording') {
     footer = <PrimaryButton label="STOP RECORDING" onPress={stopRecording} />;
   } else if (phase === 'review') {
-    footer = (
-      <PrimaryButton
-        label="MEASURE ANGLE"
-        onPress={goToAngleEntry}
-        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
-      />
-    );
+    footer = <PrimaryButton label="MEASURE ANGLE" onPress={goToAngleEntry} />;
   } else if (phase === 'angle') {
     footer = (
       <PrimaryButton
         label="SAVE ANGLE & CONTINUE"
         onPress={saveAngle}
-        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
+        disabled={uploadState === 'uploading'}
       />
     );
   } else if (!permissionsReady && Platform.OS !== 'web') {
@@ -282,14 +281,11 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
           <Pressable onPress={reRecord} hitSlop={8}>
             <Text style={styles.reRecordLink}>Re-record this trial</Text>
           </Pressable>
-          <VideoUploadBanner
-            canUpload={canUploadVideo}
-            uploading={uploadingVideo}
-            uploaded={uploadedVideo}
-            uploadError={videoUploadError}
-            onRetry={
-              videoUri ? () => retryVideoUpload(videoUri, actionIndex) : undefined
-            }
+          <ActivityVideoUploadStatus
+            state={uploadState}
+            error={uploadError}
+            expiresAtMs={uploadedVideo?.expiresAtMs}
+            onRetry={videoUri ? () => void retryUpload(videoUri) : undefined}
           />
         </View>
       );
@@ -322,13 +318,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
     return (
       <View style={styles.viewfinder}>
-        <CameraView
-          ref={cameraRef}
-          style={styles.camera}
-          facing="back"
-          mode="video"
-          videoQuality="720p"
-        />
+        <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" />
         {phase === 'recording' ? (
           <View style={styles.recordingBar}>
             <Text style={styles.recording}>RECORDING</Text>
@@ -384,6 +374,12 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
       {phase === 'angle' && videoUri ? (
         <View style={styles.anglePanel}>
+          <ActivityVideoUploadStatus
+            state={uploadState}
+            error={uploadError}
+            expiresAtMs={uploadedVideo?.expiresAtMs}
+            onRetry={() => void retryUpload(videoUri)}
+          />
           <Text style={styles.angleTitle}>Enter maximum bend angle</Text>
           <Text style={styles.angleHint}>
             From your slow-motion video, measure the angle (in degrees) at the
@@ -399,13 +395,6 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
             maxLength={6}
           />
           <DropVideoReview uri={videoUri} playbackRate={REVIEW_PLAYBACK_RATE} />
-          <VideoUploadBanner
-            canUpload={canUploadVideo}
-            uploading={uploadingVideo}
-            uploaded={uploadedVideo}
-            uploadError={videoUploadError}
-            onRetry={() => retryVideoUpload(videoUri, actionIndex)}
-          />
         </View>
       ) : null}
 

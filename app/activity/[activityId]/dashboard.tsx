@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenHeader } from "@/components/wireframe/BackNav";
-import { StoredActivityVideos } from "@/components/activity/StoredActivityVideos";
+import { ActivityRecordedVideosPanel } from "@/components/activity/ActivityRecordedVideosPanel";
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
@@ -15,9 +15,9 @@ import {
     type BounceObservation,
 } from "@/contexts/ActivitySessionContext";
 import {
-  formatActivityMediaExpiry,
-  isActivityMediaExpired,
-} from "@/lib/storage/activity-media-expiry";
+  formatParachuteDesignPhotoExpiry,
+  isParachuteDesignPhotoExpired,
+} from "@/lib/storage/parachute-design-expiry";
 import {
   BREATHING_PHASE_SHORT,
   bpmPredictionMatches,
@@ -548,13 +548,13 @@ export default function ActivityDashboardScreen() {
       });
       const designUrl = session.parachuteDesignPhotoUrl;
       const designExpiresAtMs = session.parachuteDesignPhotoExpiresAtMs;
-      const designExpired = isActivityMediaExpired(designExpiresAtMs);
+      const designExpired = isParachuteDesignPhotoExpired(designExpiresAtMs);
       const activeDesignUrl = designExpired ? null : designUrl;
       const contextLines: ContextLine[] = [];
       if (activeDesignUrl && designExpiresAtMs) {
         contextLines.push({
           label: "Action 3 — design photo available until",
-          value: formatActivityMediaExpiry(designExpiresAtMs),
+          value: formatParachuteDesignPhotoExpiry(designExpiresAtMs),
         });
       } else if (designUrl && designExpired) {
         contextLines.push({
@@ -1011,13 +1011,21 @@ export default function ActivityDashboardScreen() {
           </Text>
         </Panel>
       ) : null}
+      {cfg.id === "parachute-drop" && session ? (
+        <ActivityRecordedVideosPanel
+          title="Recorded drop videos"
+          entries={(cfg.parachuteDropActions ?? []).map((label, i) => ({
+            label,
+            video: session.parachuteReadings[i]?.video ?? null,
+          }))}
+        />
+      ) : null}
       {cfg.id === "hand-fan-challenge" && session ? (
-        <StoredActivityVideos
-          title="Fan trial videos"
-          entries={session.fanAngleReadings.map((reading) => ({
-            title: reading.label,
-            videoUrl: reading.videoUrl,
-            videoExpiresAtMs: reading.videoExpiresAtMs,
+        <ActivityRecordedVideosPanel
+          title="Recorded fan challenge videos"
+          entries={(cfg.fanChallengeActions ?? []).map((label, i) => ({
+            label,
+            video: session.fanAngleReadings[i]?.video ?? null,
           }))}
         />
       ) : null}
@@ -1075,7 +1083,7 @@ export default function ActivityDashboardScreen() {
           <Text style={styles.designPhotoTitle}>Action 3 — revised parachute design</Text>
           {dashboardData.designPhotoExpiresAtMs ? (
             <Text style={styles.designPhotoExpiry}>
-              Stored until {formatActivityMediaExpiry(dashboardData.designPhotoExpiresAtMs)}
+              Stored until {formatParachuteDesignPhotoExpiry(dashboardData.designPhotoExpiresAtMs)}
             </Text>
           ) : null}
           <Image
@@ -1090,16 +1098,6 @@ export default function ActivityDashboardScreen() {
           Your design photo has expired and was removed from cloud storage. Fall times and other
           results are still saved.
         </Text>
-      ) : null}
-      {cfg.id === "parachute-drop" && session ? (
-        <StoredActivityVideos
-          title="Drop videos"
-          entries={session.parachuteReadings.map((reading, index) => ({
-            title: PARACHUTE_ACTION_LABELS[index] ?? reading.label,
-            videoUrl: reading.videoUrl,
-            videoExpiresAtMs: reading.videoExpiresAtMs,
-          }))}
-        />
       ) : null}
       {cfg.id === "parachute-drop" ? (
         <Text style={styles.note}>

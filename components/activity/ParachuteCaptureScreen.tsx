@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
-import { VideoUploadBanner } from '@/components/activity/VideoUploadBanner';
+import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -26,9 +26,9 @@ import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
 import { uploadParachuteDesignPhoto } from '@/lib/storage/parachute-design';
 import {
-  formatActivityMediaExpiry,
-  isActivityMediaExpired,
-} from '@/lib/storage/activity-media-expiry';
+  formatParachuteDesignPhotoExpiry,
+  isParachuteDesignPhotoExpired,
+} from '@/lib/storage/parachute-design-expiry';
 import { parsePositiveSeconds } from '@/utils/parse-number';
 import {
   useActivitySession,
@@ -49,7 +49,6 @@ const ACTION_3_INDEX = 2;
 
 /** Quarter-speed playback when reviewing drops for precise landing timestamps. */
 const REVIEW_PLAYBACK_RATE = 0.25;
-const VIDEO_RECORD_OPTIONS = { maxDuration: 30 } as const;
 
 export function ParachuteCaptureScreen({ cfg }: Props) {
   const router = useRouter();
@@ -63,19 +62,22 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     getSession,
   } = useActivitySession();
   const session = getSession(cfg.id);
-  const designPhotoExpired = isActivityMediaExpired(session.parachuteDesignPhotoExpiresAtMs);
+  const designPhotoExpired = isParachuteDesignPhotoExpired(session.parachuteDesignPhotoExpiresAtMs);
   const designPhotoUrl = designPhotoExpired ? null : session.parachuteDesignPhotoUrl;
   const designPhotoExpiresAtMs = designPhotoExpired ? null : session.parachuteDesignPhotoExpiresAtMs;
   const {
-    canUpload: canUploadVideo,
-    uploading: uploadingVideo,
-    uploaded: uploadedVideo,
-    uploadError: videoUploadError,
-    startUpload: startVideoUpload,
-    retryUpload: retryVideoUpload,
-    resetUpload: resetVideoUpload,
-    requireUploadedBeforeSave,
-  } = useActivityVideoUpload('parachute-videos');
+    uploadState,
+    uploadedVideo,
+    uploadError,
+    startUpload,
+    resetUpload,
+    retryUpload,
+    requireUploadComplete,
+  } = useActivityVideoUpload({
+    activityId: 'parachute-drop',
+    teamId: teamDocId,
+    isSignedIn: !!user,
+  });
   const actions = cfg.parachuteDropActions ?? ['Drop'];
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<Promise<RecordingResult | undefined> | null>(null);
@@ -113,6 +115,11 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!videoUri) return;
+    void startUpload(videoUri, actionIndex);
+  }, [videoUri, actionIndex, startUpload]);
+
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
     const sec = s % 60;
@@ -147,7 +154,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     setTick(0);
     timerRef.current = setInterval(() => setTick((t) => t + 1), 1000);
     try {
-      recordingPromiseRef.current = cameraRef.current?.recordAsync(VIDEO_RECORD_OPTIONS) ?? null;
+      recordingPromiseRef.current = cameraRef.current?.recordAsync({ maxDuration: 30 }) ?? null;
     } catch {
       Alert.alert('Could not record', 'Try again with the camera pointed at the full drop path.');
       setPhase('preview');
@@ -191,23 +198,15 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   const reRecord = useCallback(() => {
     setVideoUri(null);
-    resetVideoUpload();
+    resetUpload();
     setPhase('preview');
-  }, [resetVideoUpload]);
+  }, [resetUpload]);
 
   useEffect(() => {
     if (needsDesignUpload && phase === 'preview') {
       setPhase('design-upload');
     }
   }, [needsDesignUpload, phase]);
-
-  useEffect(() => {
-    if (!videoUri || phase === 'preview' || phase === 'recording' || phase === 'design-upload') {
-      return;
-    }
-    if (!canUploadVideo) return;
-    void startVideoUpload(videoUri, actionIndex);
-  }, [videoUri, actionIndex, phase, canUploadVideo, startVideoUpload]);
 
   const uploadDesignPhoto = useCallback(
     async (localUri: string) => {
@@ -279,8 +278,6 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   }, [designPhotoUrl]);
 
   const saveTimes = useCallback(() => {
-    if (!requireUploadedBeforeSave()) return;
-
     const fall = parsePositiveSeconds(fallTimeInput);
     if (fall == null) {
       Alert.alert(
@@ -316,19 +313,21 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       return;
     }
 
+    const video = requireUploadComplete();
+    if (!video) return;
+
     const reading: ParachuteReading = {
       label: currentLabel,
       fallTimeS: fall,
       contactTimeS: contact,
       reboundTimeS: rebound,
       observedBounce: isLastAction ? observedBounce : null,
-      videoUrl: uploadedVideo?.url ?? null,
-      videoExpiresAtMs: uploadedVideo?.expiresAtMs ?? null,
+      video,
     };
     const nextSaved = [...saved, reading];
     setSaved(nextSaved);
     setVideoUri(null);
-    resetVideoUpload();
+    resetUpload();
 
     if (actionIndex + 1 < actions.length) {
       const nextIndex = actionIndex + 1;
@@ -357,9 +356,8 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     setBounceActual,
     cfg.id,
     designPhotoUrl,
-    uploadedVideo,
-    requireUploadedBeforeSave,
-    resetVideoUpload,
+    requireUploadComplete,
+    resetUpload,
   ]);
 
   const permissionsReady =
@@ -381,19 +379,13 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   } else if (phase === 'recording') {
     footer = <PrimaryButton label="STOP RECORDING" onPress={stopRecording} />;
   } else if (phase === 'review') {
-    footer = (
-      <PrimaryButton
-        label="ENTER TIMES"
-        onPress={goToTimesEntry}
-        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
-      />
-    );
+    footer = <PrimaryButton label="ENTER TIMES" onPress={goToTimesEntry} />;
   } else if (phase === 'times') {
     footer = (
       <PrimaryButton
         label="SAVE TIMES & CONTINUE"
         onPress={saveTimes}
-        disabled={canUploadVideo && (uploadingVideo || !uploadedVideo)}
+        disabled={uploadState === 'uploading'}
       />
     );
   } else if (!permissionsReady && Platform.OS !== 'web') {
@@ -438,7 +430,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
             <Text style={styles.designSaved}>
               ✓ Design uploaded — available until{' '}
               {designPhotoExpiresAtMs
-                ? formatActivityMediaExpiry(designPhotoExpiresAtMs)
+                ? formatParachuteDesignPhotoExpiry(designPhotoExpiresAtMs)
                 : 'expiry date unknown'}
             </Text>
           ) : null}
@@ -457,14 +449,11 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           <Pressable onPress={reRecord} hitSlop={8}>
             <Text style={styles.reRecordLink}>Re-record this drop</Text>
           </Pressable>
-          <VideoUploadBanner
-            canUpload={canUploadVideo}
-            uploading={uploadingVideo}
-            uploaded={uploadedVideo}
-            uploadError={videoUploadError}
-            onRetry={
-              videoUri ? () => retryVideoUpload(videoUri, actionIndex) : undefined
-            }
+          <ActivityVideoUploadStatus
+            state={uploadState}
+            error={uploadError}
+            expiresAtMs={uploadedVideo?.expiresAtMs}
+            onRetry={videoUri ? () => void retryUpload(videoUri) : undefined}
           />
         </View>
       );
@@ -495,13 +484,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
     return (
       <View style={styles.viewfinder}>
-        <CameraView
-          ref={cameraRef}
-          style={styles.camera}
-          facing="back"
-          mode="video"
-          videoQuality="720p"
-        />
+        <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" />
         {phase === 'recording' ? (
           <View style={styles.recordingBar}>
             <Text style={styles.recording}>RECORDING</Text>
@@ -558,18 +541,17 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
         <View style={styles.inlineReview}>
           <Text style={styles.inlineReviewLabel}>Your recording</Text>
           <DropVideoReview uri={videoUri} playbackRate={REVIEW_PLAYBACK_RATE} />
-          <VideoUploadBanner
-            canUpload={canUploadVideo}
-            uploading={uploadingVideo}
-            uploaded={uploadedVideo}
-            uploadError={videoUploadError}
-            onRetry={() => retryVideoUpload(videoUri, actionIndex)}
-          />
         </View>
       ) : null}
 
       {phase === 'times' ? (
         <View style={styles.timesPanel}>
+          <ActivityVideoUploadStatus
+            state={uploadState}
+            error={uploadError}
+            expiresAtMs={uploadedVideo?.expiresAtMs}
+            onRetry={videoUri ? () => void retryUpload(videoUri) : undefined}
+          />
           <Text style={styles.timesTitle}>Read times from your video</Text>
           <Text style={styles.fieldLabel}>Fall time — release to first ground contact (s)</Text>
           <TextInput
