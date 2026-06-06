@@ -1,8 +1,10 @@
 import { ReactNode } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Animated, { FadeInUp, LinearTransition } from 'react-native-reanimated';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   children: ReactNode;
@@ -11,8 +13,11 @@ type Props = {
 };
 
 export function WireScreen({ children, footer, scroll = true }: Props) {
+  const { colors } = useAppTheme();
   const body = scroll ? (
-    <ScrollView
+    <Animated.ScrollView
+      entering={FadeInUp.duration(220).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="always"
@@ -20,20 +25,34 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}>
       {children}
-    </ScrollView>
+    </Animated.ScrollView>
   ) : (
-    <View style={styles.flex}>{children}</View>
+    <Animated.View
+      entering={FadeInUp.duration(220).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
+      style={styles.flex}>
+      {children}
+    </Animated.View>
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.screenBg }]}
+      edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}>
         <View style={styles.inner}>
           {body}
-          {footer ? <View style={styles.footer}>{footer}</View> : null}
+          {footer ? (
+            <Animated.View
+              entering={FadeInUp.duration(180)}
+              layout={LinearTransition.duration(160)}
+              style={styles.footer}>
+              {footer}
+            </Animated.View>
+          ) : null}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -47,8 +66,9 @@ const styles = StyleSheet.create({
   },
   inner: {
     flex: 1,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   flex: {
     flex: 1,
@@ -57,12 +77,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    paddingTop: 12,
     paddingBottom: 32,
-    gap: 12,
+    gap: 14,
   },
   footer: {
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#444',
+    borderTopColor: 'rgba(255,255,255,0.18)',
   },
 });

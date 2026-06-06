@@ -1,6 +1,15 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeInUp,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 type Props = {
   title: string;
@@ -9,47 +18,100 @@ type Props = {
   onPress: () => void;
 };
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export function ActivityCard({ title, description, requirements, onPress }: Props) {
+  const { colors, isDark } = useAppTheme();
+  const scale = useSharedValue(1);
+  const requirementColor = isDark ? '#7dd3fc' : Wireframe.requirements;
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.desc}>{description}</Text>
-      <Text style={styles.reqLabel}>Requirements:</Text>
-      <Text style={styles.reqList}>*{requirements.join(', ')}</Text>
-    </Pressable>
+    <AnimatedPressable
+      entering={FadeInUp.duration(200).springify().damping(18)}
+      layout={LinearTransition.duration(180)}
+      onPress={onPress}
+      onPressIn={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(0.985, { duration: 90 });
+      }}
+      onPressOut={() => {
+        // eslint-disable-next-line react-hooks/immutability
+        scale.value = withTiming(1, { duration: 120 });
+      }}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: colors.border,
+          boxShadow: colors.shadow,
+        },
+        animatedStyle,
+      ]}>
+      <View style={styles.topRow}>
+        <View style={[styles.iconBubble, { backgroundColor: colors.accentSoft }]}>
+          <MaterialIcons name="science" size={20} color={Wireframe.accent} />
+        </View>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+      </View>
+      <Text style={[styles.desc, { color: colors.textMuted }]}>{description}</Text>
+      <Text style={[styles.reqLabel, { color: colors.text }]}>Requirements</Text>
+      <Text style={[styles.reqList, { color: requirementColor }]}>
+        {requirements.slice(0, 3).join(' · ')}
+      </Text>
+    </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: Wireframe.panelBg,
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    padding: 12,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 2,
+    boxShadow: Wireframe.shadow,
   },
-  pressed: { opacity: 0.92 },
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  iconBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Wireframe.accentSoft,
+  },
   title: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
     color: Wireframe.text,
-    marginBottom: 4,
   },
   desc: {
     fontSize: 13,
     color: Wireframe.textMuted,
-    marginBottom: 6,
+    lineHeight: 18,
+    marginBottom: 12,
   },
   reqLabel: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '800',
     color: Wireframe.text,
-    marginTop: 4,
+    textTransform: 'uppercase',
   },
   reqList: {
     fontSize: 12,
     color: Wireframe.requirements,
-    fontStyle: 'italic',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 17,
   },
 });

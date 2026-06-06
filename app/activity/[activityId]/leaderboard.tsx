@@ -13,9 +13,11 @@ import { fetchActivityLeaderboard, type LeaderboardRow } from '@/lib/firestore/r
 import { listTeamsForLeaderboard } from '@/lib/firestore/teams';
 import { isActivityId } from '@/lib/activity-snapshot';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 export default function ActivityLeaderboardScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const { teamDocId } = useTeam();
   const cfg = activityId ? getActivity(activityId) : undefined;
@@ -50,13 +52,14 @@ export default function ActivityLeaderboardScreen() {
   }, [activityId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadLeaderboard();
   }, [loadLeaderboard]);
 
   if (!cfg) {
     return (
       <WireScreen>
-        <Text style={{ color: Wireframe.panelBg }}>Activity not found.</Text>
+        <Text style={{ color: colors.text }}>Activity not found.</Text>
       </WireScreen>
     );
   }
@@ -73,48 +76,60 @@ export default function ActivityLeaderboardScreen() {
         subtitle={cfg.leaderboardSubtitle}
       />
       <View style={styles.liveRow}>
-        <MaterialIcons name="info-outline" size={18} color={Wireframe.textMuted} />
-        <Text style={styles.liveText}>
+        <MaterialIcons name="info-outline" size={18} color={colors.headerSubtle} />
+        <Text style={[styles.liveText, { color: colors.headerSubtle }]}>
           {loading ? 'Loading rankings from cloud…' : 'Rankings from saved team results.'}
         </Text>
       </View>
       <Panel>
         {loading ? (
-          <ActivityIndicator color={Wireframe.text} style={styles.spinner} />
+          <ActivityIndicator color={colors.text} style={styles.spinner} />
         ) : error ? (
           <Text style={styles.error}>{error}</Text>
         ) : rows.length === 0 ? (
-          <Text style={styles.empty}>No teams have saved this activity yet.</Text>
+          <Text style={[styles.empty, { color: colors.textMuted }]}>No teams have saved this activity yet.</Text>
         ) : (
           <ScrollView horizontal>
-            <View style={styles.table}>
-              <View style={styles.row}>
-                <Text style={[styles.cell, styles.h, styles.cRank]}>Rank</Text>
-                <Text style={[styles.cell, styles.h, styles.cTeam]}>Team</Text>
-                <Text style={[styles.cell, styles.h, styles.cId]}>ID</Text>
-                <Text style={[styles.cell, styles.h, styles.cScore]}>Score</Text>
+            <View style={[styles.table, { borderColor: colors.border }]}>
+              <View style={[styles.row, { borderBottomColor: colors.border }]}>
+                <Text style={[styles.cell, styles.h, styles.cRank, { color: colors.text, borderRightColor: colors.border, backgroundColor: colors.surfaceAlt }]}>Rank</Text>
+                <Text style={[styles.cell, styles.h, styles.cTeam, { color: colors.text, borderRightColor: colors.border, backgroundColor: colors.surfaceAlt }]}>Team</Text>
+                <Text style={[styles.cell, styles.h, styles.cId, { color: colors.text, borderRightColor: colors.border, backgroundColor: colors.surfaceAlt }]}>ID</Text>
+                <Text style={[styles.cell, styles.h, styles.cScore, { color: colors.text, borderRightColor: colors.border, backgroundColor: colors.surfaceAlt }]}>Score</Text>
               </View>
               {rows.map((r) => (
                 <View
                   key={`${r.teamDocId}-${r.rank}`}
-                  style={[styles.row, r.teamDocId === teamDocId && styles.youRow]}>
-                  <Text style={[styles.cell, styles.cRank, styles.center]}>{r.rank}</Text>
-                  <Text style={[styles.cell, styles.cTeam]} numberOfLines={1}>
+                  style={[
+                    styles.row,
+                    { borderBottomColor: colors.border },
+                    r.teamDocId === teamDocId && { backgroundColor: colors.accentSoft },
+                  ]}>
+                  <Text style={[styles.cell, styles.cRank, styles.center, { color: colors.text, borderRightColor: colors.border }]}>{r.rank}</Text>
+                  <Text style={[styles.cell, styles.cTeam, { color: colors.text, borderRightColor: colors.border }]} numberOfLines={1}>
                     {r.team}
                   </Text>
-                  <Text style={[styles.cell, styles.cId, styles.center]}>{r.id}</Text>
-                  <Text style={[styles.cell, styles.cScore, styles.center]}>{r.score}</Text>
+                  <Text style={[styles.cell, styles.cId, styles.center, { color: colors.text, borderRightColor: colors.border }]}>{r.id}</Text>
+                  <Text style={[styles.cell, styles.cScore, styles.center, { color: colors.text, borderRightColor: colors.border }]}>{r.score}</Text>
                 </View>
               ))}
             </View>
           </ScrollView>
         )}
       </Panel>
-      <View style={styles.doneBox}>
-        <MaterialIcons name="info-outline" size={18} color={Wireframe.textMuted} />
+      <View
+        style={[
+          styles.doneBox,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <MaterialIcons name="info-outline" size={18} color={colors.textMuted} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.doneTitle}>Activity Complete!</Text>
-          <Text style={styles.doneBody}>
+          <Text style={[styles.doneTitle, { color: colors.text }]}>Activity Complete!</Text>
+          <Text style={[styles.doneBody, { color: colors.textMuted }]}>
             {yourRow
               ? `Your team is ranked #${yourRow.rank} with a score of ${yourRow.score}.`
               : teamDocId

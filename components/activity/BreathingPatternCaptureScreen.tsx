@@ -1,4 +1,4 @@
-import { Accelerometer } from 'expo-sensors';
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
@@ -13,10 +13,12 @@ import {
   useActivitySession,
   type BreathingReading,
 } from '@/contexts/ActivitySessionContext';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import {
   analyzeBreathing,
   formatBreathingOutcome,
-  sampleFromAccel,
+  sampleFromMotion,
+  type GyroSample,
 } from '@/utils/breathing';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 
@@ -31,6 +33,7 @@ type Phase = 'ready' | 'recording' | 'exercise_break' | 'all_done';
 
 export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { setBreathingReadings } = useActivitySession();
   const phases = cfg.breathingPhases ?? ['Breathing measurement'];
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -38,11 +41,14 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [screenPhase, setScreenPhase] = useState<Phase>('ready');
   const [elapsedS, setElapsedS] = useState(0);
-  const [liveBpm, setLiveBpm] = useState<number | null>(null);
+  const [liveBreathsPerMin, setLiveBreathsPerMin] = useState<number | null>(null);
+  const [liveRotation, setLiveRotation] = useState<number | null>(null);
   const [waveform, setWaveform] = useState<number[]>([]);
 
-  const samplesRef = useRef<ReturnType<typeof sampleFromAccel>[]>([]);
-  const subscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const samplesRef = useRef<ReturnType<typeof sampleFromMotion>[]>([]);
+  const accelerometerSubscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const gyroscopeSubscriptionRef = useRef<{ remove: () => void } | null>(null);
+  const latestGyroRef = useRef<GyroSample | null>(null);
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordStartRef = useRef<number | null>(null);
   const screenPhaseRef = useRef<Phase>('ready');
@@ -57,8 +63,10 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   }, [screenPhase]);
 
   const stopSubscription = useCallback(() => {
-    subscriptionRef.current?.remove();
-    subscriptionRef.current = null;
+    accelerometerSubscriptionRef.current?.remove();
+    accelerometerSubscriptionRef.current = null;
+    gyroscopeSubscriptionRef.current?.remove();
+    gyroscopeSubscriptionRef.current = null;
   }, []);
 
   const stopElapsedTimer = useCallback(() => {
@@ -71,19 +79,29 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const startSubscription = useCallback(() => {
     stopSubscription();
     Accelerometer.setUpdateInterval(50);
-    subscriptionRef.current = Accelerometer.addListener((accel) => {
+    Gyroscope.setUpdateInterval(50);
+    latestGyroRef.current = null;
+    gyroscopeSubscriptionRef.current = Gyroscope.addListener((gyro) => {
+      latestGyroRef.current = gyro;
+      if (screenPhaseRef.current === 'recording') {
+        setLiveRotation(
+          Math.sqrt(gyro.x * gyro.x + gyro.y * gyro.y + gyro.z * gyro.z),
+        );
+      }
+    });
+    accelerometerSubscriptionRef.current = Accelerometer.addListener((accel) => {
       if (screenPhaseRef.current !== 'recording') return;
       const t = Date.now();
-      const sample = sampleFromAccel(t, accel);
+      const sample = sampleFromMotion(t, accel, latestGyroRef.current);
       samplesRef.current.push(sample);
 
       const recent = samplesRef.current.slice(-120);
       if (recent.length >= 20) {
         const partial = analyzeBreathing(recent);
-        setLiveBpm(partial.breathsPerMinute);
+        setLiveBreathsPerMin(partial.breathsPerMinute);
       }
 
-      const signal = sample.z;
+      const signal = sample.chestMovement;
       setWaveform((prev) => {
         const next = [...prev, signal];
         return next.length > WAVEFORM_POINTS
@@ -99,8 +117,11 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
         setAvailable(false);
         return;
       }
-      const isAvailable = await Accelerometer.isAvailableAsync();
-      setAvailable(isAvailable);
+      const [hasAccelerometer, hasGyroscope] = await Promise.all([
+        Accelerometer.isAvailableAsync(),
+        Gyroscope.isAvailableAsync(),
+      ]);
+      setAvailable(hasAccelerometer && hasGyroscope);
     })();
     return () => {
       stopSubscription();
@@ -119,7 +140,9 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
     const nextSaved = [...saved, reading];
     setSaved(nextSaved);
     samplesRef.current = [];
-    setLiveBpm(null);
+    latestGyroRef.current = null;
+    setLiveBreathsPerMin(null);
+    setLiveRotation(null);
     setWaveform([]);
     setElapsedS(0);
 
@@ -152,7 +175,9 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
     if (!batteryOk) return;
 
     samplesRef.current = [];
-    setLiveBpm(null);
+    latestGyroRef.current = null;
+    setLiveBreathsPerMin(null);
+    setLiveRotation(null);
     setWaveform([]);
     setElapsedS(0);
     recordStartRef.current = Date.now();
@@ -218,8 +243,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}
-        title="Chest breathing capture"
-        subtitle="Accelerometer detects chest rise and fall."
+        title="Chest movement capture"
+        subtitle="Accelerometer and gyroscope detect breathing motion."
       />
 
       {Platform.OS === 'web' ? (
@@ -229,20 +254,29 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
         </Text>
       ) : available === false ? (
         <Text style={styles.warn}>
-          Motion sensors are not available on this device.
+          Accelerometer and gyroscope sensors are not available on this device.
         </Text>
       ) : null}
 
       {exerciseBreak ? (
-        <View style={styles.breakBox}>
-          <Text style={styles.breakTitle}>Light exercise break</Text>
-          <Text style={styles.breakText}>
+        <View
+          style={[
+            styles.breakBox,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <Text style={[styles.breakTitle, { color: Wireframe.accent }]}>Light exercise break</Text>
+          <Text style={[styles.breakText, { color: colors.text }]}>
             Before the next measurement, do light exercise—for example jog on the
             spot for one minute, or do 100 star jumps.
           </Text>
-          <Text style={styles.breakText}>
+          <Text style={[styles.breakText, { color: colors.text }]}>
             Then lie down again, place the phone gently on your chest (screen
-            facing up), and tap the button below when you are ready to record.
+            facing up), and tap the button below when you are ready to record
+            chest movement.
           </Text>
           <PrimaryButton
             label="READY — START NEXT RECORDING"
@@ -261,36 +295,61 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           {!recording && !allDone ? (
             <Text style={styles.hint}>
               Lie flat on your back. Rest the phone gently on the centre of your
-              chest. Breathe normally. Each recording lasts {RECORD_SECONDS}{' '}
-              seconds.
+              chest with the screen facing up. Breathe normally and keep your
+              body still. Each recording lasts {RECORD_SECONDS} seconds.
             </Text>
           ) : null}
 
-          <View style={styles.meterWrap}>
+          <View
+            style={[
+              styles.meterWrap,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}>
             <View
               style={[
                 styles.meterCircle,
+                {
+                  backgroundColor: colors.accentSoft,
+                  borderColor: colors.border,
+                },
                 recording && styles.meterActive,
               ]}>
-              <Text style={styles.meterText}>
+              <Text style={[styles.meterText, { color: colors.text }]}>
                 {recording
-                  ? liveBpm != null
-                    ? `${liveBpm}`
+                  ? liveBreathsPerMin != null
+                    ? `${liveBreathsPerMin}`
                     : '…'
                   : allDone && saved.length > 0
                     ? `${saved[saved.length - 1].breathsPerMinute}`
                     : '—'}
               </Text>
-              <Text style={styles.meterSub}>breaths / min</Text>
+              <Text style={[styles.meterSub, { color: colors.textMuted }]}>breaths / min</Text>
             </View>
-            <Text style={styles.meterCaption}>
+            <Text style={[styles.meterCaption, { color: colors.textMuted }]}>
               {recording
                 ? `Recording ${elapsedS}s / ${RECORD_SECONDS}s`
-                : 'Live estimate from chest movement'}
+                : 'Estimated from chest rise/fall, not heartbeat'}
             </Text>
+            {recording && liveRotation != null ? (
+              <Text style={[styles.rotationCaption, { color: colors.textMuted }]}>
+                Gyro stability: {liveRotation.toFixed(2)} rad/s
+              </Text>
+            ) : null}
           </View>
 
-          <View style={styles.waveBox}>
+          <View
+            style={[
+              styles.waveBox,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                boxShadow: colors.shadow,
+              },
+            ]}>
             <View style={styles.waveRow}>
               {waveform.length === 0
                 ? Array.from({ length: WAVEFORM_POINTS }).map((_, i) => (
@@ -306,8 +365,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
                     );
                   })}
             </View>
-            <Text style={styles.waveCaption}>
-              Accelerometer waveform (chest movement)
+            <Text style={[styles.waveCaption, { color: colors.textMuted }]}>
+              Accelerometer waveform with gyroscope stability check
             </Text>
           </View>
 
@@ -333,7 +392,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
       <Text style={styles.disclaimer}>
         Breaths per minute are classroom estimates from phone motion—not medical
-        spirometry. Compare trends at rest vs after exercise.
+        heart-rate or spirometry measurements. Compare breathing movement trends
+        at rest vs after exercise.
       </Text>
     </WireScreen>
   );
@@ -346,7 +406,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   step: {
-    color: '#aaa',
+    color: 'rgba(255,255,255,0.76)',
     fontSize: 12,
     marginBottom: 4,
   },
@@ -358,7 +418,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 12,
-    color: '#aaa',
+    color: 'rgba(255,255,255,0.76)',
     lineHeight: 17,
     marginBottom: 12,
   },
@@ -366,38 +426,48 @@ const styles = StyleSheet.create({
     minHeight: 200,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3a3a3a',
+    backgroundColor: Wireframe.panelBg,
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: Wireframe.border,
     padding: 16,
     marginBottom: 12,
+    borderRadius: 8,
+    boxShadow: Wireframe.shadow,
   },
   meterCircle: {
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#d0d0d0',
+    backgroundColor: Wireframe.accentSoft,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#888',
+    borderColor: Wireframe.border,
   },
   meterActive: { borderColor: Wireframe.accentRed },
   meterText: { fontSize: 32, fontWeight: '800', color: Wireframe.text },
-  meterSub: { fontSize: 11, color: '#666', marginTop: 4 },
+  meterSub: { fontSize: 11, color: Wireframe.textMuted, marginTop: 4 },
   meterCaption: {
     marginTop: 12,
-    color: '#cfcfcf',
+    color: Wireframe.textMuted,
     fontSize: 13,
+    textAlign: 'center',
+  },
+  rotationCaption: {
+    marginTop: 6,
+    color: Wireframe.textMuted,
+    fontSize: 11,
     textAlign: 'center',
   },
   waveBox: {
     minHeight: 100,
-    backgroundColor: '#3a3a3a',
+    backgroundColor: Wireframe.panelBg,
     borderWidth: 1,
-    borderColor: '#555',
+    borderColor: Wireframe.border,
     padding: 12,
     marginBottom: 12,
+    borderRadius: 8,
+    boxShadow: Wireframe.shadow,
   },
   waveRow: {
     flexDirection: 'row',
@@ -409,19 +479,21 @@ const styles = StyleSheet.create({
   waveBar: {
     flex: 1,
     maxWidth: 8,
-    backgroundColor: Wireframe.accentRed,
-    borderRadius: 1,
+    backgroundColor: Wireframe.accent,
+    borderRadius: 2,
   },
-  waveCaption: { color: '#cfcfcf', fontSize: 11, textAlign: 'center', marginTop: 8 },
+  waveCaption: { color: Wireframe.textMuted, fontSize: 11, textAlign: 'center', marginTop: 8 },
   breakBox: {
-    backgroundColor: '#272727',
+    backgroundColor: Wireframe.panelBg,
     borderWidth: 1,
     borderColor: Wireframe.border,
     padding: 16,
     marginBottom: 12,
+    borderRadius: 8,
+    boxShadow: Wireframe.shadow,
   },
   breakTitle: {
-    color: Wireframe.accentRed,
+    color: Wireframe.accent,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 10,
@@ -433,14 +505,14 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   savedBlock: { marginTop: 8 },
-  savedTitle: { color: '#aaa', fontSize: 12, marginBottom: 6 },
+  savedTitle: { color: 'rgba(255,255,255,0.76)', fontSize: 12, marginBottom: 6 },
   savedRow: { color: Wireframe.panelBg, fontSize: 13, marginBottom: 4 },
   statusBlock: { marginTop: 12 },
   statusLine: { color: Wireframe.panelBg, fontSize: 14, marginBottom: 4 },
   disclaimer: {
     marginTop: 12,
     fontSize: 11,
-    color: '#888',
+    color: 'rgba(255,255,255,0.72)',
     lineHeight: 16,
   },
 });

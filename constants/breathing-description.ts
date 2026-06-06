@@ -1,10 +1,10 @@
-/** Reference text for Breathing Pace Trainer — shown via “See description”. */
+/** Reference text for Chest Breathing Motion — shown via “See description”. */
 export const BREATHING_DESCRIPTION_SECTIONS: { title: string; body: string[] }[] = [
   {
     title: "Overview",
     body: [
       "Analyse breathing patterns at rest and after light exercise.",
-      "The app records chest movement and estimates breaths per minute (BPM).",
+      "The app uses the phone accelerometer and gyroscope to record chest rise and fall, then estimates breaths per minute.",
     ],
   },
   {
@@ -37,7 +37,7 @@ export const BREATHING_DESCRIPTION_SECTIONS: { title: string; body: string[] }[]
     title: "Discussion",
     body: [
       "Breathing rate increases during exercise to supply more oxygen to muscles.",
-      "Motion sensors detect chest movement, helping students visualise breathing patterns.",
+      "Motion sensors detect chest movement more reliably than trying to capture heartbeat with a phone resting on the body.",
     ],
   },
   {

@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text } from 'react-native';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { confirmAction } from '@/utils/confirm-alert';
 
-export function LogOutNav() {
+export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel' }) {
+  const { isDark } = useAppTheme();
   const router = useRouter();
   const { logOut } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -42,10 +44,26 @@ export function LogOutNav() {
     <Pressable
       onPress={handlePress}
       disabled={loggingOut}
-      style={({ pressed }) => [styles.row, pressed && !loggingOut && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        variant === 'panel' && [
+          styles.panelRow,
+          {
+            backgroundColor: isDark ? '#39212a' : '#fff1f1',
+            borderColor: isDark ? '#63313d' : '#ffd4d4',
+          },
+        ],
+        pressed && !loggingOut && styles.pressed,
+      ]}
       hitSlop={8}>
-      <MaterialIcons name="logout" size={22} color={Wireframe.panelBg} />
-      <Text style={styles.text}>{loggingOut ? 'Signing out…' : 'Log out'}</Text>
+      <MaterialIcons
+        name="logout"
+        size={22}
+        color={variant === 'panel' ? Wireframe.accentRed : Wireframe.panelBg}
+      />
+      <Text style={[styles.text, variant === 'panel' && styles.panelText]}>
+        {loggingOut ? 'Signing out...' : 'Log out'}
+      </Text>
     </Pressable>
   );
 }
@@ -55,14 +73,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 2,
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  panelRow: {
+    minHeight: 54,
+    justifyContent: 'center',
+    backgroundColor: '#fff1f1',
+    borderWidth: 1,
+    borderColor: '#ffd4d4',
+    flex: 1,
   },
   pressed: {
     opacity: 0.85,
   },
   text: {
     color: Wireframe.panelBg,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  panelText: {
+    color: Wireframe.accentRed,
+    fontWeight: '900',
   },
 });

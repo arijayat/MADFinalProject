@@ -16,11 +16,13 @@ import { BREATHING_DESCRIPTION_SECTIONS } from "@/constants/breathing-descriptio
 import { REACTION_DESCRIPTION_SECTIONS } from "@/constants/reaction-description";
 import { VIBRATION_DESCRIPTION_SECTIONS } from "@/constants/vibration-description";
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 
 export default function ActivityIntroScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
+  const { colors } = useAppTheme();
   const [gear, setGear] = useState<Record<string, boolean>>({});
   const [showDescription, setShowDescription] = useState(false);
 
@@ -87,9 +89,11 @@ export default function ActivityIntroScreen() {
                           : BREATHING_DESCRIPTION_SECTIONS
               ).map((section) => (
                 <View key={section.title} style={styles.descSection}>
-                  <Text style={styles.descHeading}>{section.title}</Text>
+                  <Text style={[styles.descHeading, { color: colors.text }]}>
+                    {section.title}
+                  </Text>
                   {section.body.map((line, i) => (
-                    <Text key={i} style={styles.howLine}>
+                    <Text key={i} style={[styles.howLine, { color: colors.text }]}>
                       {line}
                     </Text>
                   ))}
@@ -101,7 +105,7 @@ export default function ActivityIntroScreen() {
       ) : null}
 
       <Panel title="Gear Check">
-        <Text style={styles.panelHint}>
+        <Text style={[styles.panelHint, { color: colors.textMuted }]}>
           Make sure you have all the equipment before starting.
         </Text>
         {gearState.map((item) => (
@@ -115,9 +119,9 @@ export default function ActivityIntroScreen() {
             <MaterialIcons
               name={item.checked ? "check-box" : "check-box-outline-blank"}
               size={22}
-              color={Wireframe.text}
+              color={colors.text}
             />
-            <Text style={styles.checkLabel}>{item.label}</Text>
+            <Text style={[styles.checkLabel, { color: colors.text }]}>{item.label}</Text>
           </Pressable>
         ))}
       </Panel>
@@ -128,9 +132,9 @@ export default function ActivityIntroScreen() {
             <MaterialIcons
               name="notifications-active"
               size={18}
-              color={Wireframe.textMuted}
+              color={colors.textMuted}
             />
-            <Text style={styles.safeText}>{line}</Text>
+            <Text style={[styles.safeText, { color: colors.text }]}>{line}</Text>
           </View>
         ))}
       </Panel>

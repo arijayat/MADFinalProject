@@ -11,7 +11,7 @@ type Props = {
 export function BackNav({ label, onPress }: Props) {
   return (
     <Pressable onPress={onPress} style={styles.row} hitSlop={8}>
-      <MaterialIcons name="chevron-left" size={22} color={Wireframe.text} />
+      <MaterialIcons name="chevron-left" size={22} color={Wireframe.panelBg} />
       <Text style={styles.text}>{label}</Text>
     </Pressable>
   );
@@ -42,24 +42,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 10,
+    paddingVertical: 4,
   },
   text: {
     color: Wireframe.panelBg,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
   },
   headerBlock: {
-    marginBottom: 12,
+    marginBottom: 14,
   },
   title: {
     color: Wireframe.panelBg,
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 24,
+    fontWeight: '800',
+    letterSpacing: 0,
   },
   subtitle: {
-    color: '#cfcfcf',
+    color: 'rgba(255,255,255,0.76)',
     fontSize: 13,
-    marginTop: 4,
+    lineHeight: 18,
+    marginTop: 6,
   },
 });

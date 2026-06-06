@@ -62,7 +62,7 @@ export interface ActivityConfig {
   reactionTapAttempts?: number;
   /** Reaction Board: tracing trials in phase 3 */
   reactionTraceAttempts?: number;
-  /** Breathing Pace Trainer: rest + post-exercise chest recordings */
+  /** Chest Breathing Motion: rest + post-exercise chest recordings */
   breathingPhases?: string[];
   /** Hand Fan Challenge: record bend angle at each fan distance */
   fanChallengeActions?: string[];
@@ -593,11 +593,11 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
   },
   "breathing-pattern": {
     id: "breathing-pattern",
-    title: "Breathing Pace Trainer",
+    title: "Chest Breathing Motion",
     subtitle:
-      "Lie down with the phone on your chest—use motion sensors to measure breathing at rest and after light exercise.",
+      "Lie down with the phone on your chest—use accelerometer and gyroscope motion sensors to measure breathing at rest and after light exercise.",
     hubDescription:
-      "Medical Science: record chest movement with the accelerometer, compare breaths per minute before and after jogging or star jumps.",
+      "Medical Science: record chest rise and fall with phone motion sensors, then compare breaths per minute before and after jogging or star jumps.",
     requirements: [
       "Flat mat or clear floor to lie on",
       "Space for light exercise (jog on the spot or star jumps)",
@@ -618,21 +618,21 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       {
         key: "rest_pred",
         label:
-          "Breathing at rest — predicted breaths per minute (BPM)",
+          "Breathing at rest — predicted breaths per minute",
         placeholder: "e.g. 16",
         kind: "number",
       },
       {
         key: "exercise1_pred",
         label:
-          "After Exercise 1 — predicted BPM (record right after exercise)",
+          "After Exercise 1 — predicted breaths per minute (record right after exercise)",
         placeholder: "e.g. 24",
         kind: "number",
       },
       {
         key: "exercise2_pred",
         label:
-          "After Exercise 2 — predicted BPM (record right after exercise)",
+          "After Exercise 2 — predicted breaths per minute (record right after exercise)",
         placeholder: "e.g. 28",
         kind: "number",
       },
@@ -651,7 +651,7 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       {
         key: "higher_after_exercise",
         label:
-          "Compared with rest — will your BPM be higher after exercise?",
+          "Compared with rest — will your breathing rate be higher after exercise?",
         placeholder: "Select",
         kind: "dropdown",
         options: ["Yes", "No", "About the same"],
@@ -666,9 +666,9 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     captureKind: "waveform",
     captureIdleLabel: "READY",
     captureDoneLabel: "DONE",
-    captureDoneStatusA: "Breathing recordings captured",
+    captureDoneStatusA: "Chest movement recordings captured",
     captureDoneStatusB: "All three phases complete",
-    leaderboardSubtitle: "Grade 6 Rankings - Breathing Pace Trainer",
+    leaderboardSubtitle: "Grade 6 Rankings - Chest Breathing Motion",
   },
 };
 

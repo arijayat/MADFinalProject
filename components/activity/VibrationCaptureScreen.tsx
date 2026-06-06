@@ -13,6 +13,7 @@ import {
   useActivitySession,
   type VibrationReading,
 } from '@/contexts/ActivitySessionContext';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import {
   formatTilt,
   formatVibration,
@@ -32,6 +33,7 @@ type Phase = 'level' | 'recording' | 'between';
 
 export function VibrationCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { setVibrationReadings } = useActivitySession();
   const actions = cfg.vibrationDesignActions ?? ['Design test'];
   const [actionIndex, setActionIndex] = useState(0);
@@ -247,28 +249,40 @@ export function VibrationCaptureScreen({ cfg }: Props) {
             levelState === 'unlevel' && styles.levelDotBad,
           ]}
         />
-        <Text style={styles.levelText}>
+        <Text style={[styles.levelText, { color: colors.headerSubtle }]}>
           {phase === 'recording'
             ? `Peak tilt: ${formatTilt(peakTiltDisplay)} · Peak vibration: ${formatVibration(peakVibrationDisplay)}`
             : `Level check: ${formatTilt(liveTilt)} from flat`}
         </Text>
       </View>
 
-      <View style={styles.meterWrap}>
+      <View
+        style={[
+          styles.meterWrap,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
         <View
           style={[
             styles.meterCircle,
+            {
+              backgroundColor: colors.accentSoft,
+              borderColor: colors.border,
+            },
             phase === 'recording' && styles.meterActive,
             phase !== 'recording' &&
               levelState === 'level' &&
               styles.meterLevel,
           ]}>
-          <Text style={styles.meterText}>{meterPrimary()}</Text>
-          <Text style={styles.meterSub}>
+          <Text style={[styles.meterText, { color: colors.text }]}>{meterPrimary()}</Text>
+          <Text style={[styles.meterSub, { color: colors.textMuted }]}>
             {phase === 'recording' ? 'peak vibration' : 'surface tilt'}
           </Text>
         </View>
-        <Text style={styles.meterCaption}>{meterCaption()}</Text>
+        <Text style={[styles.meterCaption, { color: colors.textMuted }]}>{meterCaption()}</Text>
       </View>
 
       {phase === 'level' && !allDone ? (

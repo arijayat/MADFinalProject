@@ -4,8 +4,10 @@ import { useEffect, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 export function BatteryCaptureBanner() {
+  const { colors } = useAppTheme();
   const [level, setLevel] = useState<number | null>(null);
   const [charging, setCharging] = useState(false);
 
@@ -42,13 +44,21 @@ export function BatteryCaptureBanner() {
   const low = pct < 20 && !charging;
 
   return (
-    <View style={[styles.row, low && styles.rowLow]}>
+    <View
+      style={[
+        styles.row,
+        {
+          backgroundColor: colors.panelBg,
+          borderColor: low ? Wireframe.accentYellow : colors.border,
+          boxShadow: colors.shadow,
+        },
+      ]}>
       <MaterialIcons
         name={charging ? 'battery-charging-full' : 'battery-std'}
         size={16}
-        color={low ? Wireframe.accentYellow : Wireframe.textMuted}
+        color={low ? Wireframe.accentYellow : colors.textMuted}
       />
-      <Text style={[styles.text, low && styles.textLow]}>
+      <Text style={[styles.text, { color: low ? colors.text : colors.textMuted }, low && styles.textLow]}>
         Battery {pct}%
         {charging ? ' · charging' : ''}
         {low ? ' · low — plug in for best results' : ''}
@@ -68,10 +78,8 @@ const styles = StyleSheet.create({
     backgroundColor: Wireframe.panelBg,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    borderRadius: 4,
-  },
-  rowLow: {
-    borderColor: Wireframe.accentYellow,
+    borderRadius: 8,
+    boxShadow: '0 4px 12px rgba(15, 23, 42, 0.08)',
   },
   text: {
     flex: 1,

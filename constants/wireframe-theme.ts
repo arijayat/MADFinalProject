@@ -1,19 +1,22 @@
 import { StyleSheet } from 'react-native';
 
-/** Low-fidelity wireframe palette from the mockups */
 export const Wireframe = {
-  screenBg: '#2b2b2b',
+  screenBg: '#22577a',
   panelBg: '#ffffff',
-  text: '#111111',
-  textMuted: '#555555',
-  border: '#cccccc',
-  primaryButton: '#111111',
+  surfaceAlt: '#f6f8fb',
+  text: '#14213d',
+  textMuted: '#64748b',
+  border: '#dbe4ee',
+  primaryButton: '#2f6f88',
   primaryButtonText: '#ffffff',
-  secondaryButton: '#e0e0e0',
-  accentRed: '#c62828',
-  accentYellow: '#f9a825',
-  requirements: '#c62828',
-  placeholder: '#999999',
+  secondaryButton: '#edf4f7',
+  accent: '#2f6f88',
+  accentSoft: '#d9eef3',
+  accentRed: '#d64545',
+  accentYellow: '#f5a524',
+  requirements: '#2f6f88',
+  placeholder: '#94a3b8',
+  shadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
 };
 
 export const wireframeStyles = StyleSheet.create({
@@ -23,10 +26,11 @@ export const wireframeStyles = StyleSheet.create({
   },
   panel: {
     backgroundColor: Wireframe.panelBg,
-    borderRadius: 4,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: Wireframe.border,
-    padding: 12,
+    padding: 16,
+    boxShadow: Wireframe.shadow,
   },
   title: {
     fontSize: 18,

@@ -11,6 +11,7 @@ import {
 
 import { PredictionField } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 
 export function FieldBlock({
   field,
@@ -21,19 +22,27 @@ export function FieldBlock({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { colors } = useAppTheme();
   if (field.kind === 'dropdown') {
     return (
       <View style={styles.field}>
-        <Text style={styles.label}>{field.label}</Text>
+        <Text style={[styles.label, { color: colors.text }]}>{field.label}</Text>
         <DropdownModal field={field} value={value} onChange={onChange} />
       </View>
     );
   }
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>{field.label}</Text>
+      <Text style={[styles.label, { color: colors.text }]}>{field.label}</Text>
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          {
+            color: colors.text,
+            backgroundColor: colors.surfaceAlt,
+            borderColor: colors.border,
+          },
+        ]}
         placeholder={field.placeholder}
         placeholderTextColor={Wireframe.placeholder}
         value={value}
@@ -53,29 +62,45 @@ function DropdownModal({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const { colors } = useAppTheme();
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Pressable style={styles.inputLike} onPress={() => setOpen(true)}>
-        <Text style={[styles.inputText, !value && styles.placeholder]}>
+      <Pressable
+        style={[
+          styles.inputLike,
+          {
+            backgroundColor: colors.surfaceAlt,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => setOpen(true)}>
+        <Text style={[styles.inputText, { color: colors.text }, !value && styles.placeholder]}>
           {value || field.placeholder}
         </Text>
-        <Text style={styles.chev}>▼</Text>
+        <Text style={[styles.chev, { color: colors.textMuted }]}>▼</Text>
       </Pressable>
       <Modal visible={open} transparent animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={() => setOpen(false)}>
-          <View style={styles.modalCard}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+              },
+            ]}>
             <FlatList
               data={field.options}
               keyExtractor={(item) => item}
               renderItem={({ item }) => (
                 <Pressable
-                  style={styles.optionRow}
+                  style={[styles.optionRow, { borderBottomColor: colors.border }]}
                   onPress={() => {
                     onChange(item);
                     setOpen(false);
                   }}>
-                  <Text style={styles.optionText}>{item}</Text>
+                  <Text style={[styles.optionText, { color: colors.text }]}>{item}</Text>
                 </Pressable>
               )}
             />
@@ -90,27 +115,28 @@ const styles = StyleSheet.create({
   field: { marginBottom: 12 },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
     color: Wireframe.text,
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   input: {
     borderWidth: 1,
     borderColor: Wireframe.border,
-    borderRadius: 2,
+    borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 14,
     color: Wireframe.text,
-    backgroundColor: '#fafafa',
+    backgroundColor: Wireframe.surfaceAlt,
   },
   inputLike: {
     borderWidth: 1,
     borderColor: Wireframe.border,
-    borderRadius: 2,
+    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 12,
-    backgroundColor: '#fafafa',
+    backgroundColor: Wireframe.surfaceAlt,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -120,16 +146,17 @@ const styles = StyleSheet.create({
   chev: { fontSize: 12, color: Wireframe.textMuted },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(15,23,42,0.42)',
     justifyContent: 'center',
     padding: 24,
   },
   modalCard: {
     backgroundColor: Wireframe.panelBg,
-    borderRadius: 4,
+    borderRadius: 8,
     maxHeight: 280,
     borderWidth: 1,
     borderColor: Wireframe.border,
+    overflow: 'hidden',
   },
   optionRow: {
     paddingVertical: 14,

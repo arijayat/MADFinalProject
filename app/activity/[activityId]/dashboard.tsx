@@ -14,13 +14,14 @@ import {
     useActivitySession,
     type BounceObservation,
 } from "@/contexts/ActivitySessionContext";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import {
   formatParachuteDesignPhotoExpiry,
   isParachuteDesignPhotoExpired,
 } from "@/lib/storage/parachute-design-expiry";
 import {
   BREATHING_PHASE_SHORT,
-  bpmPredictionMatches,
+  breathingRatePredictionMatches,
   formatRecordingDetail,
   higherAfterExerciseActual,
   higherAfterExerciseMatches,
@@ -119,6 +120,7 @@ const PARACHUTE_ACTION_LABELS = [
 
 export default function ActivityDashboardScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = activityId ? getActivity(activityId) : undefined;
   const { getSession } = useActivitySession();
@@ -423,12 +425,12 @@ export default function ActivityDashboardScreen() {
         const pred = session.predictions[predKeys[i]];
         return {
           variable: BREATHING_PHASE_SHORT[i] ?? cfg.breathingPhases![i],
-          predicted: pred ? `${pred} BPM` : "—",
+          predicted: pred ? `${pred} breaths/min` : "—",
           actual:
-            reading != null ? `${reading.breathsPerMinute} BPM` : "—",
+            reading != null ? `${reading.breathsPerMinute} breaths/min` : "—",
           actualVib:
             reading != null ? formatRecordingDetail(reading) : "—",
-          wereRight: bpmPredictionMatches(
+          wereRight: breathingRatePredictionMatches(
             pred,
             reading?.breathsPerMinute,
           ),
@@ -442,7 +444,7 @@ export default function ActivityDashboardScreen() {
       if (ex2) contextLines.push({ label: "Exercise 2", value: ex2 });
 
       phaseRows.push({
-        variable: "Higher BPM after exercise?",
+        variable: "Higher breathing rate after exercise?",
         predicted: session.predictions.higher_after_exercise ?? "—",
         actual: higherAfterExerciseActual(readings),
         actualVib: "—",
@@ -676,7 +678,7 @@ export default function ActivityDashboardScreen() {
                 : isReaction
                   ? "Measured"
                   : isBreathing
-                    ? "BPM"
+                    ? "Breaths/min"
                     : "Actual";
 
     const variableHeader = isDecibel
@@ -769,7 +771,7 @@ export default function ActivityDashboardScreen() {
   if (!cfg) {
     return (
       <WireScreen>
-        <Text style={{ color: Wireframe.panelBg }}>Activity not found.</Text>
+        <Text style={{ color: colors.text }}>Activity not found.</Text>
       </WireScreen>
     );
   }
@@ -785,14 +787,23 @@ export default function ActivityDashboardScreen() {
           nestedScrollEnabled
           contentContainerStyle={styles.tableScrollContent}
         >
-          <View style={[styles.table, { width: columnWidths.table }]}>
-            <View style={styles.row}>
+          <View
+            style={[
+              styles.table,
+              { width: columnWidths.table, borderColor: colors.border },
+            ]}>
+            <View style={[styles.row, { borderBottomColor: colors.border }]}>
               <Text
                 numberOfLines={2}
                 style={[
                   styles.cell,
                   styles.h,
-                  { width: columnWidths.variable },
+                  {
+                    width: columnWidths.variable,
+                    color: colors.text,
+                    borderRightColor: colors.border,
+                    backgroundColor: colors.surfaceAlt,
+                  },
                 ]}
               >
                 {columnWidths.variableHeader}
@@ -803,7 +814,12 @@ export default function ActivityDashboardScreen() {
                   styles.cell,
                   styles.h,
                   styles.center,
-                  { width: columnWidths.predicted },
+                  {
+                    width: columnWidths.predicted,
+                    color: colors.text,
+                    borderRightColor: colors.border,
+                    backgroundColor: colors.surfaceAlt,
+                  },
                 ]}
               >
                 Predicted
@@ -815,7 +831,12 @@ export default function ActivityDashboardScreen() {
                   styles.h,
                   styles.center,
                   ...(!showExtraCol1 && !showExtraCol2 ? [styles.lastCol] : []),
-                  { width: columnWidths.actual },
+                  {
+                    width: columnWidths.actual,
+                    color: colors.text,
+                    borderRightColor: colors.border,
+                    backgroundColor: colors.surfaceAlt,
+                  },
                 ]}
               >
                 {columnWidths.actualHeader}
@@ -827,7 +848,12 @@ export default function ActivityDashboardScreen() {
                     styles.cell,
                     styles.h,
                     ...(!showExtraCol2 ? [styles.lastCol] : []),
-                    { width: columnWidths.extraCol1 },
+                    {
+                      width: columnWidths.extraCol1,
+                      color: colors.text,
+                      borderRightColor: colors.border,
+                      backgroundColor: colors.surfaceAlt,
+                    },
                   ]}
                 >
                   {columnWidths.extraCol1Header}
@@ -841,7 +867,12 @@ export default function ActivityDashboardScreen() {
                     styles.h,
                     styles.center,
                     styles.lastCol,
-                    { width: columnWidths.extraCol2 },
+                    {
+                      width: columnWidths.extraCol2,
+                      color: colors.text,
+                      borderRightColor: colors.border,
+                      backgroundColor: colors.surfaceAlt,
+                    },
                   ]}
                 >
                   {columnWidths.extraCol2Header}
@@ -849,12 +880,18 @@ export default function ActivityDashboardScreen() {
               ) : null}
             </View>
             {tableRows.map((row) => (
-              <View key={`${panelTitle}-${row.variable}`} style={styles.row}>
+              <View
+                key={`${panelTitle}-${row.variable}`}
+                style={[styles.row, { borderBottomColor: colors.border }]}>
                 <Text
                   style={[
                     styles.cell,
                     styles.var,
-                    { width: columnWidths.variable },
+                    {
+                      width: columnWidths.variable,
+                      color: colors.text,
+                      borderRightColor: colors.border,
+                    },
                   ]}
                 >
                   {row.variable}
@@ -863,7 +900,11 @@ export default function ActivityDashboardScreen() {
                   style={[
                     styles.cell,
                     styles.center,
-                    { width: columnWidths.predicted },
+                    {
+                      width: columnWidths.predicted,
+                      color: colors.text,
+                      borderRightColor: colors.border,
+                    },
                   ]}
                 >
                   {row.predicted}
@@ -873,7 +914,11 @@ export default function ActivityDashboardScreen() {
                     styles.cell,
                     styles.center,
                     ...(!showExtraCol1 && !showExtraCol2 ? [styles.lastCol] : []),
-                    { width: columnWidths.actual },
+                    {
+                      width: columnWidths.actual,
+                      color: colors.text,
+                      borderRightColor: colors.border,
+                    },
                   ]}
                 >
                   {row.actual}
@@ -883,7 +928,11 @@ export default function ActivityDashboardScreen() {
                     style={[
                       styles.cell,
                       ...(!showExtraCol2 ? [styles.lastCol] : []),
-                      { width: columnWidths.extraCol1 },
+                      {
+                        width: columnWidths.extraCol1,
+                        color: colors.text,
+                        borderRightColor: colors.border,
+                      },
                     ]}
                   >
                     {isDecibel
@@ -897,7 +946,11 @@ export default function ActivityDashboardScreen() {
                       styles.cell,
                       styles.center,
                       styles.lastCol,
-                      { width: columnWidths.extraCol2 },
+                      {
+                        width: columnWidths.extraCol2,
+                        color: colors.text,
+                        borderRightColor: colors.border,
+                      },
                     ]}
                   >
                     {row.wereRight ?? "—"}
@@ -933,8 +986,8 @@ export default function ActivityDashboardScreen() {
         <Panel title="Your setup">
           {contextLines.map((line) => (
             <View key={line.label} style={styles.contextRow}>
-              <Text style={styles.contextLabel}>{line.label}</Text>
-              <Text style={styles.contextValue}>{line.value}</Text>
+              <Text style={[styles.contextLabel, { color: colors.text }]}>{line.label}</Text>
+              <Text style={[styles.contextValue, { color: colors.text }]}>{line.value}</Text>
             </View>
           ))}
         </Panel>
@@ -944,7 +997,7 @@ export default function ActivityDashboardScreen() {
         renderDataTable(section.rows, section.title),
       )}
       {cfg.captureKind === "decibel" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Peak dB is measured with the app microphone (relative scale for
           classroom comparison). Hearing risk follows standard sound-level bands.
           “Right?” compares your louder/softer prediction to the previous action
@@ -952,7 +1005,7 @@ export default function ActivityDashboardScreen() {
         </Text>
       ) : null}
       {cfg.id === "vibration-analysis" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Peak tilt (°) and vibration (m/s²) come from the app accelerometer
           during each shake test. Lower tilt means a more stable design. “Right?”
           compares your predicted tilt to measured (within 2°), or your “moves
@@ -960,15 +1013,16 @@ export default function ActivityDashboardScreen() {
         </Text>
       ) : null}
       {cfg.id === "breathing-pattern" ? (
-        <Text style={styles.note}>
-          BPM (breaths per minute) is estimated from chest movement while lying
-          down. Recording shows duration and peak movement. “Right?” compares your
-          BPM guess within 4 breaths/min, or your higher-after-exercise pick vs
+        <Text style={[styles.note, { color: colors.textMuted }]}>
+          Breathing rate is estimated from chest rise/fall while lying down with
+          the phone on the chest. Recording shows duration, movement range, and
+          gyroscope stability when available. “Right?” compares your breathing
+          rate guess within 4 breaths/min, or your higher-after-exercise pick vs
           rest vs after-exercise readings.
         </Text>
       ) : null}
       {cfg.id === "surface-smoothness" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Attempt 1 records all three movements slowly without buzz feedback.
           Attempt 2 repeats with buzz when motion is not smooth. Lower peak
           vibration (m/s²) means smoother movement. “Right?” on the hardest-move
@@ -976,7 +1030,7 @@ export default function ActivityDashboardScreen() {
         </Text>
       ) : null}
       {cfg.id === "reaction-time" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Phase 1 and 2 use average tap reaction time (ms). Phase 3 tracing shows
           accuracy (%) and delay (ms). “Right?” compares predictions to measured
           values (within tolerance). The dominant-hand-faster row checks your
@@ -990,21 +1044,21 @@ export default function ActivityDashboardScreen() {
           {fanForceResults.map(({ label, angleDegrees, stiffnessK, forceN }, i) =>
             forceN != null ? (
               <View key={label} style={styles.physicsBlock}>
-                <Text style={styles.physicsTitle}>{label}</Text>
-                <Text style={styles.physicsLine}>
+                <Text style={[styles.physicsTitle, { color: colors.text }]}>{label}</Text>
+                <Text style={[styles.physicsLine, { color: colors.text }]}>
                   Bend: {angleDegrees}° ({((angleDegrees * Math.PI) / 180).toFixed(3)}{" "}
                   rad) · k = {stiffnessK} N/rad
                 </Text>
-                <Text style={styles.physicsLine}>
+                <Text style={[styles.physicsLine, { color: colors.text }]}>
                   F ≈ k × θ = {formatForceN(forceN)}
                 </Text>
                 {i < fanForceResults.length - 1 ? (
-                  <View style={styles.physicsDivider} />
+                  <View style={[styles.physicsDivider, { backgroundColor: colors.border }]} />
                 ) : null}
               </View>
             ) : null,
           )}
-          <Text style={styles.note}>
+          <Text style={[styles.note, { color: colors.textMuted }]}>
             Stiffer materials have larger k, so the same bend angle needs more
             force. Compare 15 cm vs 45 cm — closer fans usually bend the strip
             more.
@@ -1030,7 +1084,7 @@ export default function ActivityDashboardScreen() {
         />
       ) : null}
       {cfg.id === "hand-fan-challenge" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Bend angles come from slow-motion video review. “Close?” compares each
           measured angle to your predicted maximum (within 5°). Force uses
           classroom k values from your material choice.
@@ -1044,34 +1098,34 @@ export default function ActivityDashboardScreen() {
             ({ label, fall, gForce, didBounce }, arrIndex) =>
               fall ? (
                 <View key={label} style={styles.physicsBlock}>
-                  <Text style={styles.physicsTitle}>{label}</Text>
-                  <Text style={styles.physicsLine}>
+                  <Text style={[styles.physicsTitle, { color: colors.text }]}>{label}</Text>
+                  <Text style={[styles.physicsLine, { color: colors.text }]}>
                     Final speed: {formatPhysics(fall.finalVelocityMs)} m/s ·
                     Acceleration: {formatPhysics(fall.accelerationMs2)} m/s²
                   </Text>
-                  <Text style={styles.physicsLine}>
+                  <Text style={[styles.physicsLine, { color: colors.text }]}>
                     Net force: {formatPhysics(fall.netForceN)} N · Weight:{" "}
                     {formatPhysics(fall.weightN)} N · Drag:{" "}
                     {formatPhysics(fall.dragForceN)} N
                   </Text>
                   {gForce != null ? (
-                    <Text style={styles.physicsLine}>
+                    <Text style={[styles.physicsLine, { color: colors.text }]}>
                       G-force on landing: {formatPhysics(gForce, 1)} g
                     </Text>
                   ) : (
-                    <Text style={styles.physicsMuted}>
+                    <Text style={[styles.physicsMuted, { color: colors.textMuted }]}>
                       {didBounce
                         ? "Add contact time and rebound time (to max height) from slow-motion."
                         : "Add contact time from slow-motion to calculate g-force."}
                     </Text>
                   )}
                   {arrIndex < parachutePhysics.length - 1 ? (
-                    <View style={styles.physicsDivider} />
+                    <View style={[styles.physicsDivider, { backgroundColor: colors.border }]} />
                   ) : null}
                 </View>
               ) : null,
           )}
-          <Text style={styles.note}>
+          <Text style={[styles.note, { color: colors.textMuted }]}>
             Drag = weight − net force. A parachute should increase drag, lower
             acceleration, and reduce g-force on landing. Compare Action 1
             (baseline) with your parachute designs.
@@ -1080,27 +1134,27 @@ export default function ActivityDashboardScreen() {
       ) : null}
       {cfg.id === "parachute-drop" && parachuteDesignPhotoUrl ? (
         <Panel>
-          <Text style={styles.designPhotoTitle}>Action 3 — revised parachute design</Text>
+          <Text style={[styles.designPhotoTitle, { color: colors.text }]}>Action 3 — revised parachute design</Text>
           {dashboardData.designPhotoExpiresAtMs ? (
-            <Text style={styles.designPhotoExpiry}>
+            <Text style={[styles.designPhotoExpiry, { color: colors.textMuted }]}>
               Stored until {formatParachuteDesignPhotoExpiry(dashboardData.designPhotoExpiresAtMs)}
             </Text>
           ) : null}
           <Image
             source={{ uri: parachuteDesignPhotoUrl }}
-            style={styles.designPhoto}
+            style={[styles.designPhoto, { backgroundColor: colors.surfaceAlt }]}
             contentFit="contain"
           />
         </Panel>
       ) : null}
       {cfg.id === "parachute-drop" && dashboardData.designPhotoExpired ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Your design photo has expired and was removed from cloud storage. Fall times and other
           results are still saved.
         </Text>
       ) : null}
       {cfg.id === "parachute-drop" ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: colors.textMuted }]}>
           Fall times and bounce on landing come from what you entered after
           reviewing each drop video. Use slow-motion on landing to measure
           contact time.
