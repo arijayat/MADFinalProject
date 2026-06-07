@@ -34,14 +34,9 @@ Complete every step in order. Your app code is already wired; these are **Fireba
 2. Copy all contents from `firestore.rules` in this repo.
 3. Click **Publish**.
 
-### 6. Create **leaderboard index** (required once)
+### 6. Leaderboard queries (no custom index required)
 
-Leaderboards query all teams’ `activityResults` by `activityId`. After the first leaderboard load, Firestore may show a link to create the index — or add it manually:
-
-1. **Firestore Database** → **Indexes** → **Composite** → **Add index**.
-2. Collection ID: `activityResults`, collection group: **enabled**.
-3. Field: `activityId` — Ascending.
-4. Or import `firestore.indexes.json` from this repo with Firebase CLI.
+Rankings read every team’s `activityResults` subcollection in one collection-group query and filter by activity in the app. You do **not** need to create a composite or single-field index for leaderboards to work.
 
 ---
 

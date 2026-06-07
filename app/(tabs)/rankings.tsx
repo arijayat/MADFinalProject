@@ -1,6 +1,8 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   ScrollView,
@@ -23,7 +25,8 @@ import { ACTIVITIES, HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/act
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useTeam } from '@/contexts/TeamContext';
-import type { LeaderboardRow } from '@/lib/firestore/results';
+import { fetchAllActivityLeaderboards, type LeaderboardRow } from '@/lib/firestore/results';
+import { listTeamsForLeaderboard } from '@/lib/firestore/teams';
 
 type ActivityRanking = {
   activityId: ActivityId;
@@ -57,15 +60,44 @@ export default function RankingsListScreen() {
     null,
   );
   const displayTeamName = teamName.trim() || 'Your team';
-  const activityRankings = useMemo(
-    () =>
-      buildMockActivityRankings({
-        currentTeam: displayTeamName,
-        currentTeamId: teamId,
-        currentTeamDocId: teamDocId,
-      }),
-    [displayTeamName, teamId, teamDocId],
+  const [activityRankings, setActivityRankings] = useState<ActivityRanking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadRankings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const teamMeta = await listTeamsForLeaderboard();
+      const leaderboards = await fetchAllActivityLeaderboards(
+        HUB_ACTIVITY_ORDER,
+        teamMeta,
+      );
+      setActivityRankings(
+        HUB_ACTIVITY_ORDER.map((activityId) => ({
+          activityId,
+          title: ACTIVITIES[activityId].title,
+          rows: leaderboards[activityId] ?? [],
+        })),
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not load rankings. Check Firestore rules and your connection.',
+      );
+      setActivityRankings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadRankings();
+    }, [loadRankings]),
   );
+
   const overallRows = useMemo(
     () => computeOverallRows(activityRankings),
     [activityRankings],
@@ -93,21 +125,28 @@ export default function RankingsListScreen() {
         <View style={styles.infoRow}>
           <MaterialIcons name="emoji-events" size={18} color={Wireframe.panelBg} />
           <Text style={styles.infoText}>
-            Mock rankings are shown for now. Overall ranking combines scores
-            across every activity.
+            {loading
+              ? 'Loading rankings from cloud…'
+              : error
+                ? error
+                : 'Rankings from saved team results. Overall ranking combines scores across every activity.'}
           </Text>
         </View>
       </View>
+
+      {loading ? (
+        <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} />
+      ) : null}
 
       <RankingSection
         title="Overall ranking"
         subtitle={
           yourOverall
             ? `Your team is #${yourOverall.rank} with ${yourOverall.score} points.`
-            : 'Mock teams are ranked by total activity score.'
+            : 'Teams are ranked by total activity score.'
         }
         rows={overallRows}
-        teamDocId={teamDocId ?? MOCK_CURRENT_TEAM_ID}
+        teamDocId={teamDocId}
         emptyText="No ranking data yet."
         onSeeMore={() =>
           setSelectedRanking({
@@ -130,7 +169,7 @@ export default function RankingsListScreen() {
             key={section.activityId}
             title={section.title}
             rows={section.rows}
-            teamDocId={teamDocId ?? MOCK_CURRENT_TEAM_ID}
+            teamDocId={teamDocId}
             onPress={() =>
               setSelectedRanking({
                 title: section.title,
@@ -143,72 +182,11 @@ export default function RankingsListScreen() {
 
       <FullRankingModal
         ranking={selectedRanking}
-        teamDocId={teamDocId ?? MOCK_CURRENT_TEAM_ID}
+        teamDocId={teamDocId}
         onClose={() => setSelectedRanking(null)}
       />
     </WireScreen>
   );
-}
-
-const MOCK_CURRENT_TEAM_ID = 'mock-current-team';
-
-const MOCK_TEAMS = [
-  { team: 'Science Squad', id: '#ALPHA7', teamDocId: 'mock-science-squad' },
-  { team: 'Newton Crew', id: '#GRAV12', teamDocId: 'mock-newton-crew' },
-  { team: 'Atom Builders', id: '#ATOM4', teamDocId: 'mock-atom-builders' },
-  { team: 'Circuit Sparks', id: '#SPARK9', teamDocId: 'mock-circuit-sparks' },
-  { team: 'Data Dynamos', id: '#DATA3', teamDocId: 'mock-data-dynamos' },
-];
-
-const MOCK_SCORE_TABLE: Record<ActivityId, number[]> = {
-  'parachute-drop': [96, 91, 87, 82, 77],
-  'decibel-detector': [88, 94, 83, 79, 86],
-  'hand-fan-challenge': [84, 89, 93, 80, 75],
-  'vibration-analysis': [92, 86, 90, 95, 81],
-  'reaction-time': [79, 91, 85, 88, 94],
-  'surface-smoothness': [90, 83, 96, 87, 78],
-  'breathing-pattern': [86, 88, 81, 92, 89],
-};
-
-function buildMockActivityRankings({
-  currentTeam,
-  currentTeamId,
-  currentTeamDocId,
-}: {
-  currentTeam: string;
-  currentTeamId: string;
-  currentTeamDocId: string | null;
-}): ActivityRanking[] {
-  const teams = currentTeamDocId
-    ? [
-        { team: currentTeam, id: currentTeamId, teamDocId: currentTeamDocId },
-        ...MOCK_TEAMS,
-      ]
-    : [
-        { team: currentTeam, id: currentTeamId, teamDocId: MOCK_CURRENT_TEAM_ID },
-        ...MOCK_TEAMS,
-      ];
-
-  return HUB_ACTIVITY_ORDER.map((activityId, activityIndex) => {
-    const baseScores = MOCK_SCORE_TABLE[activityId];
-    const rows = teams
-      .map((team, teamIndex) => ({
-        ...team,
-        rank: 0,
-        score:
-          teamIndex === 0
-            ? Math.max(72, 89 - activityIndex * 2)
-            : baseScores[teamIndex - 1],
-      }))
-      .sort((a, b) => b.score - a.score || a.team.localeCompare(b.team))
-      .map((row, index) => ({ ...row, rank: index + 1 }));
-
-    return {
-      activityId,
-      title: ACTIVITIES[activityId].title,
-      rows,
-    };
-  });
 }
 
 function computeOverallRows(activityRankings: ActivityRanking[]): OverallRow[] {
@@ -601,6 +579,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
+  },
+  spinner: {
+    paddingVertical: 12,
   },
   sectionIntro: {
     marginTop: 6,

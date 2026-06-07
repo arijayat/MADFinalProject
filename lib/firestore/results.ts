@@ -4,10 +4,8 @@ import {
   doc,
   getDoc,
   getDocs,
-  query,
   serverTimestamp,
   setDoc,
-  where,
 } from 'firebase/firestore';
 
 import type { ActivityId } from '@/constants/activities';
@@ -82,38 +80,86 @@ export async function listTeamActivityResults(
   return out;
 }
 
+function toLeaderboardRow(
+  activityId: ActivityId,
+  data: ActivityResultDocument,
+  teamDocId: string,
+  teamMeta: Map<string, { name: string; code: string }>,
+): Omit<LeaderboardRow, 'rank'> {
+  const meta = teamMeta.get(teamDocId);
+  const code = meta?.code ?? '';
+  const displayId = code ? `#${code}` : '—';
+
+  return {
+    team: meta?.name ?? 'Unknown team',
+    id: displayId,
+    score: computeLeaderboardScore(activityId, data),
+    teamDocId,
+  };
+}
+
+function rankLeaderboardRows(
+  rows: Omit<LeaderboardRow, 'rank'>[],
+): LeaderboardRow[] {
+  const scoredRows = rows.filter((row) => row.score > 0);
+  scoredRows.sort((a, b) => b.score - a.score || a.team.localeCompare(b.team));
+
+  return scoredRows.map((row, index) => ({
+    ...row,
+    rank: index + 1,
+  }));
+}
+
+async function listAllActivityResults(): Promise<
+  { data: ActivityResultDocument; teamDocId: string }[]
+> {
+  const snap = await getDocs(
+    collectionGroup(getFirebaseDb(), 'activityResults'),
+  );
+
+  return snap.docs.map((docSnap) => {
+    const data = docSnap.data() as ActivityResultDocument;
+    const teamDocId = docSnap.ref.parent.parent?.id ?? data.teamId;
+    return { data, teamDocId };
+  });
+}
+
 export async function fetchActivityLeaderboard(
   activityId: ActivityId,
   teamMeta: Map<string, { name: string; code: string }>,
 ): Promise<LeaderboardRow[]> {
-  const snap = await getDocs(
-    query(
-      collectionGroup(getFirebaseDb(), 'activityResults'),
-      where('activityId', '==', activityId),
-    ),
-  );
+  const results = await listAllActivityResults();
+  const rows = results
+    .filter(({ data }) => data.activityId === activityId)
+    .map(({ data, teamDocId }) =>
+      toLeaderboardRow(activityId, data, teamDocId, teamMeta),
+    );
 
-  const rows: Omit<LeaderboardRow, 'rank'>[] = [];
+  return rankLeaderboardRows(rows);
+}
 
-  for (const docSnap of snap.docs) {
-    const data = docSnap.data() as ActivityResultDocument;
-    const teamDocId = docSnap.ref.parent.parent?.id ?? data.teamId;
-    const meta = teamMeta.get(teamDocId);
-    const code = meta?.code ?? '';
-    const displayId = code ? `#${code}` : '—';
+export async function fetchAllActivityLeaderboards(
+  activityIds: ActivityId[],
+  teamMeta: Map<string, { name: string; code: string }>,
+): Promise<Record<ActivityId, LeaderboardRow[]>> {
+  const allowed = new Set(activityIds);
+  const grouped = new Map<ActivityId, Omit<LeaderboardRow, 'rank'>[]>();
 
-    rows.push({
-      team: meta?.name ?? 'Unknown team',
-      id: displayId,
-      score: computeLeaderboardScore(activityId, data),
-      teamDocId,
-    });
+  for (const activityId of activityIds) {
+    grouped.set(activityId, []);
   }
 
-  rows.sort((a, b) => b.score - a.score || a.team.localeCompare(b.team));
+  const results = await listAllActivityResults();
+  for (const { data, teamDocId } of results) {
+    if (!allowed.has(data.activityId)) continue;
+    grouped
+      .get(data.activityId)!
+      .push(toLeaderboardRow(data.activityId, data, teamDocId, teamMeta));
+  }
 
-  return rows.map((row, index) => ({
-    ...row,
-    rank: index + 1,
-  }));
+  const out = {} as Record<ActivityId, LeaderboardRow[]>;
+  for (const activityId of activityIds) {
+    out[activityId] = rankLeaderboardRows(grouped.get(activityId) ?? []);
+  }
+  return out;
 }

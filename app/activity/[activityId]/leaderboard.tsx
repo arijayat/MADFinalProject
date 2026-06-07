@@ -43,7 +43,7 @@ export default function ActivityLeaderboardScreen() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Could not load leaderboard. Check Firestore rules and indexes.',
+          : 'Could not load leaderboard. Check Firestore rules and your connection.',
       );
       setRows([]);
     } finally {
@@ -87,7 +87,7 @@ export default function ActivityLeaderboardScreen() {
         ) : error ? (
           <Text style={styles.error}>{error}</Text>
         ) : rows.length === 0 ? (
-          <Text style={[styles.empty, { color: colors.textMuted }]}>No teams have saved this activity yet.</Text>
+          <Text style={[styles.empty, { color: colors.textMuted }]}>No teams have scored on this activity yet.</Text>
         ) : (
           <ScrollView horizontal>
             <View style={[styles.table, { borderColor: colors.border }]}>

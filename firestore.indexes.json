@@ -1,12 +1,14 @@
 {
-  "indexes": [
+  "indexes": [],
+  "fieldOverrides": [
     {
       "collectionGroup": "activityResults",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "activityId", "order": "ASCENDING" }
+      "fieldPath": "activityId",
+      "ttl": false,
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION_GROUP" }
       ]
     }
-  ],
-  "fieldOverrides": []
+  ]
 }
