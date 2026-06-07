@@ -62,6 +62,7 @@ function RootNavigation() {
         <Stack.Screen name="team-registration" />
         <Stack.Screen name="team-members" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="change-password" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="activity/[activityId]" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />

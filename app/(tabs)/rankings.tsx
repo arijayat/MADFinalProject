@@ -24,14 +24,27 @@ import { WireScreen } from '@/components/wireframe/WireScreen';
 import { ACTIVITIES, HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
-import { fetchAllActivityLeaderboards, type LeaderboardRow } from '@/lib/firestore/results';
+import {
+  fetchAllLeaderboardBundles,
+  type IndividualLeaderboardRow,
+  type LeaderboardRow,
+} from '@/lib/firestore/results';
 import { listTeamsForLeaderboard } from '@/lib/firestore/teams';
+
+type RankingMode = 'team' | 'individual';
 
 type ActivityRanking = {
   activityId: ActivityId;
   title: string;
   rows: LeaderboardRow[];
+};
+
+type IndividualActivityRanking = {
+  activityId: ActivityId;
+  title: string;
+  rows: IndividualLeaderboardRow[];
 };
 
 type OverallRow = {
@@ -43,24 +56,47 @@ type OverallRow = {
   completed: number;
 };
 
-type RankingRow = LeaderboardRow | OverallRow;
+type IndividualOverallRow = {
+  rank: number;
+  studentName: string;
+  teamName: string;
+  displayName: string;
+  id: string;
+  teamDocId: string;
+  memberId: string;
+  memberUid?: string;
+  score: number;
+  completed: number;
+};
+
+type RankingRow = LeaderboardRow | OverallRow | IndividualLeaderboardRow | IndividualOverallRow;
 
 type SelectedRanking = {
   title: string;
   rows: RankingRow[];
   overall?: boolean;
+  mode: RankingMode;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RankingsListScreen() {
   const { colors } = useAppTheme();
-  const { teamName, teamId, teamDocId } = useTeam();
+  const { user } = useAuth();
+  const { teamName, teamId, teamDocId, members } = useTeam();
+  const [rankingMode, setRankingMode] = useState<RankingMode>('team');
   const [selectedRanking, setSelectedRanking] = useState<SelectedRanking | null>(
     null,
   );
   const displayTeamName = teamName.trim() || 'Your team';
+  const linkedMember = user?.uid
+    ? members.find((member) => member.uid === user.uid)
+    : undefined;
+  const displayStudentName = linkedMember?.name.trim() || 'You';
   const [activityRankings, setActivityRankings] = useState<ActivityRanking[]>([]);
+  const [individualActivityRankings, setIndividualActivityRankings] = useState<
+    IndividualActivityRanking[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +105,7 @@ export default function RankingsListScreen() {
     setError(null);
     try {
       const teamMeta = await listTeamsForLeaderboard();
-      const leaderboards = await fetchAllActivityLeaderboards(
+      const { team, individual } = await fetchAllLeaderboardBundles(
         HUB_ACTIVITY_ORDER,
         teamMeta,
       );
@@ -77,7 +113,14 @@ export default function RankingsListScreen() {
         HUB_ACTIVITY_ORDER.map((activityId) => ({
           activityId,
           title: ACTIVITIES[activityId].title,
-          rows: leaderboards[activityId] ?? [],
+          rows: team[activityId] ?? [],
+        })),
+      );
+      setIndividualActivityRankings(
+        HUB_ACTIVITY_ORDER.map((activityId) => ({
+          activityId,
+          title: ACTIVITIES[activityId].title,
+          rows: individual[activityId] ?? [],
         })),
       );
     } catch (err) {
@@ -87,6 +130,7 @@ export default function RankingsListScreen() {
           : 'Could not load rankings. Check Firestore rules and your connection.',
       );
       setActivityRankings([]);
+      setIndividualActivityRankings([]);
     } finally {
       setLoading(false);
     }
@@ -102,26 +146,50 @@ export default function RankingsListScreen() {
     () => computeOverallRows(activityRankings),
     [activityRankings],
   );
-  const yourOverall = teamDocId
-    ? overallRows.find((row) => row.teamDocId === teamDocId)
-    : undefined;
+  const individualOverallRows = useMemo(
+    () => computeIndividualOverallRows(individualActivityRankings),
+    [individualActivityRankings],
+  );
+  const activeOverallRows =
+    rankingMode === 'team' ? overallRows : individualOverallRows;
+  const activeActivityRankings =
+    rankingMode === 'team' ? activityRankings : individualActivityRankings;
+  const yourOverall =
+    rankingMode === 'team'
+      ? teamDocId
+        ? overallRows.find((row) => row.teamDocId === teamDocId)
+        : undefined
+      : user?.uid
+        ? individualOverallRows.find((row) => row.memberUid === user.uid)
+        : undefined;
 
   return (
     <WireScreen>
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={styles.titleCopy}>
-            <Text style={styles.eyebrow}>Team leaderboard</Text>
+            <Text style={styles.eyebrow}>
+              {rankingMode === 'team' ? 'Team leaderboard' : 'Individual leaderboard'}
+            </Text>
             <Text style={styles.title}>Rankings</Text>
           </View>
           <View style={[styles.teamBadge, { backgroundColor: colors.translucent }]}>
-            <Text style={styles.teamBadgeLabel}>Team</Text>
-            <Text style={styles.teamBadgeName} numberOfLines={1}>
-              {displayTeamName}
+            <Text style={styles.teamBadgeLabel}>
+              {rankingMode === 'team' ? 'Team' : 'Student'}
             </Text>
-            <Text style={styles.teamBadgeId}>{teamId}</Text>
+            <Text style={styles.teamBadgeName} numberOfLines={1}>
+              {rankingMode === 'team' ? displayTeamName : displayStudentName}
+            </Text>
+            {rankingMode === 'team' ? (
+              <Text style={styles.teamBadgeId}>{teamId}</Text>
+            ) : (
+              <Text style={styles.teamBadgeId} numberOfLines={1}>
+                {displayTeamName}
+              </Text>
+            )}
           </View>
         </View>
+        <RankingModeToggle mode={rankingMode} onChange={setRankingMode} />
         <View style={styles.infoRow}>
           <MaterialIcons name="emoji-events" size={18} color={Wireframe.panelBg} />
           <Text style={styles.infoText}>
@@ -129,7 +197,9 @@ export default function RankingsListScreen() {
               ? 'Loading rankings from cloud…'
               : error
                 ? error
-                : 'Rankings from saved team results. Overall ranking combines scores across every activity.'}
+                : rankingMode === 'team'
+                  ? 'Rankings from saved team results. Overall ranking combines scores across every activity.'
+                  : 'Each student inherits their team score for every completed activity.'}
           </Text>
         </View>
       </View>
@@ -142,17 +212,24 @@ export default function RankingsListScreen() {
         title="Overall ranking"
         subtitle={
           yourOverall
-            ? `Your team is #${yourOverall.rank} with ${yourOverall.score} points.`
-            : 'Teams are ranked by total activity score.'
+            ? rankingMode === 'team'
+              ? `Your team is #${yourOverall.rank} with ${yourOverall.score} points.`
+              : `You are #${yourOverall.rank} with ${yourOverall.score} points.`
+            : rankingMode === 'team'
+              ? 'Teams are ranked by total activity score.'
+              : 'Students are ranked by total activity score.'
         }
-        rows={overallRows}
+        rows={activeOverallRows}
+        mode={rankingMode}
         teamDocId={teamDocId}
+        userUid={user?.uid}
         emptyText="No ranking data yet."
         onSeeMore={() =>
           setSelectedRanking({
             title: 'Overall ranking',
-            rows: overallRows,
+            rows: activeOverallRows,
             overall: true,
+            mode: rankingMode,
           })
         }
         overall
@@ -160,20 +237,27 @@ export default function RankingsListScreen() {
 
       <View style={styles.sectionIntro}>
         <Text style={styles.sectionIntroTitle}>Activity rankings</Text>
-        <Text style={styles.sectionIntroText}>Top teams for each activity.</Text>
+        <Text style={styles.sectionIntroText}>
+          {rankingMode === 'team'
+            ? 'Top teams for each activity.'
+            : 'Top students for each activity.'}
+        </Text>
       </View>
 
       <View style={styles.activityButtons}>
-        {activityRankings.map((section) => (
+        {activeActivityRankings.map((section) => (
           <ActivityRankingButton
             key={section.activityId}
             title={section.title}
             rows={section.rows}
+            mode={rankingMode}
             teamDocId={teamDocId}
+            userUid={user?.uid}
             onPress={() =>
               setSelectedRanking({
                 title: section.title,
                 rows: section.rows,
+                mode: rankingMode,
               })
             }
           />
@@ -183,6 +267,7 @@ export default function RankingsListScreen() {
       <FullRankingModal
         ranking={selectedRanking}
         teamDocId={teamDocId}
+        userUid={user?.uid}
         onClose={() => setSelectedRanking(null)}
       />
     </WireScreen>
@@ -220,11 +305,140 @@ function computeOverallRows(activityRankings: ActivityRanking[]): OverallRow[] {
     .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
+function computeIndividualOverallRows(
+  activityRankings: IndividualActivityRanking[],
+): IndividualOverallRow[] {
+  const students = new Map<string, Omit<IndividualOverallRow, 'rank'>>();
+
+  for (const ranking of activityRankings) {
+    for (const row of ranking.rows) {
+      const key = `${row.teamDocId}-${row.memberId}`;
+      const existing = students.get(key);
+      if (existing) {
+        existing.score += row.score;
+        existing.completed += 1;
+      } else {
+        students.set(key, {
+          studentName: row.studentName,
+          teamName: row.teamName,
+          displayName: row.displayName,
+          id: row.id,
+          teamDocId: row.teamDocId,
+          memberId: row.memberId,
+          memberUid: row.memberUid,
+          score: row.score,
+          completed: 1,
+        });
+      }
+    }
+  }
+
+  return [...students.values()]
+    .sort(
+      (a, b) =>
+        b.score - a.score ||
+        b.completed - a.completed ||
+        a.displayName.localeCompare(b.displayName),
+    )
+    .map((row, index) => ({ ...row, rank: index + 1 }));
+}
+
+function getRankingRowKey(row: RankingRow, mode: RankingMode): string {
+  if (mode === 'individual' && 'memberId' in row) {
+    return `${row.teamDocId}-${row.memberId}`;
+  }
+  return row.teamDocId;
+}
+
+function getRankingRowLabel(row: RankingRow, mode: RankingMode): string {
+  if (mode === 'individual' && 'displayName' in row) {
+    return row.displayName;
+  }
+  if ('team' in row) {
+    return row.team;
+  }
+  return 'Unknown';
+}
+
+function isYourRankingRow(
+  row: RankingRow,
+  mode: RankingMode,
+  teamDocId: string | null,
+  userUid: string | null | undefined,
+): boolean {
+  if (mode === 'individual' && 'memberUid' in row) {
+    return !!userUid && row.memberUid === userUid;
+  }
+  return !!teamDocId && row.teamDocId === teamDocId;
+}
+
+function RankingModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: RankingMode;
+  onChange: (mode: RankingMode) => void;
+}) {
+  const { colors } = useAppTheme();
+
+  return (
+    <View style={[styles.modeToggle, { backgroundColor: colors.translucent }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: mode === 'team' }}
+        onPress={() => onChange('team')}
+        style={[
+          styles.modeButton,
+          mode === 'team' && [styles.modeButtonActive, { backgroundColor: colors.panelBg }],
+        ]}>
+        <MaterialIcons
+          name="groups"
+          size={16}
+          color={mode === 'team' ? Wireframe.accent : 'rgba(255,255,255,0.78)'}
+        />
+        <Text
+          style={[
+            styles.modeButtonText,
+            mode === 'team' && styles.modeButtonTextActive,
+          ]}>
+          Teams
+        </Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ selected: mode === 'individual' }}
+        onPress={() => onChange('individual')}
+        style={[
+          styles.modeButton,
+          mode === 'individual' && [
+            styles.modeButtonActive,
+            { backgroundColor: colors.panelBg },
+          ],
+        ]}>
+        <MaterialIcons
+          name="person"
+          size={16}
+          color={mode === 'individual' ? Wireframe.accent : 'rgba(255,255,255,0.78)'}
+        />
+        <Text
+          style={[
+            styles.modeButtonText,
+            mode === 'individual' && styles.modeButtonTextActive,
+          ]}>
+          Individuals
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function RankingSection({
   title,
   subtitle,
   rows,
+  mode,
   teamDocId,
+  userUid,
   emptyText,
   onSeeMore,
   overall = false,
@@ -232,7 +446,9 @@ function RankingSection({
   title: string;
   subtitle?: string;
   rows: RankingRow[];
+  mode: RankingMode;
   teamDocId: string | null;
+  userUid: string | null | undefined;
   emptyText: string;
   onSeeMore?: () => void;
   overall?: boolean;
@@ -272,13 +488,19 @@ function RankingSection({
       </View>
 
       {overall && shownRows.length > 0 ? (
-        <Podium rows={shownRows} teamDocId={teamDocId} />
+        <Podium rows={shownRows} mode={mode} teamDocId={teamDocId} userUid={userUid} />
       ) : shownRows.length === 0 ? (
         <Text style={[styles.emptyText, { color: colors.textMuted }]}>{emptyText}</Text>
       ) : (
         <View style={styles.rows}>
           {shownRows.map((row) => (
-            <RankingRowView key={`${title}-${row.teamDocId}`} row={row} teamDocId={teamDocId} />
+            <RankingRowView
+              key={`${title}-${getRankingRowKey(row, mode)}`}
+              row={row}
+              mode={mode}
+              teamDocId={teamDocId}
+              userUid={userUid}
+            />
           ))}
         </View>
       )}
@@ -302,10 +524,14 @@ function RankingSection({
 
 function Podium({
   rows,
+  mode,
   teamDocId,
+  userUid,
 }: {
   rows: RankingRow[];
+  mode: RankingMode;
   teamDocId: string | null;
+  userUid: string | null | undefined;
 }) {
   const first = rows[0];
   const second = rows[1];
@@ -313,26 +539,43 @@ function Podium({
 
   return (
     <View style={styles.podiumWrap}>
-      {second ? <PodiumPlace row={second} teamDocId={teamDocId} height={92} /> : null}
-      {first ? <PodiumPlace row={first} teamDocId={teamDocId} height={118} first /> : null}
-      {third ? <PodiumPlace row={third} teamDocId={teamDocId} height={78} /> : null}
+      {second ? (
+        <PodiumPlace row={second} mode={mode} teamDocId={teamDocId} userUid={userUid} height={92} />
+      ) : null}
+      {first ? (
+        <PodiumPlace
+          row={first}
+          mode={mode}
+          teamDocId={teamDocId}
+          userUid={userUid}
+          height={118}
+          first
+        />
+      ) : null}
+      {third ? (
+        <PodiumPlace row={third} mode={mode} teamDocId={teamDocId} userUid={userUid} height={78} />
+      ) : null}
     </View>
   );
 }
 
 function PodiumPlace({
   row,
+  mode,
   teamDocId,
+  userUid,
   height,
   first,
 }: {
   row: RankingRow;
+  mode: RankingMode;
   teamDocId: string | null;
+  userUid: string | null | undefined;
   height: number;
   first?: boolean;
 }) {
   const { colors } = useAppTheme();
-  const isYourTeam = row.teamDocId === teamDocId;
+  const isYou = isYourRankingRow(row, mode, teamDocId, userUid);
   return (
     <Animated.View
       entering={FadeInUp.delay(row.rank * 35).duration(180).springify().damping(16)}
@@ -341,11 +584,11 @@ function PodiumPlace({
         styles.podiumPlace,
         { minHeight: height, backgroundColor: colors.surfaceAlt },
         first && { backgroundColor: colors.accentSoft },
-        isYourTeam && { borderWidth: 1, borderColor: Wireframe.accent },
+        isYou && { borderWidth: 1, borderColor: Wireframe.accent },
       ]}>
       <Text style={styles.podiumRank}>#{row.rank}</Text>
       <Text style={[styles.podiumTeam, { color: colors.text }]} numberOfLines={2}>
-        {row.team}
+        {getRankingRowLabel(row, mode)}
       </Text>
       <Text style={[styles.podiumScore, { color: colors.textMuted }]}>{row.score}</Text>
     </Animated.View>
@@ -355,12 +598,16 @@ function PodiumPlace({
 function ActivityRankingButton({
   title,
   rows,
+  mode,
   teamDocId,
+  userUid,
   onPress,
 }: {
   title: string;
-  rows: LeaderboardRow[];
+  rows: LeaderboardRow[] | IndividualLeaderboardRow[];
+  mode: RankingMode;
   teamDocId: string | null;
+  userUid: string | null | undefined;
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
@@ -368,9 +615,14 @@ function ActivityRankingButton({
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
-  const yourRow = teamDocId
-    ? rows.find((row) => row.teamDocId === teamDocId)
-    : undefined;
+  const yourRow =
+    mode === 'team'
+      ? teamDocId
+        ? (rows as LeaderboardRow[]).find((row) => row.teamDocId === teamDocId)
+        : undefined
+      : userUid
+        ? (rows as IndividualLeaderboardRow[]).find((row) => row.memberUid === userUid)
+        : undefined;
   const leader = rows[0];
 
   return (
@@ -405,7 +657,9 @@ function ActivityRankingButton({
           {yourRow
             ? `Your standing: #${yourRow.rank} · ${yourRow.score} pts`
             : leader
-              ? `Leader: ${leader.team} · ${leader.score} pts`
+              ? mode === 'team'
+                ? `Leader: ${(leader as LeaderboardRow).team} · ${leader.score} pts`
+                : `Leader: ${(leader as IndividualLeaderboardRow).displayName} · ${leader.score} pts`
               : 'No ranking data yet'}
         </Text>
       </View>
@@ -417,16 +671,19 @@ function ActivityRankingButton({
 function FullRankingModal({
   ranking,
   teamDocId,
+  userUid,
   onClose,
 }: {
   ranking: SelectedRanking | null;
   teamDocId: string | null;
+  userUid: string | null | undefined;
   onClose: () => void;
 }) {
   const { colors } = useAppTheme();
+  const mode = ranking?.mode ?? 'team';
   const currentStanding =
-    ranking && teamDocId
-      ? ranking.rows.find((row) => row.teamDocId === teamDocId)
+    ranking && (mode === 'team' ? teamDocId : userUid)
+      ? ranking.rows.find((row) => isYourRankingRow(row, mode, teamDocId, userUid))
       : undefined;
 
   return (
@@ -458,7 +715,7 @@ function FullRankingModal({
           {currentStanding ? (
             <View style={[styles.currentStanding, { backgroundColor: colors.accentSoft }]}>
               <Text style={[styles.currentLabel, { color: colors.textMuted }]}>
-                Your team standing
+                {mode === 'team' ? 'Your team standing' : 'Your standing'}
               </Text>
               <Text style={[styles.currentValue, { color: colors.text }]}>
                 #{currentStanding.rank} · {currentStanding.score} pts
@@ -469,9 +726,11 @@ function FullRankingModal({
           <ScrollView contentContainerStyle={styles.modalRows}>
             {(ranking?.rows ?? []).map((row) => (
               <RankingRowView
-                key={`modal-${ranking?.title}-${row.teamDocId}`}
+                key={`modal-${ranking?.title}-${getRankingRowKey(row, mode)}`}
                 row={row}
+                mode={mode}
                 teamDocId={teamDocId}
+                userUid={userUid}
               />
             ))}
           </ScrollView>
@@ -483,13 +742,17 @@ function FullRankingModal({
 
 function RankingRowView({
   row,
+  mode,
   teamDocId,
+  userUid,
 }: {
   row: RankingRow;
+  mode: RankingMode;
   teamDocId: string | null;
+  userUid: string | null | undefined;
 }) {
   const { colors } = useAppTheme();
-  const isYourTeam = row.teamDocId === teamDocId;
+  const isYou = isYourRankingRow(row, mode, teamDocId, userUid);
   const completed = 'completed' in row ? ` · ${row.completed} activities` : '';
   return (
     <Animated.View
@@ -498,12 +761,12 @@ function RankingRowView({
       style={[
         styles.rankRow,
         { backgroundColor: colors.surfaceAlt },
-        isYourTeam && { backgroundColor: colors.accentSoft },
+        isYou && { backgroundColor: colors.accentSoft },
       ]}>
       <Text style={styles.rankNumber}>#{row.rank}</Text>
       <View style={styles.rankTeam}>
         <Text style={[styles.rankTeamName, { color: colors.text }]} numberOfLines={1}>
-          {row.team}
+          {getRankingRowLabel(row, mode)}
         </Text>
         <Text style={[styles.rankMeta, { color: colors.textMuted }]}>
           {row.id}
@@ -564,6 +827,34 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     marginTop: 3,
+  },
+  modeToggle: {
+    flexDirection: 'row',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 8,
+    padding: 4,
+  },
+  modeButton: {
+    flex: 1,
+    minHeight: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+  },
+  modeButtonActive: {
+    backgroundColor: Wireframe.panelBg,
+  },
+  modeButtonText: {
+    color: 'rgba(255,255,255,0.78)',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  modeButtonTextActive: {
+    color: Wireframe.text,
   },
   infoRow: {
     flexDirection: 'row',

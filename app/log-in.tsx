@@ -10,10 +10,34 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function LogInScreen() {
   const router = useRouter();
-  const { signIn, refreshProfile } = useAuth();
+  const { signIn, refreshProfile, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [resetting, setResetting] = useState(false);
+
+  async function handleForgotPassword() {
+    if (!email.trim()) {
+      Alert.alert('Enter your email', 'Type the email for your account, then tap Forgot password again.');
+      return;
+    }
+
+    setResetting(true);
+    try {
+      await resetPassword(email);
+      Alert.alert(
+        'Check your email',
+        `If an account exists for ${email.trim()}, a password reset link has been sent. Open the link to set a new password.`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could not send reset email',
+        error instanceof Error ? error.message : 'Try again.',
+      );
+    } finally {
+      setResetting(false);
+    }
+  }
 
   async function handleLogin() {
     if (!email.trim() || !password) {
@@ -40,7 +64,7 @@ export default function LogInScreen() {
           label={submitting ? 'LOGGING IN…' : 'LOG IN'}
           style={styles.primaryButton}
           onPress={handleLogin}
-          disabled={submitting}
+          disabled={submitting || resetting}
         />
       }>
       <ScreenHeader
@@ -60,7 +84,7 @@ export default function LogInScreen() {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
-          editable={!submitting}
+          editable={!submitting && !resetting}
         />
       </View>
       <View style={styles.field}>
@@ -72,13 +96,24 @@ export default function LogInScreen() {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
-          editable={!submitting}
+          editable={!submitting && !resetting}
         />
       </View>
 
-      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+      <Pressable
+        onPress={handleForgotPassword}
+        disabled={submitting || resetting}
+        style={styles.forgotPassword}>
+        <Text style={styles.forgotPasswordText}>
+          {resetting ? 'Sending reset link…' : 'Forgot password?'}
+        </Text>
+      </Pressable>
 
-      <Pressable onPress={() => router.push('/create-account')} disabled={submitting}>
+      {submitting || resetting ? (
+        <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} />
+      ) : null}
+
+      <Pressable onPress={() => router.push('/create-account')} disabled={submitting || resetting}>
         <Text style={styles.link}>Need an account? Create one</Text>
       </Pressable>
     </WireScreen>
@@ -109,6 +144,21 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    width: '100%',
+    maxWidth: 420,
+    marginTop: -10,
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  forgotPasswordText: {
+    textAlign: 'right',
+    color: Wireframe.panelBg,
+    fontSize: 13,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   spinner: {
     marginTop: 8,

@@ -11,7 +11,11 @@ import {
 import type { ActivityId } from '@/constants/activities';
 import { getFirebaseDb } from '@/lib/firebase';
 import { computeLeaderboardScore } from '@/utils/leaderboard-score';
-import type { ActivityReflection, ActivityResultDocument } from '@/types/firestore';
+import type {
+  ActivityReflection,
+  ActivityResultDocument,
+  FirestoreTeamMember,
+} from '@/types/firestore';
 
 export type ActivitySessionSnapshot = Omit<
   ActivityResultDocument,
@@ -24,6 +28,24 @@ export type LeaderboardRow = {
   id: string;
   score: number;
   teamDocId: string;
+};
+
+export type IndividualLeaderboardRow = {
+  rank: number;
+  studentName: string;
+  teamName: string;
+  displayName: string;
+  id: string;
+  score: number;
+  teamDocId: string;
+  memberId: string;
+  memberUid?: string;
+};
+
+type TeamLeaderboardMeta = {
+  name: string;
+  code: string;
+  members: FirestoreTeamMember[];
 };
 
 export async function saveActivityResult(params: {
@@ -84,7 +106,7 @@ function toLeaderboardRow(
   activityId: ActivityId,
   data: ActivityResultDocument,
   teamDocId: string,
-  teamMeta: Map<string, { name: string; code: string }>,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
 ): Omit<LeaderboardRow, 'rank'> {
   const meta = teamMeta.get(teamDocId);
   const code = meta?.code ?? '';
@@ -110,6 +132,49 @@ function rankLeaderboardRows(
   }));
 }
 
+function toIndividualLeaderboardRows(
+  activityId: ActivityId,
+  data: ActivityResultDocument,
+  teamDocId: string,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
+): Omit<IndividualLeaderboardRow, 'rank'>[] {
+  const meta = teamMeta.get(teamDocId);
+  const teamName = meta?.name ?? 'Unknown team';
+  const code = meta?.code ?? '';
+  const displayId = code ? `#${code}` : '—';
+  const score = computeLeaderboardScore(activityId, data);
+  const members = (meta?.members ?? []).filter((member) => member.name.trim());
+
+  return members.map((member) => {
+    const studentName = member.name.trim();
+    return {
+      studentName,
+      teamName,
+      displayName: `${studentName} (${teamName})`,
+      id: displayId,
+      score,
+      teamDocId,
+      memberId: member.id,
+      memberUid: member.uid,
+    };
+  });
+}
+
+function rankIndividualLeaderboardRows(
+  rows: Omit<IndividualLeaderboardRow, 'rank'>[],
+): IndividualLeaderboardRow[] {
+  const scoredRows = rows.filter((row) => row.score > 0);
+  scoredRows.sort(
+    (a, b) =>
+      b.score - a.score || a.displayName.localeCompare(b.displayName),
+  );
+
+  return scoredRows.map((row, index) => ({
+    ...row,
+    rank: index + 1,
+  }));
+}
+
 async function listAllActivityResults(): Promise<
   { data: ActivityResultDocument; teamDocId: string }[]
 > {
@@ -126,40 +191,105 @@ async function listAllActivityResults(): Promise<
 
 export async function fetchActivityLeaderboard(
   activityId: ActivityId,
-  teamMeta: Map<string, { name: string; code: string }>,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
 ): Promise<LeaderboardRow[]> {
-  const results = await listAllActivityResults();
-  const rows = results
-    .filter(({ data }) => data.activityId === activityId)
-    .map(({ data, teamDocId }) =>
-      toLeaderboardRow(activityId, data, teamDocId, teamMeta),
-    );
+  const { team } = await fetchActivityLeaderboardBundle(activityId, teamMeta);
+  return team;
+}
 
-  return rankLeaderboardRows(rows);
+export async function fetchActivityIndividualLeaderboard(
+  activityId: ActivityId,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
+): Promise<IndividualLeaderboardRow[]> {
+  const { individual } = await fetchActivityLeaderboardBundle(activityId, teamMeta);
+  return individual;
+}
+
+export async function fetchActivityLeaderboardBundle(
+  activityId: ActivityId,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
+): Promise<{
+  team: LeaderboardRow[];
+  individual: IndividualLeaderboardRow[];
+}> {
+  const results = await listAllActivityResults();
+  const teamRows: Omit<LeaderboardRow, 'rank'>[] = [];
+  const individualRows: Omit<IndividualLeaderboardRow, 'rank'>[] = [];
+
+  for (const { data, teamDocId } of results) {
+    if (data.activityId !== activityId) continue;
+    teamRows.push(toLeaderboardRow(activityId, data, teamDocId, teamMeta));
+    individualRows.push(
+      ...toIndividualLeaderboardRows(activityId, data, teamDocId, teamMeta),
+    );
+  }
+
+  return {
+    team: rankLeaderboardRows(teamRows),
+    individual: rankIndividualLeaderboardRows(individualRows),
+  };
 }
 
 export async function fetchAllActivityLeaderboards(
   activityIds: ActivityId[],
-  teamMeta: Map<string, { name: string; code: string }>,
+  teamMeta: Map<string, TeamLeaderboardMeta>,
 ): Promise<Record<ActivityId, LeaderboardRow[]>> {
+  const { team } = await fetchAllLeaderboardBundles(activityIds, teamMeta);
+  return team;
+}
+
+export async function fetchAllActivityIndividualLeaderboards(
+  activityIds: ActivityId[],
+  teamMeta: Map<string, TeamLeaderboardMeta>,
+): Promise<Record<ActivityId, IndividualLeaderboardRow[]>> {
+  const { individual } = await fetchAllLeaderboardBundles(activityIds, teamMeta);
+  return individual;
+}
+
+export async function fetchAllLeaderboardBundles(
+  activityIds: ActivityId[],
+  teamMeta: Map<string, TeamLeaderboardMeta>,
+): Promise<{
+  team: Record<ActivityId, LeaderboardRow[]>;
+  individual: Record<ActivityId, IndividualLeaderboardRow[]>;
+}> {
   const allowed = new Set(activityIds);
-  const grouped = new Map<ActivityId, Omit<LeaderboardRow, 'rank'>[]>();
+  const teamGrouped = new Map<ActivityId, Omit<LeaderboardRow, 'rank'>[]>();
+  const individualGrouped = new Map<
+    ActivityId,
+    Omit<IndividualLeaderboardRow, 'rank'>[]
+  >();
 
   for (const activityId of activityIds) {
-    grouped.set(activityId, []);
+    teamGrouped.set(activityId, []);
+    individualGrouped.set(activityId, []);
   }
 
   const results = await listAllActivityResults();
   for (const { data, teamDocId } of results) {
     if (!allowed.has(data.activityId)) continue;
-    grouped
+    teamGrouped
       .get(data.activityId)!
       .push(toLeaderboardRow(data.activityId, data, teamDocId, teamMeta));
+    individualGrouped
+      .get(data.activityId)!
+      .push(
+        ...toIndividualLeaderboardRows(
+          data.activityId,
+          data,
+          teamDocId,
+          teamMeta,
+        ),
+      );
   }
 
-  const out = {} as Record<ActivityId, LeaderboardRow[]>;
+  const team = {} as Record<ActivityId, LeaderboardRow[]>;
+  const individual = {} as Record<ActivityId, IndividualLeaderboardRow[]>;
   for (const activityId of activityIds) {
-    out[activityId] = rankLeaderboardRows(grouped.get(activityId) ?? []);
+    team[activityId] = rankLeaderboardRows(teamGrouped.get(activityId) ?? []);
+    individual[activityId] = rankIndividualLeaderboardRows(
+      individualGrouped.get(activityId) ?? [],
+    );
   }
-  return out;
+  return { team, individual };
 }

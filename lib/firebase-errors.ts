@@ -14,6 +14,8 @@ export function getAuthErrorMessage(error: unknown): string {
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Incorrect email or password.';
+    case 'auth/requires-recent-login':
+      return 'For security, log out and log back in, then try changing your password again.';
     case 'auth/email-already-in-use':
       return 'An account with this email already exists.';
     case 'auth/weak-password':

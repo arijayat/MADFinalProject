@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const PROTECTED_ROOTS = new Set([
   '(tabs)',
+  'settings',
+  'change-password',
   'team-onboarding',
   'join-team',
   'join-team-pick-name',

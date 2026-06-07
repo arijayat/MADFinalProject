@@ -1,13 +1,17 @@
 import {
+  EmailAuthProvider,
   User,
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  reauthenticateWithCredential,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
+  updatePassword,
 } from 'firebase/auth';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { ensureUserProfile, updateUserDisplayName } from '@/lib/firestore/users';
+import { ensureUserProfile, touchUserProfile, updateUserDisplayName } from '@/lib/firestore/users';
 import { getAuthErrorMessage } from '@/lib/firebase-errors';
 import { getFirebaseAuth } from '@/lib/firebase';
 import type { UserProfile } from '@/types/firestore';
@@ -22,6 +26,8 @@ type AuthContextValue = {
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
   updateDisplayName: (displayName: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -108,6 +114,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [refreshProfile],
   );
 
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const current = getFirebaseAuth().currentUser;
+      if (!current?.email) {
+        throw new Error('You must be signed in with email to change your password.');
+      }
+
+      try {
+        const credential = EmailAuthProvider.credential(current.email, currentPassword);
+        await reauthenticateWithCredential(current, credential);
+        await updatePassword(current, newPassword);
+        await touchUserProfile(current.uid);
+        await refreshProfile();
+      } catch (error) {
+        throw new Error(getAuthErrorMessage(error));
+      }
+    },
+    [refreshProfile],
+  );
+
+  const resetPassword = useCallback(async (email: string) => {
+    try {
+      await sendPasswordResetEmail(getFirebaseAuth(), email.trim());
+    } catch (error) {
+      throw new Error(getAuthErrorMessage(error));
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -119,8 +153,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logOut,
       refreshProfile,
       updateDisplayName,
+      changePassword,
+      resetPassword,
     }),
-    [user, profile, isLoading, configError, signIn, signUp, logOut, refreshProfile, updateDisplayName],
+    [user, profile, isLoading, configError, signIn, signUp, logOut, refreshProfile, updateDisplayName, changePassword, resetPassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

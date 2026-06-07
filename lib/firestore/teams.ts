@@ -227,14 +227,24 @@ export async function syncTeamMemberAuthInfo(
   return linked;
 }
 
+export type TeamLeaderboardMeta = {
+  name: string;
+  code: string;
+  members: TeamDocument['members'];
+};
+
 export async function listTeamsForLeaderboard(): Promise<
-  Map<string, { name: string; code: string }>
+  Map<string, TeamLeaderboardMeta>
 > {
   const snap = await getDocs(teamsCollection());
-  const map = new Map<string, { name: string; code: string }>();
+  const map = new Map<string, TeamLeaderboardMeta>();
   for (const docSnap of snap.docs) {
     const data = docSnap.data() as TeamDocument;
-    map.set(docSnap.id, { name: data.name, code: data.code });
+    map.set(docSnap.id, {
+      name: data.name,
+      code: data.code,
+      members: data.members ?? [],
+    });
   }
   return map;
 }

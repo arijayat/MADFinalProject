@@ -58,6 +58,12 @@ export async function setUserTeamId(uid: string, teamId: string | null): Promise
   });
 }
 
+export async function touchUserProfile(uid: string): Promise<void> {
+  await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), {
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export async function updateUserDisplayName(
   uid: string,
   displayName: string,

@@ -19,9 +19,10 @@ export default function SettingsScreen() {
         </Pressable>
         <Text style={styles.eyebrow}>App preferences</Text>
         <Text style={styles.title}>Settings</Text>
-        <Text style={styles.subtitle}>Adjust how the app looks on this device.</Text>
+        <Text style={styles.subtitle}>Adjust how the app looks and manage your account.</Text>
       </View>
 
+      <Text style={styles.sectionLabel}>Appearance</Text>
       <View
         style={[
           styles.card,
@@ -51,6 +52,27 @@ export default function SettingsScreen() {
           thumbColor={isDark ? Wireframe.accent : colors.panelBg}
         />
       </View>
+
+      <Text style={styles.sectionLabel}>Security</Text>
+      <Pressable
+        onPress={() => router.push('/change-password')}
+        style={({ pressed }) => [
+          styles.card,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+            opacity: pressed ? 0.88 : 1,
+          },
+        ]}>
+        <View style={[styles.settingIcon, { backgroundColor: colors.accentSoft }]}>
+          <MaterialIcons name="lock" size={22} color={Wireframe.accent} />
+        </View>
+        <View style={styles.settingText}>
+          <Text style={[styles.settingTitle, { color: colors.text }]}>Change password</Text>
+        </View>
+        <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
+      </Pressable>
     </WireScreen>
   );
 }
@@ -89,6 +111,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
+  },
+  sectionLabel: {
+    color: 'rgba(255,255,255,0.74)',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    marginTop: 16,
+    marginBottom: 8,
   },
   card: {
     flexDirection: 'row',
