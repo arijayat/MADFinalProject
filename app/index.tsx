@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 
+import { AppLogo } from '@/components/AppLogo';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -46,7 +47,7 @@ export default function SplashScreen() {
 
   return (
     <Pressable style={styles.screen} onPress={handleTap}>
-      <View style={styles.logo} />
+      <AppLogo size={220} />
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={Wireframe.textMuted} />
       ) : (
@@ -68,13 +69,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    backgroundColor: '#d0d0d0',
-    borderWidth: 1,
-    borderColor: Wireframe.border,
   },
   hint: {
     marginTop: 24,

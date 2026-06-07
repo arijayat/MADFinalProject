@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppLogo } from '@/components/AppLogo';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 export default function SignInScreen() {
   const router = useRouter();
   const { configError } = useAuth();
+  const { width } = useWindowDimensions();
+  const logoSize = Math.min(width - 32, 400);
 
   function showConfigHelp() {
     if (!configError) return;
@@ -18,8 +21,7 @@ export default function SignInScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.centerContent}>
-        <View style={styles.logo} />
-        <Text style={styles.title}>GLOBAL APP</Text>
+        <AppLogo size={logoSize} tight />
         <Text style={styles.subtitle}>Log in with email and password.</Text>
         {configError ? (
           <Text style={styles.configError} onPress={showConfigHelp}>
@@ -55,23 +57,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
-    width: 120,
-    height: 120,
-    backgroundColor: '#d0d0d0',
-    borderWidth: 1,
-    borderColor: Wireframe.border,
-    borderRadius: 8,
-  },
-  title: {
-    marginTop: 16,
-    textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '700',
-    color: Wireframe.text,
-  },
   subtitle: {
-    marginTop: 10,
+    marginTop: 8,
     textAlign: 'center',
     fontSize: 14,
     color: Wireframe.textMuted,

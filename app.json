@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "FinalProj",
-    "slug": "FinalProj",
+    "name": "STEM Learning Lab",
+    "slug": "stem-learning-lab",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMotionUsageDescription": "STEMM Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities."
+        "NSMotionUsageDescription": "STEM Learning Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities."
       }
     },
     "android": {
@@ -45,14 +45,14 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow GLOBAL APP to use the microphone to measure sound levels for science activities."
+          "microphonePermission": "Allow STEM Learning Lab to use the microphone to measure sound levels for science activities."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow STEMM Lab to use the camera to record parachute drops and measure fall times.",
-          "microphonePermission": "Allow STEMM Lab to record audio with drop videos.",
+          "cameraPermission": "Allow STEM Learning Lab to use the camera to record parachute drops and measure fall times.",
+          "microphonePermission": "Allow STEM Learning Lab to record audio with drop videos.",
           "recordAudioAndroid": true
         }
       ],
@@ -60,8 +60,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow STEMM Lab to upload photos of your revised parachute design.",
-          "cameraPermission": "Allow STEMM Lab to photograph your revised parachute design."
+          "photosPermission": "Allow STEM Learning Lab to upload photos of your revised parachute design.",
+          "cameraPermission": "Allow STEM Learning Lab to photograph your revised parachute design."
         }
       ],
       "expo-sqlite",
