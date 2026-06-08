@@ -11,7 +11,8 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMotionUsageDescription": "STEM Learning Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities."
+        "NSMotionUsageDescription": "STEM Learning Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities.",
+        "NSLocationWhenInUseUsageDescription": "STEM Learning Lab uses your location to record your school when you create an account."
       }
     },
     "android": {
@@ -66,7 +67,14 @@
       ],
       "expo-sqlite",
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow STEM Learning Lab to use your location to record your school when creating an account."
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

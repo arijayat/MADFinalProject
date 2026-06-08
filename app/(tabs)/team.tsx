@@ -54,12 +54,10 @@ export default function TeamTabScreen() {
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftMembers(members);
   }, [members]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftTeamName(teamName);
     setDraftGradeLevel(gradeLevel);
   }, [teamName, gradeLevel]);

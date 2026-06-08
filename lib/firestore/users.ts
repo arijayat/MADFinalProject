@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore';
 
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
-import type { UserProfile } from '@/types/firestore';
+import type { SchoolLocation, UserProfile } from '@/types/firestore';
 
 const usersCollection = () => 'users';
 
@@ -42,6 +42,7 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
     displayName: user.displayName,
     photoURL: user.photoURL,
     teamId: null,
+    schoolLocation: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -62,6 +63,27 @@ export async function touchUserProfile(uid: string): Promise<void> {
   await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), {
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function updateUserProfileAfterSignUp(
+  uid: string,
+  details: {
+    email: string;
+    displayName: string;
+    schoolLocation: SchoolLocation;
+  },
+): Promise<void> {
+  const trimmedName = details.displayName.trim();
+  await setDoc(
+    doc(getFirebaseDb(), usersCollection(), uid),
+    {
+      email: details.email,
+      displayName: trimmedName || null,
+      schoolLocation: details.schoolLocation,
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 export async function updateUserDisplayName(

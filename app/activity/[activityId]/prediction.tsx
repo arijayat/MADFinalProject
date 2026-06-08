@@ -26,7 +26,6 @@ export default function ActivityPredictionScreen() {
     if (!activityId || !isActivityId(activityId)) return;
     const saved = getSession(activityId).predictions;
     if (Object.keys(saved).length === 0) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setValues((prev) => (Object.keys(prev).length === 0 ? saved : prev));
   }, [activityId, getSession]);
 

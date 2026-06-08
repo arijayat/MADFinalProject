@@ -8,13 +8,14 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updatePassword,
+  updateProfile,
 } from 'firebase/auth';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { ensureUserProfile, touchUserProfile, updateUserDisplayName } from '@/lib/firestore/users';
+import { ensureUserProfile, touchUserProfile, updateUserDisplayName, updateUserProfileAfterSignUp } from '@/lib/firestore/users';
 import { getAuthErrorMessage } from '@/lib/firebase-errors';
 import { getFirebaseAuth } from '@/lib/firebase';
-import type { UserProfile } from '@/types/firestore';
+import type { SchoolLocation, UserProfile } from '@/types/firestore';
 
 type AuthContextValue = {
   user: User | null;
@@ -22,7 +23,11 @@ type AuthContextValue = {
   isLoading: boolean;
   configError: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    details: { displayName: string; schoolLocation: SchoolLocation },
+  ) => Promise<void>;
   logOut: () => Promise<void>;
   refreshProfile: () => Promise<UserProfile | null>;
   updateDisplayName: (displayName: string) => Promise<void>;
@@ -90,13 +95,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    try {
-      await createUserWithEmailAndPassword(getFirebaseAuth(), email.trim(), password);
-    } catch (error) {
-      throw new Error(getAuthErrorMessage(error));
-    }
-  }, []);
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      details: { displayName: string; schoolLocation: SchoolLocation },
+    ) => {
+      try {
+        const trimmedEmail = email.trim();
+        const trimmedName = details.displayName.trim();
+        const credential = await createUserWithEmailAndPassword(
+          getFirebaseAuth(),
+          trimmedEmail,
+          password,
+        );
+
+        if (trimmedName) {
+          await updateProfile(credential.user, { displayName: trimmedName });
+        }
+
+        await updateUserProfileAfterSignUp(credential.user.uid, {
+          email: trimmedEmail,
+          displayName: trimmedName,
+          schoolLocation: details.schoolLocation,
+        });
+      } catch (error) {
+        throw new Error(getAuthErrorMessage(error));
+      }
+    },
+    [],
+  );
 
   const logOut = useCallback(async () => {
     setUser(null);

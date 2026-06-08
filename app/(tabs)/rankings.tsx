@@ -630,11 +630,9 @@ function ActivityRankingButton({
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => {
-        // eslint-disable-next-line react-hooks/immutability
         scale.value = withTiming(0.985, { duration: 90 });
       }}
       onPressOut={() => {
-        // eslint-disable-next-line react-hooks/immutability
         scale.value = withTiming(1, { duration: 120 });
       }}
       entering={FadeInUp.duration(200).springify().damping(18)}

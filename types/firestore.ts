@@ -10,11 +10,19 @@ export type FirestoreTeamMember = {
   email?: string;
 };
 
+export type SchoolLocation = {
+  latitude: number;
+  longitude: number;
+  /** Human-readable place name from reverse geocoding */
+  label: string | null;
+};
+
 export type UserProfile = {
   email: string;
   displayName: string | null;
   photoURL: string | null;
   teamId: string | null;
+  schoolLocation: SchoolLocation | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

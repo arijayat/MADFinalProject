@@ -43,11 +43,9 @@ export function PrimaryButton({
       accessibilityRole="button"
       onPress={onPress}
       onPressIn={() => {
-        // eslint-disable-next-line react-hooks/immutability
         if (!disabled) scale.value = withTiming(0.975, { duration: 90 });
       }}
       onPressOut={() => {
-        // eslint-disable-next-line react-hooks/immutability
         scale.value = withTiming(1, { duration: 120 });
       }}
       disabled={disabled}

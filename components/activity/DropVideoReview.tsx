@@ -13,6 +13,7 @@ export function DropVideoReview({ uri, playbackRate = 1 }: Props) {
   const player = useVideoPlayer(uri, (p) => {
     p.loop = false;
     p.playbackRate = playbackRate;
+    p.play();
   });
 
   const showSlowMoBadge = playbackRate > 0 && playbackRate < 1;
