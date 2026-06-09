@@ -17,12 +17,23 @@ export type SchoolLocation = {
   label: string | null;
 };
 
+export type UserPreferences = {
+  themeMode: 'light' | 'dark';
+  language: 'en' | 'id';
+};
+
+export const defaultUserPreferences: UserPreferences = {
+  themeMode: 'light',
+  language: 'en',
+};
+
 export type UserProfile = {
   email: string;
   displayName: string | null;
   photoURL: string | null;
   teamId: string | null;
   schoolLocation: SchoolLocation | null;
+  preferences?: UserPreferences;
   createdAt: Timestamp;
   updatedAt: Timestamp;
 };

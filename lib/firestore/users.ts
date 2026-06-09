@@ -8,7 +8,12 @@ import {
 } from 'firebase/firestore';
 
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase';
-import type { SchoolLocation, UserProfile } from '@/types/firestore';
+import {
+  defaultUserPreferences,
+  type SchoolLocation,
+  type UserPreferences,
+  type UserProfile,
+} from '@/types/firestore';
 
 const usersCollection = () => 'users';
 
@@ -43,6 +48,7 @@ export async function ensureUserProfile(user: User): Promise<UserProfile> {
     photoURL: user.photoURL,
     teamId: null,
     schoolLocation: null,
+    preferences: defaultUserPreferences,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };
@@ -101,4 +107,22 @@ export async function updateUserDisplayName(
     displayName: trimmed || null,
     updatedAt: serverTimestamp(),
   });
+}
+
+export async function updateUserPreferences(
+  uid: string,
+  preferences: Partial<UserPreferences>,
+): Promise<void> {
+  const updates: Record<string, unknown> = {
+    updatedAt: serverTimestamp(),
+  };
+
+  if (preferences.themeMode !== undefined) {
+    updates['preferences.themeMode'] = preferences.themeMode;
+  }
+  if (preferences.language !== undefined) {
+    updates['preferences.language'] = preferences.language;
+  }
+
+  await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), updates);
 }

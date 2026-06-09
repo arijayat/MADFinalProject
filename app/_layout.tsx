@@ -75,16 +75,16 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <LocalizationProvider>
-      <AppThemeProvider>
-        <AuthProvider>
+    <AuthProvider>
+      <LocalizationProvider>
+        <AppThemeProvider>
           <TeamProvider>
             <ActivitySessionProvider>
               <RootNavigation />
             </ActivitySessionProvider>
           </TeamProvider>
-        </AuthProvider>
-      </AppThemeProvider>
-    </LocalizationProvider>
+        </AppThemeProvider>
+      </LocalizationProvider>
+    </AuthProvider>
   );
 }

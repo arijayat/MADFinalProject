@@ -1,4 +1,15 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import { useAuth } from '@/contexts/AuthContext';
+import { updateUserPreferences } from '@/lib/firestore/users';
+import { defaultUserPreferences } from '@/types/firestore';
 
 export type AppLanguage = 'en' | 'id';
 
@@ -253,7 +264,31 @@ const translations = {
 const LocalizationContext = createContext<LocalizationContextValue | null>(null);
 
 export function LocalizationProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<AppLanguage>('en');
+  const { user, profile } = useAuth();
+  const [language, setLanguageState] = useState<AppLanguage>(defaultUserPreferences.language);
+
+  useEffect(() => {
+    if (!user) {
+      setLanguageState(defaultUserPreferences.language);
+      return;
+    }
+
+    const saved = profile?.preferences?.language;
+    if (saved === 'en' || saved === 'id') {
+      setLanguageState(saved);
+    }
+  }, [user?.uid, profile?.preferences?.language]);
+
+  const setLanguage = useCallback(
+    (nextLanguage: AppLanguage) => {
+      setLanguageState(nextLanguage);
+      if (!user) return;
+      void updateUserPreferences(user.uid, { language: nextLanguage }).catch((error) => {
+        console.error('Failed to save language preference', error);
+      });
+    },
+    [user],
+  );
 
   const value = useMemo<LocalizationContextValue>(() => {
     function t(key: TranslationKey, params: Record<string, string | number> = {}) {
@@ -267,7 +302,7 @@ export function LocalizationProvider({ children }: { children: React.ReactNode }
       setLanguage,
       t,
     };
-  }, [language]);
+  }, [language, setLanguage]);
 
   return <LocalizationContext.Provider value={value}>{children}</LocalizationContext.Provider>;
 }

@@ -1,6 +1,16 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { updateUserPreferences } from '@/lib/firestore/users';
+import { defaultUserPreferences } from '@/types/firestore';
 
 export type AppThemeMode = 'light' | 'dark';
 
@@ -57,8 +67,47 @@ const darkColors: AppThemeColors = {
 const AppThemeContext = createContext<AppThemeContextValue | null>(null);
 
 export function AppThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setMode] = useState<AppThemeMode>('light');
+  const { user, profile } = useAuth();
+  const [mode, setModeState] = useState<AppThemeMode>(defaultUserPreferences.themeMode);
   const colors = mode === 'dark' ? darkColors : lightColors;
+
+  useEffect(() => {
+    if (!user) {
+      setModeState(defaultUserPreferences.themeMode);
+      return;
+    }
+
+    const saved = profile?.preferences?.themeMode;
+    if (saved === 'light' || saved === 'dark') {
+      setModeState(saved);
+    }
+  }, [user?.uid, profile?.preferences?.themeMode]);
+
+  const persistMode = useCallback(
+    (nextMode: AppThemeMode) => {
+      if (!user) return;
+      void updateUserPreferences(user.uid, { themeMode: nextMode }).catch((error) => {
+        console.error('Failed to save theme preference', error);
+      });
+    },
+    [user],
+  );
+
+  const setMode = useCallback(
+    (nextMode: AppThemeMode) => {
+      setModeState(nextMode);
+      persistMode(nextMode);
+    },
+    [persistMode],
+  );
+
+  const toggleMode = useCallback(() => {
+    setModeState((current) => {
+      const nextMode = current === 'dark' ? 'light' : 'dark';
+      persistMode(nextMode);
+      return nextMode;
+    });
+  }, [persistMode]);
 
   const value = useMemo(
     () => ({
@@ -66,9 +115,9 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
       isDark: mode === 'dark',
       colors,
       setMode,
-      toggleMode: () => setMode((current) => (current === 'dark' ? 'light' : 'dark')),
+      toggleMode,
     }),
-    [colors, mode],
+    [colors, mode, setMode, toggleMode],
   );
 
   return (
