@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeInUp,
+  FadeIn,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
@@ -32,7 +32,7 @@ export function ActivityCard({ title, description, requirements, onPress }: Prop
 
   return (
     <AnimatedPressable
-      entering={FadeInUp.duration(200).springify().damping(18)}
+      entering={FadeIn.duration(140)}
       layout={LinearTransition.duration(180)}
       onPress={onPress}
       onPressIn={() => {

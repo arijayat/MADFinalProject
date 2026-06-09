@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Animated, { FadeInUp, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -16,7 +16,7 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
   const { colors } = useAppTheme();
   const body = scroll ? (
     <Animated.ScrollView
-      entering={FadeInUp.duration(220).springify().damping(18)}
+      entering={FadeIn.duration(180)}
       layout={LinearTransition.duration(180)}
       style={styles.scroll}
       contentContainerStyle={styles.scrollContent}
@@ -28,7 +28,7 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
     </Animated.ScrollView>
   ) : (
     <Animated.View
-      entering={FadeInUp.duration(220).springify().damping(18)}
+      entering={FadeIn.duration(180)}
       layout={LinearTransition.duration(180)}
       style={styles.flex}>
       {children}
@@ -47,7 +47,7 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
           {body}
           {footer ? (
             <Animated.View
-              entering={FadeInUp.duration(180)}
+              entering={FadeIn.duration(140)}
               layout={LinearTransition.duration(160)}
               style={styles.footer}>
               {footer}

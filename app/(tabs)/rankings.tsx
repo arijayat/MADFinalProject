@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import Animated, {
   FadeIn,
-  FadeInUp,
-  FadeOutDown,
+  FadeOut,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
@@ -464,7 +463,7 @@ function RankingSection({
 
   return (
     <Animated.View
-      entering={FadeInUp.duration(220).springify().damping(18)}
+      entering={FadeIn.duration(160)}
       layout={LinearTransition.duration(180)}
       style={[
         styles.rankingCard,
@@ -584,7 +583,7 @@ function PodiumPlace({
   const isYou = isYourRankingRow(row, mode, teamDocId, userUid);
   return (
     <Animated.View
-      entering={FadeInUp.delay(row.rank * 35).duration(180).springify().damping(16)}
+      entering={FadeIn.delay(row.rank * 25).duration(140)}
       layout={LinearTransition.duration(180)}
       style={[
         styles.podiumPlace,
@@ -642,7 +641,7 @@ function ActivityRankingButton({
       onPressOut={() => {
         scale.value = withTiming(1, { duration: 120 });
       }}
-      entering={FadeInUp.duration(200).springify().damping(18)}
+      entering={FadeIn.duration(140)}
       layout={LinearTransition.duration(180)}
       style={[
         styles.activityButton,
@@ -700,8 +699,8 @@ function FullRankingModal({
       <Animated.View entering={FadeIn.duration(160)} style={styles.modalBackdrop}>
         <Animated.View
           key={ranking?.title ?? 'ranking'}
-          entering={FadeInUp.duration(220).springify().damping(18)}
-          exiting={FadeOutDown.duration(160)}
+          entering={FadeIn.duration(160)}
+          exiting={FadeOut.duration(120)}
           layout={LinearTransition.duration(180)}
           style={[styles.modalCard, { backgroundColor: colors.panelBg }]}>
           <View style={styles.modalHeader}>
@@ -766,7 +765,7 @@ function RankingRowView({
   const completed = 'completed' in row ? ` - ${t('completedActivities', { count: row.completed })}` : '';
   return (
     <Animated.View
-      entering={FadeInUp.delay(Math.min(row.rank, 8) * 25).duration(170)}
+      entering={FadeIn.delay(Math.min(row.rank, 8) * 20).duration(130)}
       layout={LinearTransition.duration(180)}
       style={[
         styles.rankRow,

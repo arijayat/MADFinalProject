@@ -34,7 +34,7 @@ export default function TabLayout() {
         },
         headerShown: false,
         tabBarButton: HapticTab,
-        animation: 'shift',
+        animation: 'fade',
       }}>
       <Tabs.Screen
         name="index"

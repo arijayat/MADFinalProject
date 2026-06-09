@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
 import { StyleSheet, Text } from 'react-native';
-import Animated, { FadeInUp, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 
 import { Wireframe, wireframeStyles } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -14,7 +14,7 @@ export function Panel({ title, children }: Props) {
   const { colors } = useAppTheme();
   return (
     <Animated.View
-      entering={FadeInUp.duration(180).springify().damping(18)}
+      entering={FadeIn.duration(140)}
       layout={LinearTransition.duration(180)}
       style={[
         wireframeStyles.panel,
