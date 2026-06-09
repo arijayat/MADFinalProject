@@ -22,6 +22,7 @@ import { ensureCaptainOnRoster, linkAuthUserToMembers } from '@/lib/team-members
 import { setUserTeamId } from '@/lib/firestore/users';
 import { normalizeTeamCode } from '@/lib/team-code';
 import type { FirestoreTeamMember } from '@/types/firestore';
+import { validateTeamName } from '@/utils/team-name-filter';
 
 export type TeamMember = FirestoreTeamMember;
 
@@ -169,6 +170,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   const registerTeam = useCallback(async () => {
     if (!user) throw new Error('You must be signed in to register a team.');
+    const trimmedTeamName = teamName.trim() ? validateTeamName(teamName) : 'My Team';
 
     const linkedMembers = ensureCaptainOnRoster(
       members,
@@ -179,7 +181,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
     const { teamId, code } = await createTeam({
       ownerUid: user.uid,
-      name: teamName.trim() || 'My Team',
+      name: trimmedTeamName,
       gradeLevel,
       members: linkedMembers,
     });
@@ -188,7 +190,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     await refreshProfile();
     applyTeamDocument({
       id: teamId,
-      name: teamName.trim() || 'My Team',
+      name: trimmedTeamName,
       code,
       gradeLevel,
       members: linkedMembers,
@@ -204,7 +206,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       if (!isTeamOwner) throw new Error('Only the team captain can edit team details.');
       const trimmedName = name.trim();
       const trimmedGrade = gradeLevel.trim();
-      if (!trimmedName) throw new Error('Team name cannot be empty.');
+      validateTeamName(trimmedName);
 
       await updateTeamDetails(teamDocId, {
         name: trimmedName,

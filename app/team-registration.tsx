@@ -1,11 +1,12 @@
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
 import { Wireframe } from "@/constants/wireframe-theme";
 import { useTeam } from "@/contexts/TeamContext";
+import { validateTeamName } from "@/utils/team-name-filter";
 
 export default function TeamRegistrationScreen() {
   const router = useRouter();
@@ -19,6 +20,15 @@ export default function TeamRegistrationScreen() {
           label="CONTINUE"
           style={styles.primaryButton}
           onPress={() => {
+            try {
+              if (teamName.trim()) validateTeamName(teamName);
+            } catch (error) {
+              Alert.alert(
+                "Team name not allowed",
+                error instanceof Error ? error.message : "Choose a different team name.",
+              );
+              return;
+            }
             setGradeLevel(grade);
             router.push("/team-members");
           }}
