@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.binanusantara.stemlearninglab",
       "supportsTablet": true,
       "infoPlist": {
         "NSMotionUsageDescription": "STEM Learning Lab uses your phone’s motion sensors to measure chest breathing, movement smoothness, and vibration during science activities.",
@@ -16,6 +17,7 @@
       }
     },
     "android": {
+      "package": "com.binanusantara.stemlearninglab",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -74,7 +76,22 @@
           "locationWhenInUsePermission": "Allow STEM Learning Lab to use your location to record your school when creating an account."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-3235268367307003~9694560177",
+          "iosAppId": "ca-app-pub-3235268367307003~6299613798"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

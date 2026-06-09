@@ -1,7 +1,9 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
+import { AdMobBanner } from '@/components/ads/AdMobBanner';
 import { HapticTab } from '@/components/haptic-tab';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
@@ -18,6 +20,7 @@ export default function TabLayout() {
   }
 
   return (
+    <View style={styles.root}>
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: isDark ? '#7dd3fc' : Wireframe.accent,
@@ -65,5 +68,22 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    <View style={styles.bannerSlot}>
+      <AdMobBanner />
+    </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  bannerSlot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 64,
+    alignItems: 'center',
+  },
+});
