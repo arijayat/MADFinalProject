@@ -21,10 +21,12 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { ACTIVITIES, HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/activities';
+import { HUB_ACTIVITY_ORDER, type ActivityId } from '@/constants/activities';
+import { useLocalizedActivities } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam } from '@/contexts/TeamContext';
 import {
   fetchAllLeaderboardBundles,
@@ -82,17 +84,19 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function RankingsListScreen() {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
+  const { activities } = useLocalizedActivities();
   const { user } = useAuth();
   const { teamName, teamId, teamDocId, members } = useTeam();
   const [rankingMode, setRankingMode] = useState<RankingMode>('team');
   const [selectedRanking, setSelectedRanking] = useState<SelectedRanking | null>(
     null,
   );
-  const displayTeamName = teamName.trim() || 'Your team';
+  const displayTeamName = teamName.trim() || t('yourTeam');
   const linkedMember = user?.uid
     ? members.find((member) => member.uid === user.uid)
     : undefined;
-  const displayStudentName = linkedMember?.name.trim() || 'You';
+  const displayStudentName = linkedMember?.name.trim() || t('you');
   const [activityRankings, setActivityRankings] = useState<ActivityRanking[]>([]);
   const [individualActivityRankings, setIndividualActivityRankings] = useState<
     IndividualActivityRanking[]
@@ -112,14 +116,14 @@ export default function RankingsListScreen() {
       setActivityRankings(
         HUB_ACTIVITY_ORDER.map((activityId) => ({
           activityId,
-          title: ACTIVITIES[activityId].title,
+          title: activities[activityId].title,
           rows: team[activityId] ?? [],
         })),
       );
       setIndividualActivityRankings(
         HUB_ACTIVITY_ORDER.map((activityId) => ({
           activityId,
-          title: ACTIVITIES[activityId].title,
+          title: activities[activityId].title,
           rows: individual[activityId] ?? [],
         })),
       );
@@ -127,14 +131,14 @@ export default function RankingsListScreen() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Could not load rankings. Check Firestore rules and your connection.',
+          : t('rankingsLoadFailed'),
       );
       setActivityRankings([]);
       setIndividualActivityRankings([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activities, t]);
 
   useFocusEffect(
     useCallback(() => {
@@ -169,13 +173,13 @@ export default function RankingsListScreen() {
         <View style={styles.titleRow}>
           <View style={styles.titleCopy}>
             <Text style={styles.eyebrow}>
-              {rankingMode === 'team' ? 'Team leaderboard' : 'Individual leaderboard'}
+              {rankingMode === 'team' ? t('teamLeaderboard') : t('individualLeaderboard')}
             </Text>
-            <Text style={styles.title}>Rankings</Text>
+            <Text style={styles.title}>{t('rankings')}</Text>
           </View>
           <View style={[styles.teamBadge, { backgroundColor: colors.translucent }]}>
             <Text style={styles.teamBadgeLabel}>
-              {rankingMode === 'team' ? 'Team' : 'Student'}
+              {rankingMode === 'team' ? t('team') : t('studentLabel')}
             </Text>
             <Text style={styles.teamBadgeName} numberOfLines={1}>
               {rankingMode === 'team' ? displayTeamName : displayStudentName}
@@ -194,12 +198,12 @@ export default function RankingsListScreen() {
           <MaterialIcons name="emoji-events" size={18} color={Wireframe.panelBg} />
           <Text style={styles.infoText}>
             {loading
-              ? 'Loading rankings from cloud…'
+              ? t('loadingRankings')
               : error
                 ? error
                 : rankingMode === 'team'
-                  ? 'Rankings from saved team results. Overall ranking combines scores across every activity.'
-                  : 'Each student inherits their team score for every completed activity.'}
+                  ? t('teamRankingsInfo')
+                  : t('individualRankingsInfo')}
           </Text>
         </View>
       </View>
@@ -209,24 +213,24 @@ export default function RankingsListScreen() {
       ) : null}
 
       <RankingSection
-        title="Overall ranking"
+        title={t('overallRanking')}
         subtitle={
           yourOverall
             ? rankingMode === 'team'
-              ? `Your team is #${yourOverall.rank} with ${yourOverall.score} points.`
-              : `You are #${yourOverall.rank} with ${yourOverall.score} points.`
+              ? t('teamStanding', { rank: yourOverall.rank, score: yourOverall.score })
+              : t('individualStanding', { rank: yourOverall.rank, score: yourOverall.score })
             : rankingMode === 'team'
-              ? 'Teams are ranked by total activity score.'
-              : 'Students are ranked by total activity score.'
+              ? t('teamsRanked')
+              : t('studentsRanked')
         }
         rows={activeOverallRows}
         mode={rankingMode}
         teamDocId={teamDocId}
         userUid={user?.uid}
-        emptyText="No ranking data yet."
+        emptyText={t('noRankingData')}
         onSeeMore={() =>
           setSelectedRanking({
-            title: 'Overall ranking',
+            title: t('overallRanking'),
             rows: activeOverallRows,
             overall: true,
             mode: rankingMode,
@@ -236,11 +240,11 @@ export default function RankingsListScreen() {
       />
 
       <View style={styles.sectionIntro}>
-        <Text style={styles.sectionIntroTitle}>Activity rankings</Text>
+        <Text style={styles.sectionIntroTitle}>{t('activityRankings')}</Text>
         <Text style={styles.sectionIntroText}>
           {rankingMode === 'team'
-            ? 'Top teams for each activity.'
-            : 'Top students for each activity.'}
+            ? t('topTeams')
+            : t('topStudents')}
         </Text>
       </View>
 
@@ -380,6 +384,7 @@ function RankingModeToggle({
   onChange: (mode: RankingMode) => void;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
 
   return (
     <View style={[styles.modeToggle, { backgroundColor: colors.translucent }]}>
@@ -401,7 +406,7 @@ function RankingModeToggle({
             styles.modeButtonText,
             mode === 'team' && styles.modeButtonTextActive,
           ]}>
-          Teams
+          {t('teams')}
         </Text>
       </Pressable>
       <Pressable
@@ -425,7 +430,7 @@ function RankingModeToggle({
             styles.modeButtonText,
             mode === 'individual' && styles.modeButtonTextActive,
           ]}>
-          Individuals
+          {t('individuals')}
         </Text>
       </Pressable>
     </View>
@@ -454,6 +459,7 @@ function RankingSection({
   overall?: boolean;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const shownRows = rows.slice(0, 3);
 
   return (
@@ -514,7 +520,7 @@ function RankingSection({
             { backgroundColor: colors.surfaceAlt },
             pressed && styles.pressed,
           ]}>
-          <Text style={styles.seeMoreText}>See more</Text>
+          <Text style={styles.seeMoreText}>{t('seeMore')}</Text>
           <MaterialIcons name="chevron-right" size={18} color={Wireframe.accent} />
         </Pressable>
       ) : null}
@@ -611,6 +617,7 @@ function ActivityRankingButton({
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -653,12 +660,15 @@ function ActivityRankingButton({
         <Text style={[styles.cardTitle, { color: colors.text }]}>{title}</Text>
         <Text style={[styles.cardSubtitle, { color: colors.textMuted }]} numberOfLines={1}>
           {yourRow
-            ? `Your standing: #${yourRow.rank} · ${yourRow.score} pts`
+            ? t('yourStanding', { rank: yourRow.rank, score: yourRow.score })
             : leader
               ? mode === 'team'
-                ? `Leader: ${(leader as LeaderboardRow).team} · ${leader.score} pts`
-                : `Leader: ${(leader as IndividualLeaderboardRow).displayName} · ${leader.score} pts`
-              : 'No ranking data yet'}
+                ? t('leader', { name: (leader as LeaderboardRow).team, score: leader.score })
+                : t('leader', {
+                    name: (leader as IndividualLeaderboardRow).displayName,
+                    score: leader.score,
+                  })
+              : t('noRankingData')}
         </Text>
       </View>
       <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
@@ -678,6 +688,7 @@ function FullRankingModal({
   onClose: () => void;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const mode = ranking?.mode ?? 'team';
   const currentStanding =
     ranking && (mode === 'team' ? teamDocId : userUid)
@@ -696,13 +707,13 @@ function FullRankingModal({
           <View style={styles.modalHeader}>
             <View>
               <Text style={[styles.modalEyebrow, { color: colors.textMuted }]}>
-                {ranking?.overall ? 'Overall standing' : 'Activity standing'}
+                {ranking?.overall ? t('overallStanding') : t('activityStanding')}
               </Text>
               <Text style={[styles.modalTitle, { color: colors.text }]}>{ranking?.title}</Text>
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close rankings"
+              accessibilityLabel={t('closeRankings')}
               onPress={onClose}
               hitSlop={8}
               style={[styles.closeButton, { backgroundColor: colors.surfaceAlt }]}>
@@ -713,7 +724,7 @@ function FullRankingModal({
           {currentStanding ? (
             <View style={[styles.currentStanding, { backgroundColor: colors.accentSoft }]}>
               <Text style={[styles.currentLabel, { color: colors.textMuted }]}>
-                {mode === 'team' ? 'Your team standing' : 'Your standing'}
+                {mode === 'team' ? t('yourTeamStanding') : t('yourStandingLabel')}
               </Text>
               <Text style={[styles.currentValue, { color: colors.text }]}>
                 #{currentStanding.rank} · {currentStanding.score} pts
@@ -750,8 +761,9 @@ function RankingRowView({
   userUid: string | null | undefined;
 }) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const isYou = isYourRankingRow(row, mode, teamDocId, userUid);
-  const completed = 'completed' in row ? ` · ${row.completed} activities` : '';
+  const completed = 'completed' in row ? ` - ${t('completedActivities', { count: row.completed })}` : '';
   return (
     <Animated.View
       entering={FadeInUp.delay(Math.min(row.rank, 8) * 25).duration(170)}

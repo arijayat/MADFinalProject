@@ -15,6 +15,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam, type TeamMember } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
 
@@ -33,6 +34,7 @@ function memberDisplayEmail(member: TeamMember, authUid?: string, authEmail?: st
 export default function TeamTabScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const { user } = useAuth();
   const {
     teamName,
@@ -81,7 +83,7 @@ export default function TeamTabScreen() {
   function handleAddMember() {
     const trimmed = newMemberName.trim();
     if (!trimmed) {
-      Alert.alert('Missing name', 'Enter a team member name first.');
+      Alert.alert(t('missingName'), t('missingNameMessage'));
       return;
     }
 
@@ -93,11 +95,11 @@ export default function TeamTabScreen() {
     try {
       await saveTeamMembers(draftMembers);
       setNewMemberName('');
-      Alert.alert('Saved', 'Team members were updated.');
+      Alert.alert(t('saved'), t('membersSaved'));
     } catch (error) {
       Alert.alert(
-        'Could not save members',
-        error instanceof Error ? error.message : 'Try again.',
+        t('membersSaveFailed'),
+        error instanceof Error ? error.message : t('tryAgain'),
       );
       throw error;
     }
@@ -106,9 +108,9 @@ export default function TeamTabScreen() {
   if (isLoadingTeam) {
     return (
       <WireScreen>
-        <TeamHeader title="Team" subtitle="Loading team from cloud..." />
+        <TeamHeader title={t('team')} subtitle={t('loadingTeam')} />
         <ActivityIndicator color={Wireframe.panelBg} size="large" />
-        <Text style={styles.loading}>Loading team from cloud...</Text>
+        <Text style={styles.loading}>{t('loadingTeam')}</Text>
       </WireScreen>
     );
   }
@@ -116,11 +118,11 @@ export default function TeamTabScreen() {
   async function handleSaveTeam() {
     try {
       await saveTeamDetails(draftTeamName, draftGradeLevel);
-      Alert.alert('Saved', 'Team details were updated.');
+      Alert.alert(t('saved'), t('teamSaved'));
     } catch (error) {
       Alert.alert(
-        'Could not save team',
-        error instanceof Error ? error.message : 'Try again.',
+        t('teamSaveFailed'),
+        error instanceof Error ? error.message : t('tryAgain'),
       );
       throw error;
     }
@@ -133,12 +135,12 @@ export default function TeamTabScreen() {
     }
 
     Alert.alert(
-      'Leave team?',
-      'You will be removed from the roster. You can rejoin later with the team code.',
+      t('leaveTeamTitle'),
+      t('leaveTeamMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Leave team',
+          text: t('leaveTeamConfirm'),
           style: 'destructive',
           onPress: () => {
             void confirmLeaveTeam();
@@ -155,8 +157,8 @@ export default function TeamTabScreen() {
       router.replace('/team-onboarding');
     } catch (error) {
       Alert.alert(
-        'Could not leave team',
-        error instanceof Error ? error.message : 'Try again.',
+        t('leaveTeamFailed'),
+        error instanceof Error ? error.message : t('tryAgain'),
       );
     } finally {
       setLeaving(false);
@@ -166,7 +168,7 @@ export default function TeamTabScreen() {
   if (!teamDocId) {
     return (
       <WireScreen>
-        <TeamHeader title="Team" subtitle="Register or join a team from onboarding." />
+        <TeamHeader title={t('team')} subtitle={t('teamOnboardingHint')} />
       </WireScreen>
     );
   }
@@ -174,8 +176,8 @@ export default function TeamTabScreen() {
   return (
     <WireScreen>
       <TeamHeader
-        title="Team"
-        subtitle={isTeamOwner ? 'Manage your roster.' : 'View your team roster.'}
+        title={t('team')}
+        subtitle={isTeamOwner ? t('manageRoster') : t('viewRoster')}
       />
 
       <View
@@ -191,7 +193,7 @@ export default function TeamTabScreen() {
           <MaterialIcons name="groups" size={24} color={Wireframe.accent} />
         </View>
         <View style={styles.summaryText}>
-          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Current team</Text>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>{t('currentTeam')}</Text>
           <Text style={[styles.summaryName, { color: colors.text }]} numberOfLines={1}>
             {teamName}
           </Text>
@@ -205,20 +207,20 @@ export default function TeamTabScreen() {
               </Text>
             ) : null}
             <Text style={[styles.memberCount, { color: colors.textMuted }]}>
-              {members.length} members
+              {t('members', { count: members.length })}
             </Text>
           </View>
         </View>
       </View>
 
       <EditableSection
-        title="Team details"
+        title={t('teamDetails')}
         editable={isTeamOwner}
         onSave={handleSaveTeam}
         onCancel={resetTeamDrafts}>
         {(editing) => (
           <>
-            <Text style={[styles.label, { color: colors.textMuted }]}>Team name</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>{t('teamName')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -231,11 +233,11 @@ export default function TeamTabScreen() {
               value={isTeamOwner && editing ? draftTeamName : teamName}
               onChangeText={setDraftTeamName}
               editable={isTeamOwner && editing}
-              placeholder="Enter team name"
+              placeholder={t('enterTeamName')}
               placeholderTextColor={Wireframe.placeholder}
             />
             <View style={styles.detailSpacer} />
-            <Text style={[styles.label, { color: colors.textMuted }]}>Join code</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>{t('joinCode')}</Text>
             <Text
               style={[
                 styles.readonlyValue,
@@ -244,7 +246,7 @@ export default function TeamTabScreen() {
               {teamId || '—'}
             </Text>
             <View style={styles.detailSpacer} />
-            <Text style={[styles.label, { color: colors.textMuted }]}>Grade level</Text>
+            <Text style={[styles.label, { color: colors.textMuted }]}>{t('gradeLevel')}</Text>
             <TextInput
               style={[
                 styles.input,
@@ -257,12 +259,12 @@ export default function TeamTabScreen() {
               value={isTeamOwner && editing ? draftGradeLevel : gradeLevel}
               onChangeText={setDraftGradeLevel}
               editable={isTeamOwner && editing}
-              placeholder="Enter grade level"
+              placeholder={t('enterGradeLevel')}
               placeholderTextColor={Wireframe.placeholder}
             />
             {!isTeamOwner ? (
               <Text style={[styles.ownerHint, { color: colors.textMuted }]}>
-                Only the team captain can edit team details.
+                {t('ownerOnly')}
               </Text>
             ) : null}
           </>
@@ -270,7 +272,7 @@ export default function TeamTabScreen() {
       </EditableSection>
 
       <EditableSection
-        title="Team members"
+        title={t('teamMembers')}
         editable={isTeamOwner}
         onSave={handleSaveMembers}
         onCancel={resetMemberDrafts}>
@@ -278,7 +280,7 @@ export default function TeamTabScreen() {
           <>
             {draftMembers.length === 0 ? (
               <Text style={[styles.empty, { color: colors.textMuted }]}>
-                {editing ? 'No members yet. Add one below.' : 'No members listed yet.'}
+                {editing ? t('noMembersAdd') : t('noMembersListed')}
               </Text>
             ) : (
               draftMembers.map((m) => {
@@ -290,7 +292,7 @@ export default function TeamTabScreen() {
                     {editing ? (
                       <>
                         <Text style={[styles.label, { color: colors.textMuted }]}>
-                          Member name
+                          {t('memberName')}
                         </Text>
                         <TextInput
                           style={[
@@ -303,7 +305,7 @@ export default function TeamTabScreen() {
                           ]}
                           value={m.name}
                           onChangeText={(value) => updateMemberName(m.id, value)}
-                          placeholder="Enter member name"
+                          placeholder={t('enterMemberName')}
                           placeholderTextColor={Wireframe.placeholder}
                         />
                       </>
@@ -325,7 +327,7 @@ export default function TeamTabScreen() {
                           ) : null}
                           {m.uid ? (
                             <Text style={[styles.linked, { color: colors.textMuted }]}>
-                              Linked to an account
+                              {t('linkedAccount')}
                             </Text>
                           ) : null}
                         </View>
@@ -338,7 +340,7 @@ export default function TeamTabScreen() {
 
             {editing ? (
               <View style={styles.addBlock}>
-                <Text style={[styles.label, { color: colors.textMuted }]}>New member name</Text>
+                <Text style={[styles.label, { color: colors.textMuted }]}>{t('newMemberName')}</Text>
                 <TextInput
                   style={[
                     styles.input,
@@ -350,11 +352,11 @@ export default function TeamTabScreen() {
                   ]}
                   value={newMemberName}
                   onChangeText={setNewMemberName}
-                  placeholder="Enter the team member name"
+                  placeholder={t('enterTeamMemberName')}
                   placeholderTextColor={Wireframe.placeholder}
                 />
                 <PrimaryButton
-                  label="ADD MEMBER"
+                  label={t('addMember')}
                   onPress={handleAddMember}
                   variant="light"
                   style={styles.addButton}
@@ -366,7 +368,7 @@ export default function TeamTabScreen() {
       </EditableSection>
 
       <PrimaryButton
-        label={leaving ? 'LEAVING...' : 'LEAVE TEAM'}
+        label={leaving ? t('leaving') : t('leaveTeam')}
         variant="light"
         disabled={leaving || isLoadingTeam}
         style={styles.leaveButton}
@@ -377,9 +379,11 @@ export default function TeamTabScreen() {
 }
 
 function TeamHeader({ title, subtitle }: { title: string; subtitle: string }) {
+  const { t } = useLocalization();
+
   return (
     <View style={styles.header}>
-      <Text style={styles.eyebrow}>Team workspace</Text>
+      <Text style={styles.eyebrow}>{t('teamWorkspace')}</Text>
       <Text style={styles.headerTitle}>{title}</Text>
       <Text style={styles.headerSubtitle}>{subtitle}</Text>
     </View>

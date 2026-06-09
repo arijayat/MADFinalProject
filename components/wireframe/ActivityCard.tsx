@@ -10,6 +10,7 @@ import Animated, {
 
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type Props = {
   title: string;
@@ -22,6 +23,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function ActivityCard({ title, description, requirements, onPress }: Props) {
   const { colors, isDark } = useAppTheme();
+  const { t } = useLocalization();
   const scale = useSharedValue(1);
   const requirementColor = isDark ? '#7dd3fc' : Wireframe.requirements;
   const animatedStyle = useAnimatedStyle(() => ({
@@ -56,7 +58,7 @@ export function ActivityCard({ title, description, requirements, onPress }: Prop
         <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
       </View>
       <Text style={[styles.desc, { color: colors.textMuted }]}>{description}</Text>
-      <Text style={[styles.reqLabel, { color: colors.text }]}>Requirements</Text>
+      <Text style={[styles.reqLabel, { color: colors.text }]}>{t('requirements')}</Text>
       <Text style={[styles.reqList, { color: requirementColor }]}>
         {requirements.slice(0, 3).join(' · ')}
       </Text>

@@ -7,7 +7,7 @@ import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
-import { getActivity } from "@/constants/activities";
+import { useLocalizedActivity } from "@/constants/localized-activities";
 import { DECIBEL_DESCRIPTION_SECTIONS } from "@/constants/decibel-description";
 import { FAN_DESCRIPTION_SECTIONS } from "@/constants/fan-description";
 import { PARACHUTE_DESCRIPTION_SECTIONS } from "@/constants/parachute-description";
@@ -21,7 +21,7 @@ import { useAppTheme } from "@/contexts/AppThemeContext";
 export default function ActivityIntroScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
   const { colors } = useAppTheme();
   const [gear, setGear] = useState<Record<string, boolean>>({});
   const [showDescription, setShowDescription] = useState(false);

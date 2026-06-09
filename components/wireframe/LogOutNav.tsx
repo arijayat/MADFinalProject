@@ -6,10 +6,12 @@ import { Alert, Pressable, StyleSheet, Text } from 'react-native';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { confirmAction } from '@/utils/confirm-alert';
 
 export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel' }) {
   const { isDark } = useAppTheme();
+  const { t } = useLocalization();
   const router = useRouter();
   const { logOut } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -21,8 +23,8 @@ export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel'
       router.replace('/sign-in');
     } catch (error) {
       Alert.alert(
-        'Log out failed',
-        error instanceof Error ? error.message : 'Try again.',
+        t('logOutFailed'),
+        error instanceof Error ? error.message : t('tryAgain'),
       );
     } finally {
       setLoggingOut(false);
@@ -33,9 +35,9 @@ export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel'
     if (loggingOut) return;
 
     confirmAction({
-      title: 'Log out',
-      message: 'Are you sure you want to sign out?',
-      confirmLabel: 'Log out',
+      title: t('logOut'),
+      message: t('logOutMessage'),
+      confirmLabel: t('logOut'),
       onConfirm: performLogOut,
     });
   }
@@ -62,7 +64,7 @@ export function LogOutNav({ variant = 'header' }: { variant?: 'header' | 'panel'
         color={variant === 'panel' ? Wireframe.accentRed : Wireframe.panelBg}
       />
       <Text style={[styles.text, variant === 'panel' && styles.panelText]}>
-        {loggingOut ? 'Signing out...' : 'Log out'}
+        {loggingOut ? t('signingOut') : t('logOut')}
       </Text>
     </Pressable>
   );

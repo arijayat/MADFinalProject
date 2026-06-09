@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { AppLogo } from '@/components/AppLogo';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 function getPostAuthRoute(hasTeam: boolean): '/(tabs)' | '/team-onboarding' {
   return hasTeam ? '/(tabs)' : '/team-onboarding';
@@ -13,6 +14,7 @@ function getPostAuthRoute(hasTeam: boolean): '/(tabs)' | '/team-onboarding' {
 export default function SplashScreen() {
   const router = useRouter();
   const { user, profile, isLoading, configError } = useAuth();
+  const { t } = useLocalization();
 
   useEffect(() => {
     if (isLoading) return;
@@ -51,11 +53,11 @@ export default function SplashScreen() {
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={Wireframe.textMuted} />
       ) : (
-        <Text style={styles.hint}>Tap to continue</Text>
+        <Text style={styles.hint}>{t('tapToContinue')}</Text>
       )}
       {configError ? (
         <Text style={styles.configWarning} numberOfLines={4}>
-          Firebase not configured — see docs/FIREBASE_SETUP.md and restart Expo.
+          {t('firebaseWarning')}
         </Text>
       ) : null}
     </Pressable>

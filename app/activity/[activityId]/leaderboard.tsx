@@ -7,7 +7,8 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { getActivity, type ActivityId } from '@/constants/activities';
+import { type ActivityId } from '@/constants/activities';
+import { useLocalizedActivity } from '@/constants/localized-activities';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import {
@@ -19,16 +20,18 @@ import { listTeamsForLeaderboard } from '@/lib/firestore/teams';
 import { isActivityId } from '@/lib/activity-snapshot';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type LeaderboardMode = 'team' | 'individual';
 
 export default function ActivityLeaderboardScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const { user } = useAuth();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const { teamDocId } = useTeam();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
 
   const [mode, setMode] = useState<LeaderboardMode>('team');
   const [teamRows, setTeamRows] = useState<LeaderboardRow[]>([]);
@@ -55,14 +58,14 @@ export default function ActivityLeaderboardScreen() {
       setError(
         err instanceof Error
           ? err.message
-          : 'Could not load leaderboard. Check Firestore rules and your connection.',
+          : t('rankingsLoadFailed'),
       );
       setTeamRows([]);
       setIndividualRows([]);
     } finally {
       setLoading(false);
     }
-  }, [activityId]);
+  }, [activityId, t]);
 
   useEffect(() => {
     void loadLeaderboard();
@@ -85,7 +88,7 @@ export default function ActivityLeaderboardScreen() {
 
   return (
     <WireScreen
-      footer={<PrimaryButton label="RETURN TO HUB" onPress={() => router.replace('/(tabs)')} />}>
+      footer={<PrimaryButton label={t('tabHub')} onPress={() => router.replace('/(tabs)')} />}>
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}
@@ -113,7 +116,7 @@ export default function ActivityLeaderboardScreen() {
               { color: colors.textMuted },
               mode === 'team' && { color: colors.text },
             ]}>
-            Teams
+            {t('teams')}
           </Text>
         </Pressable>
         <Pressable
@@ -139,7 +142,7 @@ export default function ActivityLeaderboardScreen() {
               { color: colors.textMuted },
               mode === 'individual' && { color: colors.text },
             ]}>
-            Individuals
+            {t('individuals')}
           </Text>
         </Pressable>
       </View>
@@ -147,7 +150,7 @@ export default function ActivityLeaderboardScreen() {
         <MaterialIcons name="info-outline" size={18} color={colors.headerSubtle} />
         <Text style={[styles.liveText, { color: colors.headerSubtle }]}>
           {loading
-            ? 'Loading rankings from cloud…'
+            ? t('loadingRankings')
             : mode === 'team'
               ? 'Rankings from saved team results.'
               : 'Each student inherits their team score for this activity.'}

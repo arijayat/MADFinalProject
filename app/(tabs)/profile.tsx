@@ -10,10 +10,12 @@ import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 export default function ProfileTabScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const { user, profile, updateDisplayName } = useAuth();
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '');
@@ -29,11 +31,11 @@ export default function ProfileTabScreen() {
   async function handleSaveAccount() {
     try {
       await updateDisplayName(displayName);
-      Alert.alert('Saved', 'Your account details were updated.');
+      Alert.alert(t('saved'), t('accountSaved'));
     } catch (error) {
       Alert.alert(
-        'Could not save account',
-        error instanceof Error ? error.message : 'Try again.',
+        t('accountSaveFailed'),
+        error instanceof Error ? error.message : t('tryAgain'),
       );
       throw error;
     }
@@ -42,9 +44,9 @@ export default function ProfileTabScreen() {
   return (
     <WireScreen>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>Account</Text>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <Text style={styles.headerSubtitle}>Your account and app settings.</Text>
+        <Text style={styles.eyebrow}>{t('account')}</Text>
+        <Text style={styles.headerTitle}>{t('profile')}</Text>
+        <Text style={styles.headerSubtitle}>{t('profileSubtitle')}</Text>
       </View>
 
       <View
@@ -63,10 +65,10 @@ export default function ProfileTabScreen() {
         </View>
         <View style={styles.profileInfo}>
           <Text style={[styles.profileName, { color: colors.text }]} numberOfLines={1}>
-            {profile?.displayName || 'Student'}
+            {profile?.displayName || t('student')}
           </Text>
           <Text style={[styles.profileEmail, { color: colors.textMuted }]} numberOfLines={1}>
-            {user?.email ?? profile?.email ?? 'No email'}
+            {user?.email ?? profile?.email ?? t('noEmail')}
           </Text>
         </View>
       </View>
@@ -85,29 +87,29 @@ export default function ProfileTabScreen() {
             pressed && styles.pressed,
           ]}>
           <MaterialIcons name="settings" size={20} color={Wireframe.accent} />
-          <Text style={[styles.settingsText, { color: colors.text }]}>Settings</Text>
+          <Text style={[styles.settingsText, { color: colors.text }]}>{t('settings')}</Text>
           <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
         </Pressable>
         <LogOutNav variant="panel" />
       </View>
 
       <EditableSection
-        title="Account"
+        title={t('account')}
         onSave={handleSaveAccount}
         onCancel={resetAccountDrafts}>
         {(editing) => (
           <>
             <EditableField
-              label="Email"
+              label={t('email')}
               value={user?.email ?? profile?.email ?? ''}
               editable={false}
             />
             <EditableField
-              label="Display name"
+              label={t('displayName')}
               value={displayName}
               onChangeText={setDisplayName}
               editable={editing}
-              placeholder="Enter your display name"
+              placeholder={t('enterDisplayName')}
             />
           </>
         )}

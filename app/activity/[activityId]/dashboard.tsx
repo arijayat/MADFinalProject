@@ -8,7 +8,7 @@ import { ActivityRecordedVideosPanel } from "@/components/activity/ActivityRecor
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
-import { getActivity } from "@/constants/activities";
+import { useLocalizedActivity } from "@/constants/localized-activities";
 import { Wireframe } from "@/constants/wireframe-theme";
 import {
     useActivitySession,
@@ -122,7 +122,7 @@ export default function ActivityDashboardScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
   const { getSession } = useActivitySession();
 
   const dashboardData = useMemo((): DashboardData => {

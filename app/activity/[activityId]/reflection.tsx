@@ -7,7 +7,7 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { getActivity } from '@/constants/activities';
+import { useLocalizedActivity } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useActivitySession } from '@/contexts/ActivitySessionContext';
@@ -28,7 +28,7 @@ export default function ActivityReflectionScreen() {
   const [insights, setInsights] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
 
   async function handleSave() {
     if (!cfg || !activityId || !isActivityId(activityId)) return;

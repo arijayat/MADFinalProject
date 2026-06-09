@@ -8,7 +8,7 @@ import { FieldBlock } from '@/components/wireframe/FormFields';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { getActivity } from '@/constants/activities';
+import { useLocalizedActivity } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { isActivityId } from '@/lib/activity-snapshot';
@@ -17,7 +17,7 @@ import { useActivitySession } from '@/contexts/ActivitySessionContext';
 export default function ActivityPredictionScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
   const { colors } = useAppTheme();
   const { getSession, setPredictions } = useActivitySession();
   const [values, setValues] = useState<Record<string, string>>({});

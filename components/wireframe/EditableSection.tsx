@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe, wireframeStyles } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 
 type Props = {
   title: string;
@@ -23,6 +24,7 @@ export function EditableSection({
   editable = true,
 }: Props) {
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -74,14 +76,14 @@ export function EditableSection({
       {editing ? (
         <View style={styles.actions}>
           <PrimaryButton
-            label="CANCEL"
+            label={t('cancel')}
             variant="light"
             onPress={handleCancel}
             disabled={saving}
             style={styles.actionButton}
           />
           <PrimaryButton
-            label={saving ? 'SAVING…' : 'SAVE'}
+            label={saving ? t('saving') : t('save')}
             onPress={handleSave}
             disabled={saving}
             style={styles.actionButton}

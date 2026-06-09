@@ -4,25 +4,29 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ActivityCard } from '@/components/wireframe/ActivityCard';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { ACTIVITIES, HUB_ACTIVITY_ORDER } from '@/constants/activities';
+import { HUB_ACTIVITY_ORDER } from '@/constants/activities';
+import { useLocalizedActivities } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam } from '@/contexts/TeamContext';
 
 export default function HubScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
+  const { t } = useLocalization();
+  const { activities } = useLocalizedActivities();
   const { teamName, teamId, gradeLevel } = useTeam();
-  const displayTeamName = teamName.trim() || 'Your team';
-  const displayGrade = gradeLevel.trim() || 'Grade not set';
+  const displayTeamName = teamName.trim() || t('yourTeam');
+  const displayGrade = gradeLevel.trim() || t('gradeNotSet');
 
   return (
     <WireScreen footer={undefined}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View>
-            <Text style={styles.eyebrow}>Science Activity Hub</Text>
-            <Text style={styles.title}>Home</Text>
+            <Text style={styles.eyebrow}>{t('activityHub')}</Text>
+            <Text style={styles.title}>{t('home')}</Text>
           </View>
         </View>
 
@@ -39,7 +43,7 @@ export default function HubScreen() {
             <MaterialIcons name="groups" size={24} color={Wireframe.accent} />
           </View>
           <View style={styles.teamInfo}>
-            <Text style={[styles.teamLabel, { color: colors.textMuted }]}>Current team</Text>
+            <Text style={[styles.teamLabel, { color: colors.textMuted }]}>{t('currentTeam')}</Text>
             <Text style={[styles.teamName, { color: colors.text }]} numberOfLines={1}>
               {displayTeamName}
             </Text>
@@ -57,22 +61,22 @@ export default function HubScreen() {
         <View style={styles.infoRow}>
           <View style={styles.infoItem}>
             <Text style={styles.infoValue}>{HUB_ACTIVITY_ORDER.length}</Text>
-            <Text style={styles.infoLabel}>Activities</Text>
+            <Text style={styles.infoLabel}>{t('activities')}</Text>
           </View>
           <View style={styles.infoDivider} />
           <View style={styles.infoItemWide}>
-            <Text style={styles.infoLabel}>Choose one activity, make a prediction, capture data, then compare results.</Text>
+            <Text style={styles.infoLabel}>{t('hubInstruction')}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Activities</Text>
-        <Text style={styles.sectionSubtitle}>Select an experiment to begin</Text>
+        <Text style={styles.sectionTitle}>{t('activities')}</Text>
+        <Text style={styles.sectionSubtitle}>{t('selectExperiment')}</Text>
       </View>
 
       {HUB_ACTIVITY_ORDER.map((id) => {
-        const a = ACTIVITIES[id];
+        const a = activities[id];
         return (
           <ActivityCard
             key={id}

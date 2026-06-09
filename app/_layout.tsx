@@ -7,6 +7,7 @@ import { AuthRedirect } from '@/components/AuthRedirect';
 import { AppThemeProvider, useAppTheme } from '@/contexts/AppThemeContext';
 import { ActivitySessionProvider } from '@/contexts/ActivitySessionContext';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LocalizationProvider } from '@/contexts/LocalizationContext';
 import { TeamProvider } from '@/contexts/TeamContext';
 import { Wireframe } from '@/constants/wireframe-theme';
 
@@ -74,14 +75,16 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <AppThemeProvider>
-      <AuthProvider>
-        <TeamProvider>
-          <ActivitySessionProvider>
-            <RootNavigation />
-          </ActivitySessionProvider>
-        </TeamProvider>
-      </AuthProvider>
-    </AppThemeProvider>
+    <LocalizationProvider>
+      <AppThemeProvider>
+        <AuthProvider>
+          <TeamProvider>
+            <ActivitySessionProvider>
+              <RootNavigation />
+            </ActivitySessionProvider>
+          </TeamProvider>
+        </AuthProvider>
+      </AppThemeProvider>
+    </LocalizationProvider>
   );
 }

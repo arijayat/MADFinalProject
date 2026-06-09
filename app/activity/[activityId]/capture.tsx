@@ -12,7 +12,7 @@ import { VibrationCaptureScreen } from "@/components/activity/VibrationCaptureSc
 import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
-import { getActivity } from "@/constants/activities";
+import { useLocalizedActivity } from "@/constants/localized-activities";
 import { Wireframe } from "@/constants/wireframe-theme";
 import { useAppTheme } from "@/contexts/AppThemeContext";
 
@@ -22,7 +22,7 @@ export default function ActivityCaptureScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const cfg = activityId ? getActivity(activityId) : undefined;
+  const cfg = useLocalizedActivity(activityId ?? "");
   const [phase, setPhase] = useState<Phase>("idle");
   const [tick, setTick] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
