@@ -1,5 +1,7 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 .agents/
+.claude/
+.cursor/
 # dependencies
 node_modules/
 
@@ -34,6 +36,10 @@ yarn-error.*
 .env
 .env*.local
 
+# local portable tooling
+.local-tools/
+.android-sdk/
+
 # typescript
 *.tsbuildinfo
 
@@ -42,3 +48,6 @@ app-example
 # generated native folders
 /ios
 /android
+
+# local documentation (not tracked in version control)
+documentation/
