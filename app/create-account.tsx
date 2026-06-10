@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -30,6 +30,10 @@ import type { SchoolLocation } from '@/types/firestore';
 export default function CreateAccountScreen() {
   const router = useRouter();
   const { signUp, refreshProfile } = useAuth();
+  const schoolInputRef = useRef<TextInput>(null);
+  const emailInputRef = useRef<TextInput>(null);
+  const passwordInputRef = useRef<TextInput>(null);
+  const confirmPasswordInputRef = useRef<TextInput>(null);
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -171,11 +175,15 @@ export default function CreateAccountScreen() {
         <Text style={styles.label}>Display name</Text>
         <TextInput
           style={styles.input}
+          testID="create-account-display-name-input"
           placeholder="How teammates see you"
           placeholderTextColor={Wireframe.placeholder}
           value={displayName}
           onChangeText={setDisplayName}
           autoCapitalize="words"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => schoolInputRef.current?.focus()}
           editable={!submitting}
         />
       </View>
@@ -186,12 +194,17 @@ export default function CreateAccountScreen() {
         </Text>
         <View style={styles.locationRow}>
           <TextInput
+            ref={schoolInputRef}
             style={[styles.input, styles.locationInput]}
+            testID="create-account-school-input"
             placeholder="School name"
             placeholderTextColor={Wireframe.placeholder}
             value={schoolName}
             onChangeText={handleSchoolNameChange}
             autoCapitalize="words"
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => emailInputRef.current?.focus()}
             editable={!submitting}
           />
           <Pressable
@@ -211,37 +224,51 @@ export default function CreateAccountScreen() {
       <View style={styles.field}>
         <Text style={styles.label}>Email</Text>
         <TextInput
+          ref={emailInputRef}
           style={styles.input}
+          testID="create-account-email-input"
           placeholder="you@school.edu"
           placeholderTextColor={Wireframe.placeholder}
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => passwordInputRef.current?.focus()}
           editable={!submitting}
         />
       </View>
       <View style={styles.field}>
         <Text style={styles.label}>Password</Text>
         <TextInput
+          ref={passwordInputRef}
           style={styles.input}
+          testID="create-account-password-input"
           placeholder="At least 6 characters"
           placeholderTextColor={Wireframe.placeholder}
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          returnKeyType="next"
+          submitBehavior="submit"
+          onSubmitEditing={() => confirmPasswordInputRef.current?.focus()}
           editable={!submitting}
         />
       </View>
       <View style={styles.field}>
         <Text style={styles.label}>Confirm password</Text>
         <TextInput
+          ref={confirmPasswordInputRef}
           style={styles.input}
+          testID="create-account-confirm-password-input"
           placeholder="••••••••"
           placeholderTextColor={Wireframe.placeholder}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
           secureTextEntry
+          returnKeyType="done"
+          submitBehavior="blurAndSubmit"
           editable={!submitting}
         />
       </View>

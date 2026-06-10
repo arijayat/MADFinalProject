@@ -1,0 +1,44 @@
+appId: com.binanusantara.stemlearninglab
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      text: ".*(Home|Activities|Your team).*"
+    timeout: 12000
+
+- runFlow:
+    when:
+      visible: "Your team"
+    commands:
+      - tapOn: "JOIN EXISTING TEAM"
+      - back
+
+- tapOn: "PROFILE"
+- assertVisible: "Profile"
+- assertVisible: "Settings"
+- tapOn: "Settings"
+- assertVisible: "Settings"
+- assertVisible: "Dark mode"
+- assertVisible: "Language"
+- assertVisible: "Change password"
+- tapOn: "Bahasa Indonesia"
+- assertVisible: "Pengaturan"
+- tapOn: "English"
+- assertVisible: "Settings"
+- tapOn: "Change password"
+- assertVisible:
+    text: ".*(Change password|Current password|New password).*"
+- back
+- assertVisible: "Settings"
+- tapOn: "Back"
+- assertVisible: "Profile"
+
+- tapOn: "TEAM"
+- assertVisible: "Team"
+- assertVisible:
+    text: ".*(Team details|Your team|Current team).*"
+
+- tapOn: "HUB"
+- assertVisible: "Home"
+- assertVisible: "Activities"

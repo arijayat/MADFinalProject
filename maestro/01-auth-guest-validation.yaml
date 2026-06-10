@@ -1,0 +1,43 @@
+appId: com.binanusantara.stemlearninglab
+---
+- launchApp:
+      clearState: true
+- extendedWaitUntil:
+      visible: "LOG IN"
+      timeout: 12000
+- assertVisible: "CREATE ACCOUNT"
+
+- tapOn: "LOG IN"
+- assertVisible: "Log in"
+- tapOn: "LOG IN"
+- extendedWaitUntil:
+      visible:
+          text: ".*(Log in|Forgot password\\?|Need an account).*"
+      timeout: 5000
+- tapOn: "Need an account\\? Create one"
+
+- assertVisible: "Create account"
+- tapOn: "CREATE ACCOUNT"
+- extendedWaitUntil:
+    visible:
+      text: ".*(Create account|How teammates see you|School name).*"
+    timeout: 5000
+- tapOn:
+    id: "create-account-display-name-input"
+- inputText: "Maestro Test Student"
+- pressKey: Enter
+- inputText: "Maestro Test School"
+- pressKey: Enter
+- inputText: "maestro.invalid@example.com"
+- pressKey: Enter
+- inputText: "password1"
+- pressKey: Enter
+- inputText: "password2"
+- hideKeyboard
+- tapOn: "CREATE ACCOUNT"
+- extendedWaitUntil:
+      visible:
+          text: ".*(Create account|Already have an account|Confirm password).*"
+      timeout: 5000
+- tapOn: "Already have an account\\? Log in"
+- assertVisible: "Log in"

@@ -1,0 +1,63 @@
+appId: com.binanusantara.stemlearninglab
+---
+- launchApp:
+      clearState: false
+- extendedWaitUntil:
+      visible:
+          text: ".*(Home|Activities).*"
+      timeout: 12000
+- tapOn: "HUB"
+- assertVisible: "Home"
+
+- tapOn: "Parachute Drop"
+- assertVisible: "Parachute Drop"
+- tapOn: "SEE DESCRIPTION"
+- assertVisible: "Activity description"
+- tapOn: "HIDE DESCRIPTION"
+- assertVisible: "START ACTIVITY"
+- tapOn: "BACK TO HUB"
+
+- assertVisible: "Decibel Detector"
+- tapOn: "Decibel Detector"
+- assertVisible: "Decibel Detector"
+- tapOn: "SEE DESCRIPTION"
+- assertVisible: "Activity description"
+- tapOn: "BACK TO HUB"
+
+- swipe:
+      direction: UP
+- scrollUntilVisible:
+      element: "Hand Fan Challenge"
+      direction: UP
+- assertVisible: "Hand Fan Challenge"
+- tapOn: "Hand Fan Challenge"
+- assertVisible: "Hand Fan Challenge"
+- tapOn: "BACK TO HUB"
+
+- scrollUntilVisible:
+      element: "Earthquake-Resistant Structure"
+      direction: DOWN
+- tapOn: "Earthquake-Resistant Structure"
+- assertVisible: "Earthquake-Resistant Structure"
+- tapOn: "BACK TO HUB"
+
+- scrollUntilVisible:
+      element: "Human Performance Lab"
+      direction: DOWN
+- tapOn: "Human Performance Lab"
+- assertVisible: "Human Performance Lab"
+- tapOn: "BACK TO HUB"
+
+- scrollUntilVisible:
+      element: "Reaction Board Challenge"
+      direction: DOWN
+- tapOn: "Reaction Board Challenge"
+- assertVisible: "Reaction Board Challenge"
+- tapOn: "BACK TO HUB"
+
+- scrollUntilVisible:
+      element: "Chest Breathing Motion"
+      direction: DOWN
+- tapOn: "Chest Breathing Motion"
+- assertVisible: "Chest Breathing Motion"
+- tapOn: "BACK TO HUB"

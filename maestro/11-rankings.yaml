@@ -1,0 +1,28 @@
+appId: com.binanusantara.stemlearninglab
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      text: ".*(Home|Activities).*"
+    timeout: 12000
+- tapOn: "RANKINGS"
+- assertVisible: "Rankings"
+- extendedWaitUntil:
+    visible:
+      text: ".*(Overall ranking|No ranking data yet|Could not load rankings|Loading rankings).*"
+    timeout: 20000
+- tapOn: "Individuals"
+- assertVisible:
+    text: ".*(Individual leaderboard|Individuals).*"
+- tapOn: "Teams"
+- assertVisible:
+    text: ".*(Team leaderboard|Teams).*"
+- runFlow:
+    when:
+      visible: "See more"
+    commands:
+      - tapOn: "See more"
+      - assertVisible:
+          text: ".*(Overall ranking|Overall standing).*"
+      - back

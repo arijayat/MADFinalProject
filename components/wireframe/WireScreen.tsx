@@ -19,9 +19,12 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
       entering={FadeIn.duration(180)}
       layout={LinearTransition.duration(180)}
       style={styles.scroll}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={[
+        styles.scrollContent,
+        footer ? styles.scrollContentWithFooter : null,
+      ]}
       keyboardShouldPersistTaps="always"
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode="none"
       automaticallyAdjustKeyboardInsets
       showsVerticalScrollIndicator={false}>
       {children}
@@ -41,7 +44,7 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
       edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}>
         <View style={styles.inner}>
           {body}
@@ -80,6 +83,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 32,
     gap: 14,
+  },
+  scrollContentWithFooter: {
+    paddingBottom: 96,
   },
   footer: {
     paddingTop: 10,

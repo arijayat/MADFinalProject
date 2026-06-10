@@ -1,0 +1,207 @@
+appId: com.binanusantara.stemlearninglab
+---
+- launchApp:
+      clearState: false
+- extendedWaitUntil:
+      visible:
+          text: ".*(Home|Activities).*"
+      timeout: 12000
+
+- swipe:
+      direction: UP
+- swipe:
+      direction: UP
+- scrollUntilVisible:
+      element: "Reaction Board Challenge"
+      direction: UP
+- tapOn: "Reaction Board Challenge"
+- assertVisible: "Reaction Board Challenge"
+- tapOn: "START ACTIVITY"
+
+- extendedWaitUntil:
+      visible: "Prediction & Input"
+      timeout: 12000
+- tapOn: "Who is taking this test?"
+- inputText: "Maestro Student"
+- hideKeyboard
+- tapOn: "Select"
+- tapOn: "Right"
+- tapOn: "e.g. 350"
+- inputText: "350"
+- hideKeyboard
+- tapOn: "e.g. 450"
+- inputText: "450"
+- hideKeyboard
+- tapOn: "Select"
+- tapOn: "Yes"
+
+- scrollUntilVisible:
+      element: "Phase 3 — Trace 1"
+      direction: DOWN
+- tapOn: "e.g. 70"
+- inputText: "70"
+- hideKeyboard
+- tapOn: "e.g. 200"
+- inputText: "200"
+- hideKeyboard
+
+- scrollUntilVisible:
+      element: "Phase 3 — Trace 2"
+      direction: DOWN
+- tapOn: "e.g. 60"
+- inputText: "60"
+- hideKeyboard
+- tapOn: "e.g. 300"
+- inputText: "300"
+- hideKeyboard
+
+- scrollUntilVisible:
+      element: "Phase 3 — Trace 3"
+      direction: DOWN
+- tapOn: "e.g. 80"
+- inputText: "80"
+- hideKeyboard
+- tapOn: "e.g. 150"
+- inputText: "150"
+- hideKeyboard
+
+- tapOn: "UNLOCK SENSOR"
+
+- extendedWaitUntil:
+      visible: "Reaction Board Challenge"
+      timeout: 12000
+
+# Phase 1: dominant hand, 3 tap trials.
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "NEXT TRIAL"
+      timeout: 5000
+- tapOn: "NEXT TRIAL"
+
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "NEXT TRIAL"
+      timeout: 5000
+- tapOn: "NEXT TRIAL"
+
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "NEXT PHASE"
+      timeout: 5000
+- tapOn: "NEXT PHASE"
+
+# Phase 2: non-dominant hand, 3 tap trials.
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "NEXT TRIAL"
+      timeout: 5000
+- tapOn: "NEXT TRIAL"
+
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "NEXT TRIAL"
+      timeout: 5000
+- tapOn: "NEXT TRIAL"
+
+- tapOn: "START TRIAL"
+- extendedWaitUntil:
+      visible: "TAP ANYWHERE"
+      timeout: 7000
+- tapOn:
+      point: "50%,52%"
+- extendedWaitUntil:
+      visible: "START TRACING"
+      timeout: 5000
+- tapOn: "START TRACING"
+
+# Phase 3: three tracing attempts. The swipe only needs to create touch samples.
+- extendedWaitUntil:
+      visible: "Phase 3: Tracing challenge"
+      timeout: 5000
+- tapOn: "START TRIAL"
+- swipe:
+      start: "15%,54%"
+      end: "85%,54%"
+      duration: 8000
+- extendedWaitUntil:
+      visible: "NEXT ATTEMPT"
+      timeout: 12000
+- tapOn: "NEXT ATTEMPT"
+
+- tapOn: "START TRIAL"
+- swipe:
+      start: "15%,50%"
+      end: "85%,58%"
+      duration: 8000
+- extendedWaitUntil:
+      visible: "NEXT ATTEMPT"
+      timeout: 12000
+- tapOn: "NEXT ATTEMPT"
+
+- tapOn: "START TRIAL"
+- swipe:
+      start: "15%,58%"
+      end: "85%,50%"
+      duration: 8000
+- extendedWaitUntil:
+      visible: "FINISH ACTIVITY"
+      timeout: 12000
+- tapOn: "FINISH ACTIVITY"
+
+- extendedWaitUntil:
+      visible:
+          text: ".*(Reaction & tracing data captured|VIEW RESULTS).*"
+      timeout: 10000
+- takeScreenshot: reaction-capture-complete
+- tapOn: "VIEW RESULTS"
+
+- extendedWaitUntil:
+      visible:
+          text: ".*(Analytical Dashboard|Prediction vs. Actual|CONTINUE TO REFLECTION).*"
+      timeout: 12000
+- takeScreenshot: reaction-dashboard
+- tapOn: "CONTINUE TO REFLECTION"
+
+- extendedWaitUntil:
+      visible:
+          text: ".*(Reflection & Upload|SAVE & CONTINUE).*"
+      timeout: 12000
+- tapOn: "SAVE & CONTINUE"
+
+- extendedWaitUntil:
+      visible:
+          text: ".*(Live Leaderboard|Activity Complete|HUB).*"
+      timeout: 20000
+- takeScreenshot: reaction-leaderboard
+- tapOn: "HUB"
+
+- extendedWaitUntil:
+      visible:
+          text: ".*(Home|Activities).*"
+      timeout: 12000
+- takeScreenshot: reaction-back-to-hub
