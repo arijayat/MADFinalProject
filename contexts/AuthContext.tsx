@@ -36,6 +36,19 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+const PROFILE_LOAD_TIMEOUT_MS = 8000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
+  });
+
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -69,7 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(nextUser);
         if (nextUser) {
           try {
-            await loadProfile(nextUser);
+            await withTimeout(
+              loadProfile(nextUser),
+              PROFILE_LOAD_TIMEOUT_MS,
+              'Timed out while loading user profile.',
+            );
           } catch (error) {
             console.error('Failed to load user profile', error);
             setProfile(null);

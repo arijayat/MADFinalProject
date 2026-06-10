@@ -1,7 +1,9 @@
 import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
-import { Auth, getAuth } from 'firebase/auth';
+import { Auth, getAuth, initializeAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { FirebaseStorage, getStorage } from 'firebase/storage';
+
+import { getFirebaseAuthPersistence } from '@/lib/firebase-auth-storage';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
@@ -39,7 +41,18 @@ export function getFirebaseApp(): FirebaseApp {
 
 export function getFirebaseAuth(): Auth {
   if (!auth) {
-    auth = getAuth(getFirebaseApp());
+    const app = getFirebaseApp();
+    if (process.env.EXPO_OS === 'web') {
+      auth = getAuth(app);
+    } else {
+      try {
+        auth = initializeAuth(app, {
+          persistence: getFirebaseAuthPersistence(),
+        });
+      } catch {
+        auth = getAuth(app);
+      }
+    }
   }
   return auth;
 }
