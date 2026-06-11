@@ -16,6 +16,7 @@ import { useTeam } from '@/contexts/TeamContext';
 import { isActivityId, toActivitySessionSnapshot } from '@/lib/activity-snapshot';
 import { deleteActivityDraft } from '@/lib/db/activity-drafts';
 import { saveActivityResult } from '@/lib/firestore/results';
+import { hasBlockedTeamNameWords } from '@/utils/team-name-filter';
 
 export default function ActivityReflectionScreen() {
   const router = useRouter();
@@ -42,6 +43,15 @@ export default function ActivityReflectionScreen() {
       return;
     }
 
+    const trimmedInsights = insights.trim();
+    if (hasBlockedTeamNameWords(trimmedInsights)) {
+      Alert.alert(
+        'Reflection not allowed',
+        'Choose different wording. Offensive words are not allowed in reflections.',
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       const session = getSession(activityId);
@@ -52,7 +62,7 @@ export default function ActivityReflectionScreen() {
         session: toActivitySessionSnapshot(session),
         reflection: {
           stars,
-          insights: insights.trim(),
+          insights: trimmedInsights,
         },
       });
       await deleteActivityDraft(teamDocId, activityId);
