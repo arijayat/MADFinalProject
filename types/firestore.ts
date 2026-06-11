@@ -55,6 +55,12 @@ export type ActivityReflection = {
   insights: string;
 };
 
+export type ActivityPerformer = {
+  memberId: string;
+  name: string;
+  uid?: string;
+};
+
 /** Activity capture data stored under teams/{teamId}/activityResults/{activityId} */
 export type ActivityResultDocument = {
   activityId: ActivityId;
@@ -74,6 +80,8 @@ export type ActivityResultDocument = {
   parachuteDesignPhotoUrl: string | null;
   /** Unix ms when the Storage object may be deleted (30 days after upload) */
   parachuteDesignPhotoExpiresAtMs: number | null;
+  /** Team member who performed an individual-ranked activity. */
+  performer?: ActivityPerformer | null;
   reflection: ActivityReflection | null;
   updatedAt: Timestamp;
 };
