@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    flexGrow: 1,
     paddingTop: 12,
     paddingBottom: 32,
     gap: 14,

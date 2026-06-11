@@ -205,7 +205,6 @@ export function VibrationCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={false}
       footer={
         <PrimaryButton
           label={footerLabel}

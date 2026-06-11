@@ -341,7 +341,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
   };
 
   return (
-    <WireScreen scroll={phase === 'review' || phase === 'angle'} footer={footer}>
+    <WireScreen scroll={phase !== 'recording'} footer={footer}>
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

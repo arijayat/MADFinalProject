@@ -505,7 +505,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={phase === 'times' || phase === 'review' || phase === 'design-upload'}
+      scroll={phase !== 'recording'}
       footer={footer}>
       <ScreenHeader
         backLabel="BACK"

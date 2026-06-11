@@ -331,7 +331,7 @@ export default function ActivityCaptureScreen() {
   };
 
   return (
-    <WireScreen scroll={false} footer={footer ?? undefined}>
+    <WireScreen footer={footer ?? undefined}>
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

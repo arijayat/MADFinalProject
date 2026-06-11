@@ -146,7 +146,6 @@ export function DecibelCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={false}
       footer={
         permissionGranted === false && Platform.OS !== 'web' ? (
           <PrimaryButton

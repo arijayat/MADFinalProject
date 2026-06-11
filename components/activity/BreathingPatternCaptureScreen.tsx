@@ -228,7 +228,6 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={false}
       footer={
         exerciseBreak ? null : (
           <PrimaryButton

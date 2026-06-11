@@ -442,7 +442,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
-      scroll={false}
       footer={
         footerLabel ? (
           <PrimaryButton
