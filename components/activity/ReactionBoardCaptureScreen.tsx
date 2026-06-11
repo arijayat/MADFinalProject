@@ -439,9 +439,11 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     mainPhase !== 'tracing'
       ? `Trial ${tapAttempt} of ${tapAttempts}`
       : `Attempt ${traceAttempt} of ${traceAttempts}`;
+  const scrollEnabled = !(mainPhase === 'tracing' && traceUi === 'tracing');
 
   return (
     <WireScreen
+      scroll={scrollEnabled}
       footer={
         footerLabel ? (
           <PrimaryButton

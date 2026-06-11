@@ -50,7 +50,7 @@ export default function SplashScreen() {
   }
 
   return (
-    <Pressable style={[styles.screen, { backgroundColor: colors.screenBg }]} onPress={handleTap}>
+    <Pressable style={[styles.screen]} onPress={handleTap}>
       <AppLogo size={220} />
       {isLoading ? (
         <ActivityIndicator style={styles.loader} color={colors.headerSubtle} />

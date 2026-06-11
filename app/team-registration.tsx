@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
 import { Wireframe } from "@/constants/wireframe-theme";
@@ -14,6 +15,36 @@ export default function TeamRegistrationScreen() {
   const { colors } = useAppTheme();
   const { teamName, setTeamName, gradeLevel, setGradeLevel } = useTeam();
   const [grade, setGrade] = useState(gradeLevel);
+  const canContinue = teamName.trim().length > 0 && grade.trim().length > 0;
+
+  function handleContinue() {
+    const trimmedName = teamName.trim();
+    const trimmedGrade = grade.trim();
+
+    if (!trimmedName) {
+      Alert.alert("Missing team name", "Enter a team name before continuing.");
+      return;
+    }
+
+    if (!trimmedGrade) {
+      Alert.alert("Missing grade level", "Enter a grade level before continuing.");
+      return;
+    }
+
+    try {
+      validateTeamName(trimmedName);
+    } catch (error) {
+      Alert.alert(
+        "Team name not allowed",
+        error instanceof Error ? error.message : "Choose a different team name.",
+      );
+      return;
+    }
+
+    setTeamName(trimmedName);
+    setGradeLevel(trimmedGrade);
+    router.push("/team-members");
+  }
 
   return (
     <WireScreen
@@ -21,26 +52,19 @@ export default function TeamRegistrationScreen() {
         <PrimaryButton
           label="CONTINUE"
           style={styles.primaryButton}
-          onPress={() => {
-            try {
-              if (teamName.trim()) validateTeamName(teamName);
-            } catch (error) {
-              Alert.alert(
-                "Team name not allowed",
-                error instanceof Error ? error.message : "Choose a different team name.",
-              );
-              return;
-            }
-            setGradeLevel(grade);
-            router.push("/team-members");
-          }}
+          disabled={!canContinue}
+          onPress={handleContinue}
         />
       }
     >
-      <View style={styles.content}>
-        <Text style={[styles.heading, { color: colors.headerText }]}>TEAM REGISTRATION</Text>
-        <Text style={[styles.sub, { color: colors.headerSubtle }]}>Create your team to get started</Text>
+      <ScreenHeader
+        backLabel="Back"
+        onBack={() => router.back()}
+        title="Team registration"
+        subtitle="Create your team to get started."
+      />
 
+      <View style={styles.content}>
         <View style={styles.field}>
           <Text style={[styles.label, { color: colors.headerText }]}>Team Name</Text>
           <TextInput
@@ -85,18 +109,6 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 420,
     alignSelf: "center",
-    paddingTop: 24,
-  },
-  heading: {
-    color: Wireframe.panelBg,
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  sub: {
-    color: "#cfcfcf",
-    marginBottom: 24,
-    marginTop: 4,
   },
   field: {
     marginBottom: 18,

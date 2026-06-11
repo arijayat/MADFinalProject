@@ -21,7 +21,7 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg }]}>
+    <SafeAreaView style={[styles.screen]}>
       <View style={styles.centerContent}>
         <AppLogo size={logoSize} tight />
         <Text style={[styles.subtitle, { color: colors.headerSubtle }]}>Log in with email and password.</Text>

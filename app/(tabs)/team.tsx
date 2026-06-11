@@ -47,6 +47,7 @@ export default function TeamTabScreen() {
     saveTeamMembers,
     leaveTeam,
     isTeamOwner,
+    resetForNewTeam,
   } = useTeam();
 
   const [draftMembers, setDraftMembers] = useState<TeamMember[]>(members);
@@ -169,6 +170,39 @@ export default function TeamTabScreen() {
     return (
       <WireScreen>
         <TeamHeader title={t('team')} subtitle={t('teamOnboardingHint')} />
+        <View
+          style={[
+            styles.noTeamCard,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              boxShadow: colors.shadow,
+            },
+          ]}>
+          <View style={[styles.summaryIcon, { backgroundColor: colors.accentSoft }]}>
+            <MaterialIcons name="group-add" size={24} color={Wireframe.accent} />
+          </View>
+          <Text style={[styles.noTeamTitle, { color: colors.text }]}>
+            {t('noActiveTeam')}
+          </Text>
+          <Text style={[styles.noTeamMessage, { color: colors.textMuted }]}>
+            {t('noActiveTeamMessage')}
+          </Text>
+          <View style={styles.noTeamActions}>
+            <PrimaryButton
+              label={t('registerNewTeam')}
+              onPress={() => {
+                resetForNewTeam();
+                router.push('/team-registration');
+              }}
+            />
+            <PrimaryButton
+              label={t('joinExistingTeam')}
+              variant="light"
+              onPress={() => router.push('/join-team')}
+            />
+          </View>
+        </View>
       </WireScreen>
     );
   }
@@ -417,6 +451,33 @@ const styles = StyleSheet.create({
     marginTop: 12,
     color: 'rgba(255,255,255,0.76)',
     textAlign: 'center',
+  },
+  noTeamCard: {
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: Wireframe.panelBg,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Wireframe.border,
+    padding: 16,
+    boxShadow: Wireframe.shadow,
+  },
+  noTeamTitle: {
+    color: Wireframe.text,
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  noTeamMessage: {
+    color: Wireframe.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  noTeamActions: {
+    alignSelf: 'stretch',
+    gap: 10,
+    marginTop: 4,
   },
   summaryCard: {
     flexDirection: 'row',
