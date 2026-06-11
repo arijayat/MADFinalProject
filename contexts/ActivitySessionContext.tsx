@@ -16,6 +16,7 @@ import {
   toActivitySessionSnapshot,
 } from "@/lib/activity-snapshot";
 import {
+  deleteActivityDraft,
   loadAllActivityDrafts,
   saveActivityDraft,
   sessionFromDraftOrCloud,
@@ -112,6 +113,9 @@ type ActivitySession = {
 
 type ActivitySessionContextValue = {
   getSession: (activityId: ActivityId) => ActivitySession;
+  isActivityCompleted: (activityId: ActivityId) => boolean;
+  markActivityCompleted: (activityId: ActivityId) => void;
+  resetActivityForRedo: (activityId: ActivityId) => void;
   setPredictions: (
     activityId: ActivityId,
     predictions: Record<string, string>,
@@ -237,6 +241,9 @@ export function ActivitySessionProvider({
   const [sessions, setSessions] = useState<
     Partial<Record<ActivityId, ActivitySession>>
   >({});
+  const [completedActivityIds, setCompletedActivityIds] = useState<
+    Set<ActivityId>
+  >(new Set());
 
   const persistDraft = useCallback(
     (activityId: ActivityId, session: ActivitySession) => {
@@ -268,7 +275,10 @@ export function ActivitySessionProvider({
   );
 
   useEffect(() => {
-    if (!user || !teamDocId) return;
+    if (!user || !teamDocId) {
+      setCompletedActivityIds(new Set());
+      return;
+    }
 
     let cancelled = false;
 
@@ -278,6 +288,10 @@ export function ActivitySessionProvider({
         listTeamActivityResults(teamDocId),
       ]);
       if (cancelled) return;
+
+      setCompletedActivityIds(
+        new Set(Object.keys(cloudResults) as ActivityId[]),
+      );
 
       setSessions((prev) => {
         const next = { ...prev };
@@ -305,6 +319,23 @@ export function ActivitySessionProvider({
     (activityId: ActivityId) => sessions[activityId] ?? emptySession(),
     [sessions],
   );
+
+  const isActivityCompleted = useCallback(
+    (activityId: ActivityId) => completedActivityIds.has(activityId),
+    [completedActivityIds],
+  );
+
+  const markActivityCompleted = useCallback((activityId: ActivityId) => {
+    setCompletedActivityIds((prev) => new Set(prev).add(activityId));
+  }, []);
+
+  const resetActivityForRedo = useCallback((activityId: ActivityId) => {
+    setSessions((prev) => ({ ...prev, [activityId]: emptySession() }));
+    const teamId = teamDocIdRef.current;
+    if (teamId) {
+      void deleteActivityDraft(teamId, activityId);
+    }
+  }, []);
 
   const setPredictions = useCallback(
     (activityId: ActivityId, predictions: Record<string, string>) => {
@@ -407,6 +438,9 @@ export function ActivitySessionProvider({
   const value = useMemo(
     () => ({
       getSession,
+      isActivityCompleted,
+      markActivityCompleted,
+      resetActivityForRedo,
       setPredictions,
       setDecibelReadings,
       setVibrationReadings,
@@ -422,6 +456,9 @@ export function ActivitySessionProvider({
     }),
     [
       getSession,
+      isActivityCompleted,
+      markActivityCompleted,
+      resetActivityForRedo,
       setPredictions,
       setDecibelReadings,
       setVibrationReadings,

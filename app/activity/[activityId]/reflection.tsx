@@ -22,7 +22,7 @@ export default function ActivityReflectionScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
-  const { getSession } = useActivitySession();
+  const { getSession, markActivityCompleted } = useActivitySession();
   const { colors } = useAppTheme();
   const [stars, setStars] = useState(0);
   const [insights, setInsights] = useState('');
@@ -56,6 +56,7 @@ export default function ActivityReflectionScreen() {
         },
       });
       await deleteActivityDraft(teamDocId, activityId);
+      markActivityCompleted(activityId);
       router.push(`/activity/${cfg.id}/leaderboard`);
     } catch (error) {
       Alert.alert(

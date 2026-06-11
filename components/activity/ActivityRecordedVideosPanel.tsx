@@ -31,11 +31,11 @@ export function ActivityRecordedVideosPanel({ title, entries }: Props) {
   return (
     <Panel>
       <Text style={styles.title}>{title}</Text>
-      {visible.map((entry) => {
+      {visible.map((entry, entryIndex) => {
         const url = activeStoredMediaUrl(entry.video);
         if (!url || !entry.video) return null;
         return (
-          <View key={entry.label} style={styles.block}>
+          <View key={`${entry.label}-${entryIndex}`} style={styles.block}>
             <Text style={styles.label}>{entry.label}</Text>
             <Text style={styles.expiry}>
               Stored until {formatActivityMediaExpiry(entry.video.expiresAtMs)}

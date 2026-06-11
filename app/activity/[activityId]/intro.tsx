@@ -16,6 +16,7 @@ import { BREATHING_DESCRIPTION_SECTIONS } from "@/constants/breathing-descriptio
 import { REACTION_DESCRIPTION_SECTIONS } from "@/constants/reaction-description";
 import { VIBRATION_DESCRIPTION_SECTIONS } from "@/constants/vibration-description";
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useActivitySession } from "@/contexts/ActivitySessionContext";
 import { useAppTheme } from "@/contexts/AppThemeContext";
 
 export default function ActivityIntroScreen() {
@@ -23,6 +24,7 @@ export default function ActivityIntroScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = useLocalizedActivity(activityId ?? "");
   const { colors } = useAppTheme();
+  const { isActivityCompleted, resetActivityForRedo } = useActivitySession();
   const [gear, setGear] = useState<Record<string, boolean>>({});
   const [showDescription, setShowDescription] = useState(false);
 
@@ -42,14 +44,22 @@ export default function ActivityIntroScreen() {
     label: g,
     checked: gear[g] ?? true,
   }));
+  const completed = isActivityCompleted(cfg.id);
+
+  function handleRedoActivity() {
+    resetActivityForRedo(cfg.id);
+    router.push(`/activity/${cfg.id}/prediction`);
+  }
 
   return (
     <WireScreen
       footer={
-        <PrimaryButton
-          label="START ACTIVITY"
-          onPress={() => router.push(`/activity/${cfg.id}/prediction`)}
-        />
+        completed ? undefined : (
+          <PrimaryButton
+            label="START ACTIVITY"
+            onPress={() => router.push(`/activity/${cfg.id}/prediction`)}
+          />
+        )
       }
     >
       <ScreenHeader
@@ -58,6 +68,45 @@ export default function ActivityIntroScreen() {
         title={cfg.title}
         subtitle={cfg.subtitle}
       />
+
+      {completed ? (
+        <Panel>
+          <View style={styles.completedHeader}>
+            <View
+              style={[
+                styles.completedIcon,
+                { backgroundColor: colors.accentSoft },
+              ]}
+            >
+              <MaterialIcons
+                name="check-circle"
+                size={24}
+                color={Wireframe.accent}
+              />
+            </View>
+            <View style={styles.completedTextWrap}>
+              <Text style={[styles.completedTitle, { color: colors.text }]}>
+                Activity completed
+              </Text>
+              <Text style={[styles.completedCopy, { color: colors.textMuted }]}>
+                View your saved dashboard results or start again with fresh
+                predictions and measurements.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.completedActions}>
+            <PrimaryButton
+              label="VIEW PREVIOUS RESULTS"
+              onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+            />
+            <PrimaryButton
+              label="REDO ACTIVITY"
+              variant="light"
+              onPress={handleRedoActivity}
+            />
+          </View>
+        </Panel>
+      ) : null}
 
       {cfg.id === "parachute-drop" ||
       cfg.id === "decibel-detector" ||
@@ -184,5 +233,37 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Wireframe.text,
     marginBottom: 4,
+  },
+  completedHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  completedIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Wireframe.accentSoft,
+  },
+  completedTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  completedTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: Wireframe.text,
+  },
+  completedCopy: {
+    fontSize: 13,
+    color: Wireframe.textMuted,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  completedActions: {
+    gap: 8,
+    marginTop: 14,
   },
 });

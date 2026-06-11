@@ -16,12 +16,19 @@ type Props = {
   title: string;
   description: string;
   requirements: string[];
+  completed?: boolean;
   onPress: () => void;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function ActivityCard({ title, description, requirements, onPress }: Props) {
+export function ActivityCard({
+  title,
+  description,
+  requirements,
+  completed = false,
+  onPress,
+}: Props) {
   const { colors, isDark } = useAppTheme();
   const { t } = useLocalization();
   const scale = useSharedValue(1);
@@ -54,7 +61,15 @@ export function ActivityCard({ title, description, requirements, onPress }: Prop
         <View style={[styles.iconBubble, { backgroundColor: colors.accentSoft }]}>
           <MaterialIcons name="science" size={20} color={Wireframe.accent} />
         </View>
-        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <View style={styles.titleBlock}>
+          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+          {completed ? (
+            <View style={[styles.completedBadge, { backgroundColor: colors.accentSoft }]}>
+              <MaterialIcons name="check-circle" size={14} color={Wireframe.accent} />
+              <Text style={styles.completedText}>{t('completed')}</Text>
+            </View>
+          ) : null}
+        </View>
         <MaterialIcons name="chevron-right" size={22} color={colors.textMuted} />
       </View>
       <Text style={[styles.desc, { color: colors.textMuted }]}>{description}</Text>
@@ -91,10 +106,29 @@ const styles = StyleSheet.create({
     backgroundColor: Wireframe.accentSoft,
   },
   title: {
-    flex: 1,
     fontSize: 16,
     fontWeight: '800',
     color: Wireframe.text,
+  },
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
+    gap: 6,
+  },
+  completedBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  completedText: {
+    color: Wireframe.accent,
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
   },
   desc: {
     fontSize: 13,

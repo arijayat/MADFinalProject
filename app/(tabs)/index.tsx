@@ -7,6 +7,7 @@ import { WireScreen } from '@/components/wireframe/WireScreen';
 import { HUB_ACTIVITY_ORDER } from '@/constants/activities';
 import { useLocalizedActivities } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam } from '@/contexts/TeamContext';
@@ -17,6 +18,7 @@ export default function HubScreen() {
   const { t } = useLocalization();
   const { activities } = useLocalizedActivities();
   const { teamName, teamId, gradeLevel } = useTeam();
+  const { isActivityCompleted } = useActivitySession();
   const displayTeamName = teamName.trim() || t('yourTeam');
   const displayGrade = gradeLevel.trim() || t('gradeNotSet');
 
@@ -83,6 +85,7 @@ export default function HubScreen() {
             title={a.title}
             description={a.hubDescription}
             requirements={a.requirements}
+            completed={isActivityCompleted(id)}
             onPress={() => router.push(`/activity/${id}/intro`)}
           />
         );

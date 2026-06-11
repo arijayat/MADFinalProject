@@ -776,11 +776,15 @@ export default function ActivityDashboardScreen() {
     );
   }
 
-  function renderDataTable(tableRows: DashboardRow[], panelTitle: string) {
+  function renderDataTable(
+    tableRows: DashboardRow[],
+    panelTitle: string,
+    panelKey?: string,
+  ) {
     if (tableRows.length === 0) return null;
 
     return (
-      <Panel title={panelTitle}>
+      <Panel key={panelKey ?? panelTitle} title={panelTitle}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator
@@ -879,9 +883,9 @@ export default function ActivityDashboardScreen() {
                 </Text>
               ) : null}
             </View>
-            {tableRows.map((row) => (
+            {tableRows.map((row, rowIndex) => (
               <View
-                key={`${panelTitle}-${row.variable}`}
+                key={`${panelTitle}-${row.variable}-${rowIndex}`}
                 style={[styles.row, { borderBottomColor: colors.border }]}>
                 <Text
                   style={[
@@ -984,8 +988,8 @@ export default function ActivityDashboardScreen() {
       />
       {contextLines.length > 0 ? (
         <Panel title="Your setup">
-          {contextLines.map((line) => (
-            <View key={line.label} style={styles.contextRow}>
+          {contextLines.map((line, lineIndex) => (
+            <View key={`${line.label}-${lineIndex}`} style={styles.contextRow}>
               <Text style={[styles.contextLabel, { color: colors.text }]}>{line.label}</Text>
               <Text style={[styles.contextValue, { color: colors.text }]}>{line.value}</Text>
             </View>
@@ -993,8 +997,12 @@ export default function ActivityDashboardScreen() {
         </Panel>
       ) : null}
       {renderDataTable(rows, mainPanelTitle)}
-      {tableSections.map((section) =>
-        renderDataTable(section.rows, section.title),
+      {tableSections.map((section, sectionIndex) =>
+        renderDataTable(
+          section.rows,
+          section.title,
+          `${section.title}-${sectionIndex}`,
+        ),
       )}
       {cfg.captureKind === "decibel" ? (
         <Text style={[styles.note, { color: colors.textMuted }]}>
@@ -1043,7 +1051,7 @@ export default function ActivityDashboardScreen() {
         <Panel title="Force estimate (F ≈ k × θ)">
           {fanForceResults.map(({ label, angleDegrees, stiffnessK, forceN }, i) =>
             forceN != null ? (
-              <View key={label} style={styles.physicsBlock}>
+              <View key={`${label}-${i}`} style={styles.physicsBlock}>
                 <Text style={[styles.physicsTitle, { color: colors.text }]}>{label}</Text>
                 <Text style={[styles.physicsLine, { color: colors.text }]}>
                   Bend: {angleDegrees}° ({((angleDegrees * Math.PI) / 180).toFixed(3)}{" "}
@@ -1097,7 +1105,7 @@ export default function ActivityDashboardScreen() {
           {parachutePhysics.map(
             ({ label, fall, gForce, didBounce }, arrIndex) =>
               fall ? (
-                <View key={label} style={styles.physicsBlock}>
+                <View key={`${label}-${arrIndex}`} style={styles.physicsBlock}>
                   <Text style={[styles.physicsTitle, { color: colors.text }]}>{label}</Text>
                   <Text style={[styles.physicsLine, { color: colors.text }]}>
                     Final speed: {formatPhysics(fall.finalVelocityMs)} m/s ·
