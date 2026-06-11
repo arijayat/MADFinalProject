@@ -5,14 +5,14 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { FieldBlock } from '@/components/wireframe/FormFields';
-import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
+import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { useLocalizedActivity } from '@/constants/localized-activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { isActivityId } from '@/lib/activity-snapshot';
-import { useActivitySession } from '@/contexts/ActivitySessionContext';
 
 export default function ActivityPredictionScreen() {
   const router = useRouter();
@@ -174,13 +174,13 @@ export default function ActivityPredictionScreen() {
           <Text style={[styles.hint, { color: colors.text }]}>
             • Action 1 (e.g. drop a book): louder, softer, or about the same as a quiet room (~45 dB).
           </Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: colors.text }]}>
             • Action 2 (e.g. talking): louder, softer, or about the same than Action 1’s sound.
           </Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: colors.text }]}>
             • Action 3 (e.g. stamping): louder, softer, or about the same than Action 2’s sound.
           </Text>
-          <Text style={styles.hint}>
+          <Text style={[styles.hint, { color: colors.text }]}>
             After measuring, the dashboard compares your choices to the recorded peaks and shows hearing
             risk from the sound-level table.
           </Text>

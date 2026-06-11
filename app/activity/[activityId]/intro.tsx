@@ -1,12 +1,13 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
+import { isIndividualActivity } from "@/constants/activities";
 import { useLocalizedActivity } from "@/constants/localized-activities";
 import { DECIBEL_DESCRIPTION_SECTIONS } from "@/constants/decibel-description";
 import { FAN_DESCRIPTION_SECTIONS } from "@/constants/fan-description";
@@ -18,15 +19,41 @@ import { VIBRATION_DESCRIPTION_SECTIONS } from "@/constants/vibration-descriptio
 import { Wireframe } from "@/constants/wireframe-theme";
 import { useActivitySession } from "@/contexts/ActivitySessionContext";
 import { useAppTheme } from "@/contexts/AppThemeContext";
+import { useTeam } from "@/contexts/TeamContext";
 
 export default function ActivityIntroScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const cfg = useLocalizedActivity(activityId ?? "");
   const { colors } = useAppTheme();
-  const { isActivityCompleted, resetActivityForRedo } = useActivitySession();
+  const { members } = useTeam();
+  const {
+    getSession,
+    isActivityCompleted,
+    resetActivityForRedo,
+    setActivityPerformer,
+  } = useActivitySession();
   const [gear, setGear] = useState<Record<string, boolean>>({});
   const [showDescription, setShowDescription] = useState(false);
+  const selectableMembers = useMemo(
+    () => members.filter((member) => member.name.trim()),
+    [members],
+  );
+  const individualActivity = cfg ? isIndividualActivity(cfg.id) : false;
+  const selectedPerformer = cfg ? getSession(cfg.id).performer : null;
+
+  useEffect(() => {
+    if (!cfg || !isIndividualActivity(cfg.id)) return;
+    if (getSession(cfg.id).performer) return;
+    if (selectableMembers.length !== 1) return;
+
+    const onlyMember = selectableMembers[0];
+    setActivityPerformer(cfg.id, {
+      memberId: onlyMember.id,
+      name: onlyMember.name.trim(),
+      uid: onlyMember.uid,
+    });
+  }, [cfg, getSession, selectableMembers, setActivityPerformer]);
 
   if (!cfg) {
     return (
@@ -40,15 +67,26 @@ export default function ActivityIntroScreen() {
     );
   }
 
+  const activity = cfg;
   const gearState = cfg.gear.map((g) => ({
     label: g,
     checked: gear[g] ?? true,
   }));
   const completed = isActivityCompleted(cfg.id);
+  const canStartActivity = !individualActivity || selectedPerformer != null;
 
   function handleRedoActivity() {
-    resetActivityForRedo(cfg.id);
-    router.push(`/activity/${cfg.id}/prediction`);
+    resetActivityForRedo(activity.id);
+    if (individualActivity) {
+      if (!selectedPerformer) return;
+      setActivityPerformer(activity.id, selectedPerformer);
+    }
+    router.push(`/activity/${activity.id}/prediction`);
+  }
+
+  function handleStartActivity() {
+    if (!canStartActivity) return;
+    router.push(`/activity/${activity.id}/prediction`);
   }
 
   return (
@@ -56,8 +94,9 @@ export default function ActivityIntroScreen() {
       footer={
         completed ? undefined : (
           <PrimaryButton
-            label="START ACTIVITY"
-            onPress={() => router.push(`/activity/${cfg.id}/prediction`)}
+            label={individualActivity && !selectedPerformer ? "SELECT A MEMBER TO START" : "START ACTIVITY"}
+            disabled={!canStartActivity}
+            onPress={handleStartActivity}
           />
         )
       }
@@ -68,6 +107,56 @@ export default function ActivityIntroScreen() {
         title={cfg.title}
         subtitle={cfg.subtitle}
       />
+
+      {individualActivity ? (
+        <Panel title="Individual ranking">
+          <Text style={[styles.panelHint, { color: colors.textMuted }]}>
+            Select the team member who will perform this activity. Their saved
+            result will appear on the individual leaderboard.
+          </Text>
+          {selectableMembers.length === 0 ? (
+            <Text style={[styles.panelHint, { color: colors.textMuted }]}>
+              Add team members on the Team tab before starting an individual-ranked activity.
+            </Text>
+          ) : (
+            <View style={styles.memberGrid}>
+              {selectableMembers.map((member) => {
+                const selected = selectedPerformer?.memberId === member.id;
+                return (
+                  <Pressable
+                    key={member.id}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() =>
+                      setActivityPerformer(cfg.id, {
+                        memberId: member.id,
+                        name: member.name.trim(),
+                        uid: member.uid,
+                      })
+                    }
+                    style={[
+                      styles.memberChoice,
+                      {
+                        backgroundColor: selected ? colors.accentSoft : colors.surfaceAlt,
+                        borderColor: selected ? Wireframe.accent : colors.border,
+                      },
+                    ]}
+                  >
+                    <MaterialIcons
+                      name={selected ? "radio-button-checked" : "radio-button-unchecked"}
+                      size={18}
+                      color={selected ? Wireframe.accent : colors.textMuted}
+                    />
+                    <Text style={[styles.memberChoiceText, { color: colors.text }]}>
+                      {member.name.trim()}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </Panel>
+      ) : null}
 
       {completed ? (
         <Panel>
@@ -102,6 +191,7 @@ export default function ActivityIntroScreen() {
             <PrimaryButton
               label="REDO ACTIVITY"
               variant="light"
+              disabled={individualActivity && !selectedPerformer}
               onPress={handleRedoActivity}
             />
           </View>
@@ -265,5 +355,24 @@ const styles = StyleSheet.create({
   completedActions: {
     gap: 8,
     marginTop: 14,
+  },
+  memberGrid: {
+    gap: 8,
+  },
+  memberChoice: {
+    minHeight: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  memberChoiceText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: Wireframe.text,
   },
 });

@@ -7,7 +7,7 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
-import { type ActivityId } from '@/constants/activities';
+import { isIndividualActivity, type ActivityId } from '@/constants/activities';
 import { useLocalizedActivity } from '@/constants/localized-activities';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
@@ -32,6 +32,8 @@ export default function ActivityLeaderboardScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const { teamDocId } = useTeam();
   const cfg = useLocalizedActivity(activityId ?? "");
+  const supportsIndividualRanking =
+    cfg != null && isIndividualActivity(cfg.id);
 
   const [mode, setMode] = useState<LeaderboardMode>('team');
   const [teamRows, setTeamRows] = useState<LeaderboardRow[]>([]);
@@ -153,7 +155,9 @@ export default function ActivityLeaderboardScreen() {
             ? t('loadingRankings')
             : mode === 'team'
               ? 'Rankings from saved team results.'
-              : 'Each student inherits their team score for this activity.'}
+              : supportsIndividualRanking
+                ? 'Individual rankings use the selected performer saved with each result.'
+                : 'This activity uses team rankings only.'}
         </Text>
       </View>
       <Panel>
@@ -165,7 +169,9 @@ export default function ActivityLeaderboardScreen() {
           <Text style={[styles.empty, { color: colors.textMuted }]}>
             {mode === 'team'
               ? 'No teams have scored on this activity yet.'
-              : 'No students have scored on this activity yet.'}
+              : supportsIndividualRanking
+                ? 'No students have scored on this activity yet.'
+                : 'This activity does not have individual rankings.'}
           </Text>
         ) : mode === 'team' ? (
           <ScrollView horizontal>

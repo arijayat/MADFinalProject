@@ -502,12 +502,6 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
     reactionTraceAttempts: 3,
     predictionFields: [
       {
-        key: "member",
-        label: "Team member name",
-        placeholder: "Who is taking this test?",
-        kind: "text",
-      },
-      {
         key: "dominant_hand",
         label: "Dominant hand",
         placeholder: "Select",
@@ -575,7 +569,6 @@ export const ACTIVITIES: Record<ActivityId, ActivityConfig> = {
       },
     ],
     dashboardVariables: [
-      "Team member name",
       "Dominant hand",
       "Phase 1: Tap reaction (dominant)",
       "Phase 2: Swap hands (non-dominant)",
@@ -681,6 +674,16 @@ export const HUB_ACTIVITY_ORDER: ActivityId[] = [
   "reaction-time",
   "breathing-pattern",
 ];
+
+export const INDIVIDUAL_ACTIVITY_IDS: ActivityId[] = [
+  "surface-smoothness",
+  "reaction-time",
+  "breathing-pattern",
+];
+
+export function isIndividualActivity(activityId: ActivityId): boolean {
+  return INDIVIDUAL_ACTIVITY_IDS.includes(activityId);
+}
 
 export function getActivity(id: string): ActivityConfig | undefined {
   return ACTIVITIES[id as ActivityId];

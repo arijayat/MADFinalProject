@@ -94,7 +94,7 @@ const activityText: Record<AppLanguage, Partial<Record<ActivityId, ActivityText>
       requirements: ['Permukaan meja datar', 'Kertas untuk mencatat hasil opsional'],
       gear: ['Meja datar untuk meletakkan perangkat', 'Ruang kerja yang bersih'],
       safety: ['Selalu lakukan eksperimen di area aman dan diawasi.', 'Jaga ponsel tetap datar di meja selama semua fase.', 'Gunakan satu jari tiap kali mengetuk dan menelusuri.'],
-      dashboardVariables: ['Nama anggota tim', 'Tangan dominan', 'Fase 1: Reaksi ketuk', 'Fase 2: Tangan lain', 'Tangan dominan lebih cepat?', 'Percobaan menelusuri 1', 'Percobaan menelusuri 2', 'Percobaan menelusuri 3'],
+      dashboardVariables: ['Tangan dominan', 'Fase 1: Reaksi ketuk', 'Fase 2: Tangan lain', 'Tangan dominan lebih cepat?', 'Percobaan menelusuri 1', 'Percobaan menelusuri 2', 'Percobaan menelusuri 3'],
       captureDoneStatusA: 'Data reaksi dan penelusuran berhasil diambil',
       captureDoneStatusB: 'Ketiga fase selesai',
       leaderboardSubtitle: 'Peringkat Kelas 6 - Tantangan Papan Reaksi',

@@ -11,6 +11,7 @@ import React, {
 import type { ActivityId } from "@/constants/activities";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTeam } from "@/contexts/TeamContext";
+import type { ActivityPerformer } from "@/types/firestore";
 import {
   sessionFromActivityResult,
   toActivitySessionSnapshot,
@@ -109,6 +110,7 @@ type ActivitySession = {
   /** Photo of revised parachute design before Action 3 drop */
   parachuteDesignPhotoUrl: string | null;
   parachuteDesignPhotoExpiresAtMs: number | null;
+  performer: ActivityPerformer | null;
 };
 
 type ActivitySessionContextValue = {
@@ -116,6 +118,10 @@ type ActivitySessionContextValue = {
   isActivityCompleted: (activityId: ActivityId) => boolean;
   markActivityCompleted: (activityId: ActivityId) => void;
   resetActivityForRedo: (activityId: ActivityId) => void;
+  setActivityPerformer: (
+    activityId: ActivityId,
+    performer: ActivityPerformer | null,
+  ) => void;
   setPredictions: (
     activityId: ActivityId,
     predictions: Record<string, string>,
@@ -176,6 +182,7 @@ const emptySession = (): ActivitySession => ({
   bounceActual: null,
   parachuteDesignPhotoUrl: null,
   parachuteDesignPhotoExpiresAtMs: null,
+  performer: null,
 });
 
 function overlayLocalSession(
@@ -223,6 +230,7 @@ function overlayLocalSession(
     parachuteDesignPhotoExpiresAtMs:
       local.parachuteDesignPhotoExpiresAtMs ??
       base.parachuteDesignPhotoExpiresAtMs,
+    performer: local.performer ?? base.performer ?? null,
   };
 }
 
@@ -337,6 +345,13 @@ export function ActivitySessionProvider({
     }
   }, []);
 
+  const setActivityPerformer = useCallback(
+    (activityId: ActivityId, performer: ActivityPerformer | null) => {
+      patchSession(activityId, { performer });
+    },
+    [patchSession],
+  );
+
   const setPredictions = useCallback(
     (activityId: ActivityId, predictions: Record<string, string>) => {
       patchSession(activityId, { predictions });
@@ -441,6 +456,7 @@ export function ActivitySessionProvider({
       isActivityCompleted,
       markActivityCompleted,
       resetActivityForRedo,
+      setActivityPerformer,
       setPredictions,
       setDecibelReadings,
       setVibrationReadings,
@@ -459,6 +475,7 @@ export function ActivitySessionProvider({
       isActivityCompleted,
       markActivityCompleted,
       resetActivityForRedo,
+      setActivityPerformer,
       setPredictions,
       setDecibelReadings,
       setVibrationReadings,

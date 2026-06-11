@@ -138,5 +138,6 @@ export function sessionFromDraftOrCloud(
     parachuteDesignPhotoExpiresAtMs:
       draft.parachuteDesignPhotoExpiresAtMs ??
       sessionFromActivityResult(cloud).parachuteDesignPhotoExpiresAtMs,
+    performer: draft.performer ?? sessionFromActivityResult(cloud).performer ?? null,
   };
 }

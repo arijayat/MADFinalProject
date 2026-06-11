@@ -2,6 +2,7 @@ import type { ActivityId } from '@/constants/activities';
 import type { ActivitySessionSnapshot } from '@/lib/firestore/results';
 import type { ActivityResultDocument } from '@/types/firestore';
 import type { BounceObservation } from '@/contexts/ActivitySessionContext';
+import type { ActivityPerformer } from '@/types/firestore';
 
 type SessionLike = {
   predictions: Record<string, string>;
@@ -16,6 +17,7 @@ type SessionLike = {
   bounceActual: string | null;
   parachuteDesignPhotoUrl: string | null;
   parachuteDesignPhotoExpiresAtMs: number | null;
+  performer?: ActivityPerformer | null;
 };
 
 export function toActivitySessionSnapshot(session: SessionLike): ActivitySessionSnapshot {
@@ -32,6 +34,7 @@ export function toActivitySessionSnapshot(session: SessionLike): ActivitySession
     bounceActual: session.bounceActual,
     parachuteDesignPhotoUrl: session.parachuteDesignPhotoUrl,
     parachuteDesignPhotoExpiresAtMs: session.parachuteDesignPhotoExpiresAtMs,
+    performer: session.performer ?? null,
   };
 }
 
@@ -51,6 +54,7 @@ export function sessionFromActivityResult(
     bounceActual: (doc.bounceActual as BounceObservation | null) ?? null,
     parachuteDesignPhotoUrl: doc.parachuteDesignPhotoUrl ?? null,
     parachuteDesignPhotoExpiresAtMs: doc.parachuteDesignPhotoExpiresAtMs ?? null,
+    performer: doc.performer ?? null,
   };
 }
 

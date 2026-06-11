@@ -8,7 +8,7 @@ import {
   setDoc,
 } from 'firebase/firestore';
 
-import type { ActivityId } from '@/constants/activities';
+import { isIndividualActivity, type ActivityId } from '@/constants/activities';
 import { getFirebaseDb } from '@/lib/firebase';
 import { computeLeaderboardScore } from '@/utils/leaderboard-score';
 import type {
@@ -138,26 +138,34 @@ function toIndividualLeaderboardRows(
   teamDocId: string,
   teamMeta: Map<string, TeamLeaderboardMeta>,
 ): Omit<IndividualLeaderboardRow, 'rank'>[] {
+  if (!isIndividualActivity(activityId)) return [];
+
   const meta = teamMeta.get(teamDocId);
   const teamName = meta?.name ?? 'Unknown team';
   const code = meta?.code ?? '';
   const displayId = code ? `#${code}` : '—';
   const score = computeLeaderboardScore(activityId, data);
-  const members = (meta?.members ?? []).filter((member) => member.name.trim());
+  const performer = data.performer;
 
-  return members.map((member) => {
-    const studentName = member.name.trim();
-    return {
+  if (!performer?.memberId || !performer.name.trim()) {
+    return [];
+  }
+
+  const rosterMember = meta?.members.find((member) => member.id === performer.memberId);
+  const studentName = rosterMember?.name.trim() || performer.name.trim();
+
+  return [
+    {
       studentName,
       teamName,
       displayName: `${studentName} (${teamName})`,
       id: displayId,
       score,
       teamDocId,
-      memberId: member.id,
-      memberUid: member.uid,
-    };
-  });
+      memberId: performer.memberId,
+      memberUid: performer.uid ?? rosterMember?.uid,
+    },
+  ];
 }
 
 function rankIndividualLeaderboardRows(
