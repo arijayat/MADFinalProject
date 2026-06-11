@@ -1,8 +1,8 @@
-import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -14,7 +14,9 @@ import {
   View,
 } from 'react-native';
 
+import { ActivityCameraPreview } from '@/components/activity/ActivityCameraPreview';
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
+import { RecordingTimerOverlay } from '@/components/activity/RecordingTimerOverlay';
 import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
 import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
 import { ScreenHeader } from '@/components/wireframe/BackNav';
@@ -26,6 +28,7 @@ import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
+import { useCameraVideoRecording } from '@/hooks/useCameraVideoRecording';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { uploadParachuteDesignPhoto } from '@/lib/storage/parachute-design';
 import {
@@ -44,8 +47,6 @@ type Props = {
 };
 
 type Phase = 'preview' | 'recording' | 'review' | 'times' | 'design-upload';
-
-type RecordingResult = { uri: string };
 
 /** Action 3 (revised design) is the third drop — index 2. */
 const ACTION_3_INDEX = 2;
@@ -82,24 +83,34 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     isSignedIn: !!user,
   });
   const actions = cfg.parachuteDropActions ?? ['Drop'];
-  const cameraRef = useRef<CameraView>(null);
-  const recordingPromiseRef = useRef<Promise<RecordingResult | undefined> | null>(null);
 
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
-
   const [actionIndex, setActionIndex] = useState(0);
   const [saved, setSaved] = useState<ParachuteReading[]>([]);
   const [phase, setPhase] = useState<Phase>('preview');
+  const {
+    cameraRef,
+    cameraReady,
+    canMountCamera,
+    sessionKey,
+    onCameraReady,
+    onMountError,
+    resetCameraReady,
+    isRecording,
+    beginRecording,
+    finishRecording,
+  } = useCameraVideoRecording({
+    cameraPermissionGranted: !!cameraPermission?.granted,
+    onRecordingFailed: () => setPhase('preview'),
+  });
   const [videoUri, setVideoUri] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
   const [fallTimeInput, setFallTimeInput] = useState('');
   const [contactTimeInput, setContactTimeInput] = useState('');
   const [reboundTimeInput, setReboundTimeInput] = useState('');
   const [observedBounce, setObservedBounce] = useState<BounceObservation | null>(null);
   const [designPreviewUri, setDesignPreviewUri] = useState<string | null>(null);
   const [uploadingDesign, setUploadingDesign] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const expectsBounce = session.predictions.bounce === 'Bounce';
   const isLastAction = actionIndex === actions.length - 1;
   const needsDesignUpload =
@@ -109,21 +120,20 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
 
   useEffect(() => {
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
     if (!videoUri) return;
     void startUpload(videoUri, actionIndex);
   }, [videoUri, actionIndex, startUpload]);
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
-  };
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    if (!cameraPermission?.granted) void requestCameraPermission();
+    if (micPermission == null || !micPermission.granted) void requestMicPermission();
+  }, [
+    cameraPermission?.granted,
+    micPermission,
+    requestCameraPermission,
+    requestMicPermission,
+  ]);
 
   const ensurePermissions = useCallback(async () => {
     if (Platform.OS === 'web') {
@@ -154,43 +164,19 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     });
     if (!batteryOk) return;
     setVideoUri(null);
-    setPhase('recording');
-    setTick(0);
-    timerRef.current = setInterval(() => setTick((t) => t + 1), 1000);
-    try {
-      recordingPromiseRef.current = cameraRef.current?.recordAsync({ maxDuration: 30 }) ?? null;
-    } catch {
-      Alert.alert('Could not record', 'Try again with the camera pointed at the full drop path.');
-      setPhase('preview');
-    }
-  }, [ensurePermissions]);
+    const started = await beginRecording();
+    if (started) setPhase('recording');
+  }, [beginRecording, ensurePermissions]);
 
   const stopRecording = useCallback(async () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    try {
-      cameraRef.current?.stopRecording();
-    } catch {
-      /* already stopped */
-    }
-    try {
-      const result = await recordingPromiseRef.current;
-      recordingPromiseRef.current = null;
-      if (result?.uri) {
-        setVideoUri(result.uri);
-        setPhase('review');
-      } else {
-        Alert.alert('No video saved', 'Try recording again.');
-        setPhase('preview');
-      }
-    } catch {
-      recordingPromiseRef.current = null;
-      Alert.alert('Could not save video', 'Try recording again.');
+    const uri = await finishRecording();
+    if (uri) {
+      setVideoUri(uri);
+      setPhase('review');
+    } else {
       setPhase('preview');
     }
-  }, []);
+  }, [finishRecording]);
 
   const goToTimesEntry = useCallback(() => {
     setPhase('times');
@@ -395,10 +381,20 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   } else if (!permissionsReady && Platform.OS !== 'web') {
     footer = <PrimaryButton label="ALLOW CAMERA" onPress={ensurePermissions} />;
   } else {
-    footer = <PrimaryButton label="START RECORDING" onPress={startRecording} />;
+    footer = (
+      <PrimaryButton
+        label={cameraReady ? 'START RECORDING' : 'PREPARING CAMERA…'}
+        onPress={startRecording}
+        disabled={!cameraReady}
+      />
+    );
   }
 
   const showCamera = phase === 'preview' || phase === 'recording';
+
+  useEffect(() => {
+    if (!showCamera) resetCameraReady();
+  }, [showCamera, resetCameraReady]);
 
   const viewfinder = () => {
     if (phase === 'design-upload') {
@@ -493,15 +489,23 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       return null;
     }
 
+    if (!canMountCamera) {
+      return (
+        <View style={styles.viewfinder}>
+          <Text style={styles.webHint}>Preparing camera…</Text>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.viewfinder}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back" mode="video" />
-        {phase === 'recording' ? (
-          <View style={styles.recordingBar}>
-            <Text style={styles.recording}>RECORDING</Text>
-            <Text style={styles.timer}>{formatTime(tick)}</Text>
-          </View>
-        ) : null}
+        <ActivityCameraPreview
+          cameraRef={cameraRef}
+          sessionKey={sessionKey}
+          onCameraReady={onCameraReady}
+          onMountError={onMountError}
+        />
+        <RecordingTimerOverlay active={isRecording} />
         <View style={styles.camRow}>
           <Text style={styles.tagRed}>
             {allDone ? cfg.captureDoneLabel : phase === 'recording' ? 'REC' : cfg.captureIdleLabel}
@@ -513,9 +517,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   };
 
   return (
-    <WireScreen
-      scroll={phase !== 'recording'}
-      footer={footer}>
+    <WireScreen scroll={!showCamera} animateLayout={!showCamera} footer={footer}>
       <ScreenHeader
         backLabel="BACK"
         onBack={() => router.back()}

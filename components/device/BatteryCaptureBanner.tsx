@@ -38,7 +38,11 @@ export function BatteryCaptureBanner() {
     };
   }, []);
 
-  if (Platform.OS === 'web' || level == null) return null;
+  if (Platform.OS === 'web') return null;
+
+  if (level == null) {
+    return <View style={styles.placeholder} />;
+  }
 
   const pct = Math.round(level * 100);
   const low = pct < 20 && !charging;
@@ -68,6 +72,10 @@ export function BatteryCaptureBanner() {
 }
 
 const styles = StyleSheet.create({
+  placeholder: {
+    minHeight: 34,
+    marginBottom: 8,
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

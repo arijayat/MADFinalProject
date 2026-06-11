@@ -10,14 +10,21 @@ type Props = {
   children: ReactNode;
   footer?: ReactNode;
   scroll?: boolean;
+  /** Disable Reanimated layout transitions (use on camera capture screens). */
+  animateLayout?: boolean;
 };
 
-export function WireScreen({ children, footer, scroll = true }: Props) {
+export function WireScreen({
+  children,
+  footer,
+  scroll = true,
+  animateLayout = true,
+}: Props) {
   const { colors } = useAppTheme();
   const body = scroll ? (
     <Animated.ScrollView
-      entering={FadeIn.duration(180)}
-      layout={LinearTransition.duration(180)}
+      entering={animateLayout ? FadeIn.duration(180) : undefined}
+      layout={animateLayout ? LinearTransition.duration(180) : undefined}
       style={styles.scroll}
       contentContainerStyle={[
         styles.scrollContent,
@@ -29,13 +36,15 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
       showsVerticalScrollIndicator={false}>
       {children}
     </Animated.ScrollView>
-  ) : (
+  ) : animateLayout ? (
     <Animated.View
       entering={FadeIn.duration(180)}
       layout={LinearTransition.duration(180)}
       style={styles.flex}>
       {children}
     </Animated.View>
+  ) : (
+    <View style={styles.flex}>{children}</View>
   );
 
   return (
@@ -49,12 +58,16 @@ export function WireScreen({ children, footer, scroll = true }: Props) {
         <View style={styles.inner}>
           {body}
           {footer ? (
-            <Animated.View
-              entering={FadeIn.duration(140)}
-              layout={LinearTransition.duration(160)}
-              style={styles.footer}>
-              {footer}
-            </Animated.View>
+            animateLayout ? (
+              <Animated.View
+                entering={FadeIn.duration(140)}
+                layout={LinearTransition.duration(160)}
+                style={styles.footer}>
+                {footer}
+              </Animated.View>
+            ) : (
+              <View style={styles.footer}>{footer}</View>
+            )
           ) : null}
         </View>
       </KeyboardAvoidingView>
