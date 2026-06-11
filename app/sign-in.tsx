@@ -5,10 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppLogo } from '@/components/AppLogo';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SignInScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { configError } = useAuth();
   const { width } = useWindowDimensions();
   const logoSize = Math.min(width - 32, 400);
@@ -19,10 +21,10 @@ export default function SignInScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.screenBg }]}>
       <View style={styles.centerContent}>
         <AppLogo size={logoSize} tight />
-        <Text style={styles.subtitle}>Log in with email and password.</Text>
+        <Text style={[styles.subtitle, { color: colors.headerSubtle }]}>Log in with email and password.</Text>
         {configError ? (
           <Text style={styles.configError} onPress={showConfigHelp}>
             Tap here: Firebase .env is missing or incomplete.

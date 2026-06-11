@@ -17,6 +17,7 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCurrentPosition } from '@/lib/device/location';
 import {
@@ -29,6 +30,7 @@ import type { SchoolLocation } from '@/types/firestore';
 
 export default function CreateAccountScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { signUp, refreshProfile } = useAuth();
   const schoolInputRef = useRef<TextInput>(null);
   const emailInputRef = useRef<TextInput>(null);
@@ -172,9 +174,16 @@ export default function CreateAccountScreen() {
       />
 
       <View style={styles.field}>
-        <Text style={styles.label}>Display name</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Display name</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           testID="create-account-display-name-input"
           placeholder="How teammates see you"
           placeholderTextColor={Wireframe.placeholder}
@@ -188,14 +197,22 @@ export default function CreateAccountScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>School</Text>
-        <Text style={styles.hint}>
+        <Text style={[styles.label, { color: colors.headerText }]}>School</Text>
+        <Text style={[styles.hint, { color: colors.headerSubtle }]}>
           Tap the location icon to see schools near you, or type your school name.
         </Text>
         <View style={styles.locationRow}>
           <TextInput
             ref={schoolInputRef}
-            style={[styles.input, styles.locationInput]}
+            style={[
+              styles.input,
+              styles.locationInput,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             testID="create-account-school-input"
             placeholder="School name"
             placeholderTextColor={Wireframe.placeholder}
@@ -214,18 +231,25 @@ export default function CreateAccountScreen() {
             onPress={handleFindNearbySchools}
             disabled={locating || submitting}>
             {locating ? (
-              <ActivityIndicator color={Wireframe.panelBg} size="small" />
+              <ActivityIndicator color={Wireframe.primaryButtonText} size="small" />
             ) : (
-              <MaterialIcons name="location-on" size={24} color={Wireframe.panelBg} />
+              <MaterialIcons name="location-on" size={24} color={Wireframe.primaryButtonText} />
             )}
           </Pressable>
         </View>
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Email</Text>
         <TextInput
           ref={emailInputRef}
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           testID="create-account-email-input"
           placeholder="you@school.edu"
           placeholderTextColor={Wireframe.placeholder}
@@ -240,10 +264,17 @@ export default function CreateAccountScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>Password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Password</Text>
         <TextInput
           ref={passwordInputRef}
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           testID="create-account-password-input"
           placeholder="At least 6 characters"
           placeholderTextColor={Wireframe.placeholder}
@@ -257,10 +288,17 @@ export default function CreateAccountScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>Confirm password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Confirm password</Text>
         <TextInput
           ref={confirmPasswordInputRef}
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           testID="create-account-confirm-password-input"
           placeholder="••••••••"
           placeholderTextColor={Wireframe.placeholder}
@@ -273,20 +311,26 @@ export default function CreateAccountScreen() {
         />
       </View>
 
-      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+      {submitting ? <ActivityIndicator color={colors.headerText} style={styles.spinner} /> : null}
 
       <Pressable onPress={() => router.replace('/log-in')} disabled={submitting}>
-        <Text style={styles.link}>Already have an account? Log in</Text>
+        <Text style={[styles.link, { color: colors.headerText }]}>Already have an account? Log in</Text>
       </Pressable>
 
       <Modal visible={schoolPickerOpen} transparent animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={() => setSchoolPickerOpen(false)}>
           <Pressable
-            style={styles.modalCard}
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+              },
+            ]}
             onPress={(event) => event.stopPropagation()}>
-            <Text style={styles.modalTitle}>Schools near you</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Schools near you</Text>
             {nearbySchools.length === 0 ? (
-              <Text style={styles.modalEmpty}>
+              <Text style={[styles.modalEmpty, { color: colors.textMuted }]}>
                 No schools found nearby. Close and enter your school manually.
               </Text>
             ) : (
@@ -296,16 +340,20 @@ export default function CreateAccountScreen() {
                 style={styles.modalList}
                 keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
-                  <Pressable style={styles.schoolRow} onPress={() => handleSelectSchool(item)}>
-                    <Text style={styles.schoolName}>{item.name}</Text>
+                  <Pressable
+                    style={[styles.schoolRow, { borderTopColor: colors.border }]}
+                    onPress={() => handleSelectSchool(item)}>
+                    <Text style={[styles.schoolName, { color: colors.text }]}>{item.name}</Text>
                     {item.address ? (
-                      <Text style={styles.schoolAddress}>{item.address}</Text>
+                      <Text style={[styles.schoolAddress, { color: colors.textMuted }]}>{item.address}</Text>
                     ) : null}
                   </Pressable>
                 )}
               />
             )}
-            <Pressable style={styles.modalClose} onPress={() => setSchoolPickerOpen(false)}>
+            <Pressable
+              style={[styles.modalClose, { borderTopColor: colors.border }]}
+              onPress={() => setSchoolPickerOpen(false)}>
               <Text style={styles.modalCloseText}>Enter manually instead</Text>
             </Pressable>
           </Pressable>

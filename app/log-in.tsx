@@ -6,10 +6,12 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function LogInScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { signIn, refreshProfile, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,9 +77,16 @@ export default function LogInScreen() {
       />
 
       <View style={styles.field}>
-        <Text style={styles.label}>Email</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Email</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="you@school.edu"
           placeholderTextColor={Wireframe.placeholder}
           value={email}
@@ -88,9 +97,16 @@ export default function LogInScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>Password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Password</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="••••••••"
           placeholderTextColor={Wireframe.placeholder}
           value={password}
@@ -104,17 +120,17 @@ export default function LogInScreen() {
         onPress={handleForgotPassword}
         disabled={submitting || resetting}
         style={styles.forgotPassword}>
-        <Text style={styles.forgotPasswordText}>
+        <Text style={[styles.forgotPasswordText, { color: colors.headerText }]}>
           {resetting ? 'Sending reset link…' : 'Forgot password?'}
         </Text>
       </Pressable>
 
       {submitting || resetting ? (
-        <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} />
+        <ActivityIndicator color={colors.headerText} style={styles.spinner} />
       ) : null}
 
       <Pressable onPress={() => router.push('/create-account')} disabled={submitting || resetting}>
-        <Text style={styles.link}>Need an account? Create one</Text>
+        <Text style={[styles.link, { color: colors.headerText }]}>Need an account? Create one</Text>
       </Pressable>
     </WireScreen>
   );

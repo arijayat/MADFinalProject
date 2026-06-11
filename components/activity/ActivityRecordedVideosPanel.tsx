@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
 import { Panel } from '@/components/wireframe/Panel';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import {
   activeStoredMediaUrl,
   formatActivityMediaExpiry,
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function ActivityRecordedVideosPanel({ title, entries }: Props) {
+  const { colors } = useAppTheme();
   const visible = entries.filter((entry) => activeStoredMediaUrl(entry.video));
   const expiredCount = entries.filter(
     (entry) => entry.video?.url && isActivityMediaExpired(entry.video.expiresAtMs),
@@ -30,14 +32,14 @@ export function ActivityRecordedVideosPanel({ title, entries }: Props) {
 
   return (
     <Panel>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
       {visible.map((entry, entryIndex) => {
         const url = activeStoredMediaUrl(entry.video);
         if (!url || !entry.video) return null;
         return (
           <View key={`${entry.label}-${entryIndex}`} style={styles.block}>
-            <Text style={styles.label}>{entry.label}</Text>
-            <Text style={styles.expiry}>
+            <Text style={[styles.label, { color: colors.text }]}>{entry.label}</Text>
+            <Text style={[styles.expiry, { color: colors.textMuted }]}>
               Stored until {formatActivityMediaExpiry(entry.video.expiresAtMs)}
             </Text>
             <DropVideoReview uri={url} />
@@ -45,7 +47,7 @@ export function ActivityRecordedVideosPanel({ title, entries }: Props) {
         );
       })}
       {expiredCount > 0 ? (
-        <Text style={styles.expiredNote}>
+        <Text style={[styles.expiredNote, { color: colors.textMuted }]}>
           {expiredCount} video{expiredCount > 1 ? 's were' : ' was'} removed from cloud storage
           after 30 days. Your measured results are still saved.
         </Text>

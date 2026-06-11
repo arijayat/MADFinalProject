@@ -5,6 +5,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'rea
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 
@@ -17,6 +18,7 @@ function captainDefaultName(
 
 export default function TeamMembersScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user, profile } = useAuth();
   const { teamName, members, addMember, registerTeam } = useTeam();
   const [name, setName] = useState('');
@@ -71,8 +73,8 @@ export default function TeamMembersScreen() {
         />
       }>
       <View style={styles.content}>
-        <Text style={styles.heading}>TEAM MEMBERS</Text>
-        <Text style={styles.sub}>
+        <Text style={[styles.heading, { color: colors.headerText }]}>TEAM MEMBERS</Text>
+        <Text style={[styles.sub, { color: colors.headerSubtle }]}>
           Add all members of {teamName || 'your team'}, including your own name.
           {suggestedCaptainName
             ? ` We added "${suggestedCaptainName}" for you — edit the list if needed.`
@@ -80,9 +82,16 @@ export default function TeamMembersScreen() {
         </Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Member name</Text>
+          <Text style={[styles.label, { color: colors.headerText }]}>Member name</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             placeholder="Enter the team member name"
             placeholderTextColor={Wireframe.placeholder}
             value={name}
@@ -105,16 +114,16 @@ export default function TeamMembersScreen() {
 
         {members.length > 0 ? (
           <View style={styles.added}>
-            <Text style={styles.addedTitle}>Added ({members.length})</Text>
+            <Text style={[styles.addedTitle, { color: colors.headerSubtle }]}>Added ({members.length})</Text>
             {members.map((m) => (
-              <Text key={m.id} style={styles.addedRow}>
+              <Text key={m.id} style={[styles.addedRow, { color: colors.headerText }]}>
                 • {m.name}
               </Text>
             ))}
           </View>
         ) : null}
 
-        {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+        {submitting ? <ActivityIndicator color={colors.headerText} style={styles.spinner} /> : null}
       </View>
     </WireScreen>
   );

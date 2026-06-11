@@ -2,6 +2,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import type { VideoUploadState } from '@/hooks/useActivityVideoUpload';
 import { formatActivityMediaExpiry } from '@/lib/storage/media-expiry';
 
@@ -13,20 +14,22 @@ type Props = {
 };
 
 export function ActivityVideoUploadStatus({ state, error, expiresAtMs, onRetry }: Props) {
+  const { colors } = useAppTheme();
+
   if (state === 'idle') return null;
 
   if (state === 'uploading') {
     return (
       <View style={styles.row}>
-        <ActivityIndicator color={Wireframe.text} />
-        <Text style={styles.text}>Uploading video to cloud…</Text>
+        <ActivityIndicator color={colors.text} />
+        <Text style={[styles.text, { color: colors.textMuted }]}>Uploading video to cloud…</Text>
       </View>
     );
   }
 
   if (state === 'done') {
     return (
-      <Text style={styles.done}>
+      <Text style={[styles.done, { color: colors.text }]}>
         ✓ Video uploaded
         {expiresAtMs ? ` — available until ${formatActivityMediaExpiry(expiresAtMs)}` : ''}
       </Text>

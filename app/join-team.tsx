@@ -6,6 +6,7 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { getTeamByJoinCode } from '@/lib/firestore/teams';
 import { getUnclaimedTeamMembers } from '@/lib/team-members';
 import { normalizeTeamCode } from '@/lib/team-code';
@@ -13,6 +14,7 @@ import { Wireframe } from '@/constants/wireframe-theme';
 
 export default function JoinTeamScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user } = useAuth();
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -75,9 +77,16 @@ export default function JoinTeamScreen() {
       />
 
       <View style={styles.field}>
-        <Text style={styles.label}>Team code</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Team code</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="e.g. ALPHA7"
           placeholderTextColor={Wireframe.placeholder}
           value={code}
@@ -87,7 +96,7 @@ export default function JoinTeamScreen() {
         />
       </View>
 
-      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+      {submitting ? <ActivityIndicator color={colors.headerText} style={styles.spinner} /> : null}
     </WireScreen>
   );
 }

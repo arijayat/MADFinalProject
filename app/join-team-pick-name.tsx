@@ -15,6 +15,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { getTeamByJoinCode } from '@/lib/firestore/teams';
@@ -31,6 +32,7 @@ function showErrorAlert(title: string, message: string) {
 
 export default function JoinTeamPickNameScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { code } = useLocalSearchParams<{ code: string }>();
   const { user, profile } = useAuth();
   const { joinWithTeamCode } = useTeam();
@@ -174,7 +176,7 @@ export default function JoinTeamPickNameScreen() {
       />
 
       {showSpinner ? (
-        <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} />
+        <ActivityIndicator color={colors.headerText} style={styles.spinner} />
       ) : loadError ? (
         <Text style={styles.error}>{loadError}</Text>
       ) : unclaimed.length === 0 ? (
@@ -199,14 +201,18 @@ export default function JoinTeamPickNameScreen() {
                 disabled={submitting}
                 style={[
                   styles.nameCard,
+                  {
+                    backgroundColor: colors.panelBg,
+                    borderColor: selected ? Wireframe.accent : colors.border,
+                  },
                   selected && styles.nameCardSelected,
                   Platform.OS === 'web' && styles.nameCardWeb,
                 ]}>
-                <Text style={styles.memberName}>{member.name}</Text>
+                <Text style={[styles.memberName, { color: colors.text }]}>{member.name}</Text>
                 {selected ? (
-                  <Text style={styles.selectedHint}>Selected — this will be your roster name</Text>
+                  <Text style={[styles.selectedHint, { color: colors.textMuted }]}>Selected — this will be your roster name</Text>
                 ) : (
-                  <Text style={styles.tapHint}>Tap to select</Text>
+                  <Text style={[styles.tapHint, { color: colors.textMuted }]}>Tap to select</Text>
                 )}
               </TouchableOpacity>
             );
@@ -233,7 +239,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   nameCardSelected: {
-    borderColor: '#ffffff',
+    borderColor: Wireframe.accent,
   },
   nameCardWeb: {
     cursor: 'pointer',

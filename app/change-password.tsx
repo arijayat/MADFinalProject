@@ -6,10 +6,12 @@ import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { changePassword, user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -72,9 +74,16 @@ export default function ChangePasswordScreen() {
       />
 
       <View style={styles.field}>
-        <Text style={styles.label}>Current password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Current password</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="••••••••"
           placeholderTextColor={Wireframe.placeholder}
           value={currentPassword}
@@ -85,9 +94,16 @@ export default function ChangePasswordScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>New password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>New password</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="At least 6 characters"
           placeholderTextColor={Wireframe.placeholder}
           value={newPassword}
@@ -98,9 +114,16 @@ export default function ChangePasswordScreen() {
         />
       </View>
       <View style={styles.field}>
-        <Text style={styles.label}>Confirm new password</Text>
+        <Text style={[styles.label, { color: colors.headerText }]}>Confirm new password</Text>
         <TextInput
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+              color: colors.text,
+            },
+          ]}
           placeholder="••••••••"
           placeholderTextColor={Wireframe.placeholder}
           value={confirmPassword}
@@ -111,7 +134,7 @@ export default function ChangePasswordScreen() {
         />
       </View>
 
-      {submitting ? <ActivityIndicator color={Wireframe.panelBg} style={styles.spinner} /> : null}
+      {submitting ? <ActivityIndicator color={colors.headerText} style={styles.spinner} /> : null}
     </WireScreen>
   );
 }

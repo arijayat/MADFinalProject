@@ -5,11 +5,13 @@ import { Alert, StyleSheet, Text, TextInput, View } from "react-native";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
 import { Wireframe } from "@/constants/wireframe-theme";
+import { useAppTheme } from "@/contexts/AppThemeContext";
 import { useTeam } from "@/contexts/TeamContext";
 import { validateTeamName } from "@/utils/team-name-filter";
 
 export default function TeamRegistrationScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { teamName, setTeamName, gradeLevel, setGradeLevel } = useTeam();
   const [grade, setGrade] = useState(gradeLevel);
 
@@ -36,13 +38,20 @@ export default function TeamRegistrationScreen() {
       }
     >
       <View style={styles.content}>
-        <Text style={styles.heading}>TEAM REGISTRATION</Text>
-        <Text style={styles.sub}>Create your team to get started</Text>
+        <Text style={[styles.heading, { color: colors.headerText }]}>TEAM REGISTRATION</Text>
+        <Text style={[styles.sub, { color: colors.headerSubtle }]}>Create your team to get started</Text>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Team Name</Text>
+          <Text style={[styles.label, { color: colors.headerText }]}>Team Name</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             placeholder="Enter your team name"
             placeholderTextColor={Wireframe.placeholder}
             value={teamName}
@@ -50,9 +59,16 @@ export default function TeamRegistrationScreen() {
           />
         </View>
         <View style={styles.field}>
-          <Text style={styles.label}>Grade Level</Text>
+          <Text style={[styles.label, { color: colors.headerText }]}>Grade Level</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.panelBg,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             placeholder="Select Grade Level (e.g. 6)"
             placeholderTextColor={Wireframe.placeholder}
             value={grade}

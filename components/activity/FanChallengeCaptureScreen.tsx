@@ -34,6 +34,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import {
   useActivitySession,
   type FanAngleReading,
@@ -52,6 +53,7 @@ const REVIEW_PLAYBACK_RATE = 0.25;
 
 export function FanChallengeCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
   const { setFanAngleReadings } = useActivitySession();
@@ -378,20 +380,34 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
       {viewfinder()}
 
       {phase === 'angle' && videoUri ? (
-        <View style={styles.anglePanel}>
+        <View
+          style={[
+            styles.anglePanel,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+            },
+          ]}>
           <ActivityVideoUploadStatus
             state={uploadState}
             error={uploadError}
             expiresAtMs={uploadedVideo?.expiresAtMs}
             onRetry={() => void retryUpload(videoUri)}
           />
-          <Text style={styles.angleTitle}>Enter maximum bend angle</Text>
-          <Text style={styles.angleHint}>
+          <Text style={[styles.angleTitle, { color: colors.text }]}>Enter maximum bend angle</Text>
+          <Text style={[styles.angleHint, { color: colors.textMuted }]}>
             From your slow-motion video, measure the angle (in degrees) at the
             furthest bend.
           </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             placeholder="e.g. 30"
             placeholderTextColor={Wireframe.placeholder}
             value={angleInput}
@@ -404,10 +420,17 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
       ) : null}
 
       {allDone ? (
-        <View style={styles.summary}>
-          <Text style={styles.summaryTitle}>Trials complete</Text>
+        <View
+          style={[
+            styles.summary,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+            },
+          ]}>
+          <Text style={[styles.summaryTitle, { color: colors.text }]}>Trials complete</Text>
           {saved.map((reading, i) => (
-            <Text key={i} style={styles.summaryLine}>
+            <Text key={i} style={[styles.summaryLine, { color: colors.text }]}>
               {reading.label}: {reading.angleDegrees}°
             </Text>
           ))}

@@ -22,6 +22,7 @@ import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
+import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
@@ -54,6 +55,7 @@ const REVIEW_PLAYBACK_RATE = 0.25;
 
 export function ParachuteCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
   const {
@@ -402,9 +404,16 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
     if (phase === 'design-upload') {
       const preview = designPreviewUri ?? designPhotoUrl;
       return (
-        <View style={styles.designPanel}>
-          <Text style={styles.designTitle}>Step 5 — upload your revised design</Text>
-          <Text style={styles.designHint}>
+        <View
+          style={[
+            styles.designPanel,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+            },
+          ]}>
+          <Text style={[styles.designTitle, { color: colors.text }]}>Step 5 — upload your revised design</Text>
+          <Text style={[styles.designHint, { color: colors.textMuted }]}>
             Before recording Action 3, photograph your redesigned parachute. Photos are compressed
             for storage and kept for 30 days.
           </Text>
@@ -417,11 +426,11 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
             <Image source={{ uri: preview }} style={styles.designPreview} contentFit="contain" />
           ) : (
             <View style={styles.designPlaceholder}>
-              <Text style={styles.designPlaceholderText}>No design photo yet</Text>
+              <Text style={[styles.designPlaceholderText, { color: colors.textMuted }]}>No design photo yet</Text>
             </View>
           )}
           {uploadingDesign ? (
-            <ActivityIndicator style={styles.designSpinner} color={Wireframe.text} />
+            <ActivityIndicator style={styles.designSpinner} color={colors.text} />
           ) : (
             <View style={styles.designActions}>
               <PrimaryButton label="TAKE PHOTO" onPress={takeDesignPhoto} variant="light" />
@@ -429,7 +438,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
             </View>
           )}
           {designPhotoUrl ? (
-            <Text style={styles.designSaved}>
+            <Text style={[styles.designSaved, { color: colors.text }]}>
               ✓ Design uploaded — available until{' '}
               {designPhotoExpiresAtMs
                 ? formatParachuteDesignPhotoExpiry(designPhotoExpiresAtMs)
@@ -549,28 +558,49 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       ) : null}
 
       {phase === 'times' ? (
-        <View style={styles.timesPanel}>
+        <View
+          style={[
+            styles.timesPanel,
+            {
+              backgroundColor: colors.panelBg,
+              borderColor: colors.border,
+            },
+          ]}>
           <ActivityVideoUploadStatus
             state={uploadState}
             error={uploadError}
             expiresAtMs={uploadedVideo?.expiresAtMs}
             onRetry={videoUri ? () => void retryUpload(videoUri) : undefined}
           />
-          <Text style={styles.timesTitle}>Read times from your video</Text>
-          <Text style={styles.fieldLabel}>Fall time — release to first ground contact (s)</Text>
+          <Text style={[styles.timesTitle, { color: colors.text }]}>Read times from your video</Text>
+          <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Fall time — release to first ground contact (s)</Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             keyboardType="decimal-pad"
             placeholder="e.g. 0.85 or 0,85"
             placeholderTextColor={Wireframe.placeholder}
             value={fallTimeInput}
             onChangeText={setFallTimeInput}
           />
-          <Text style={styles.fieldLabel}>
+          <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
             Contact time — slow-motion, first hit until stop (s, optional)
           </Text>
           <TextInput
-            style={styles.input}
+            style={[
+              styles.input,
+              {
+                backgroundColor: colors.surfaceAlt,
+                borderColor: colors.border,
+                color: colors.text,
+              },
+            ]}
             keyboardType="decimal-pad"
             placeholder="e.g. 0.05 or 0,05"
             placeholderTextColor={Wireframe.placeholder}
@@ -579,11 +609,18 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           />
           {expectsBounce || observedBounce === 'Bounce' ? (
             <>
-              <Text style={styles.fieldLabel}>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
                 Rebound time — leave surface to max height (s, if toy bounces)
               </Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.surfaceAlt,
+                    borderColor: colors.border,
+                    color: colors.text,
+                  },
+                ]}
                 keyboardType="decimal-pad"
                 placeholder="e.g. 0.15 or 0,15"
                 placeholderTextColor={Wireframe.placeholder}
@@ -594,16 +631,21 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
           ) : null}
           {isLastAction ? (
             <>
-              <Text style={styles.fieldLabel}>Did the toy bounce on landing?</Text>
+              <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Did the toy bounce on landing?</Text>
               <View style={styles.bounceRow}>
                 {(['No bounce', 'Bounce'] as const).map((opt) => (
                   <Pressable
                     key={opt}
-                    style={[styles.bounceBtn, observedBounce === opt && styles.bounceBtnActive]}
+                    style={[
+                      styles.bounceBtn,
+                      { borderColor: colors.border },
+                      observedBounce === opt && styles.bounceBtnActive,
+                    ]}
                     onPress={() => setObservedBounce(opt)}>
                     <Text
                       style={[
                         styles.bounceBtnText,
+                        { color: colors.text },
                         observedBounce === opt && styles.bounceBtnTextActive,
                       ]}>
                       {opt}
