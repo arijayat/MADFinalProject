@@ -142,6 +142,3 @@ App identifiers:
 - **Android:** `com.binanusantara.stemlearninglab`
 - **iOS:** `com.binanusantara.stemlearninglab`
 
-## License
-
-Private — Bina Nusantara University, Mobile Application Development final project.
