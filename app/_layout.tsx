@@ -65,7 +65,7 @@ function RootNavigation() {
         <Stack.Screen name="settings" />
         <Stack.Screen name="change-password" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="activity/[activityId]" />
+        <Stack.Screen name="activity/[activityId]" options={{ animation: 'none' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
       <StatusBar style="light" />

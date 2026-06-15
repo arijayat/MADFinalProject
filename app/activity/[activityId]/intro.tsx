@@ -103,7 +103,7 @@ export default function ActivityIntroScreen() {
     >
       <ScreenHeader
         backLabel="BACK TO HUB"
-        onBack={() => router.replace("/(tabs)")}
+        onBack={() => router.back()}
         title={cfg.title}
         subtitle={cfg.subtitle}
       />
