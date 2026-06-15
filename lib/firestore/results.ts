@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 
 import { isIndividualActivity, type ActivityId } from '@/constants/activities';
+import { sanitizeActivityPerformer } from '@/lib/activity-snapshot';
 import { getFirebaseDb } from '@/lib/firebase';
 import { computeLeaderboardScore } from '@/utils/leaderboard-score';
 import type {
@@ -70,6 +71,7 @@ export async function saveActivityResult(params: {
     teamId: params.teamId,
     savedByUid: params.savedByUid,
     ...params.session,
+    performer: sanitizeActivityPerformer(params.session.performer),
     reflection: params.reflection,
     updatedAt: serverTimestamp(),
   };

@@ -31,7 +31,8 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS"
       ]
     },
     "web": {
@@ -85,6 +86,14 @@
         {
           "androidAppId": "ca-app-pub-3235268367307003~9694560177",
           "iosAppId": "ca-app-pub-3235268367307003~6299613798"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E6F4FE",
+          "defaultChannel": "default"
         }
       ]
     ],

@@ -20,6 +20,21 @@ type SessionLike = {
   performer?: ActivityPerformer | null;
 };
 
+export function sanitizeActivityPerformer(
+  performer: ActivityPerformer | null | undefined,
+): ActivityPerformer | null {
+  if (!performer) return null;
+
+  const next: ActivityPerformer = {
+    memberId: performer.memberId,
+    name: performer.name,
+  };
+  if (performer.uid) {
+    next.uid = performer.uid;
+  }
+  return next;
+}
+
 export function toActivitySessionSnapshot(session: SessionLike): ActivitySessionSnapshot {
   return {
     predictions: session.predictions,
@@ -34,7 +49,7 @@ export function toActivitySessionSnapshot(session: SessionLike): ActivitySession
     bounceActual: session.bounceActual,
     parachuteDesignPhotoUrl: session.parachuteDesignPhotoUrl,
     parachuteDesignPhotoExpiresAtMs: session.parachuteDesignPhotoExpiresAtMs,
-    performer: session.performer ?? null,
+    performer: sanitizeActivityPerformer(session.performer),
   };
 }
 

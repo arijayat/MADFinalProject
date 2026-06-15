@@ -20,11 +20,13 @@ export type SchoolLocation = {
 export type UserPreferences = {
   themeMode: 'light' | 'dark';
   language: 'en' | 'id';
+  notificationsEnabled: boolean;
 };
 
 export const defaultUserPreferences: UserPreferences = {
   themeMode: 'light',
   language: 'en',
+  notificationsEnabled: true,
 };
 
 export type UserProfile = {

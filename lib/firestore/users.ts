@@ -123,6 +123,9 @@ export async function updateUserPreferences(
   if (preferences.language !== undefined) {
     updates['preferences.language'] = preferences.language;
   }
+  if (preferences.notificationsEnabled !== undefined) {
+    updates['preferences.notificationsEnabled'] = preferences.notificationsEnabled;
+  }
 
   await updateDoc(doc(getFirebaseDb(), usersCollection(), uid), updates);
 }

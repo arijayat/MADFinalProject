@@ -51,7 +51,7 @@ export default function ActivityIntroScreen() {
     setActivityPerformer(cfg.id, {
       memberId: onlyMember.id,
       name: onlyMember.name.trim(),
-      uid: onlyMember.uid,
+      ...(onlyMember.uid ? { uid: onlyMember.uid } : {}),
     });
   }, [cfg, getSession, selectableMembers, setActivityPerformer]);
 
@@ -131,7 +131,7 @@ export default function ActivityIntroScreen() {
                       setActivityPerformer(cfg.id, {
                         memberId: member.id,
                         name: member.name.trim(),
-                        uid: member.uid,
+                        ...(member.uid ? { uid: member.uid } : {}),
                       })
                     }
                     style={[

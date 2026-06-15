@@ -11,7 +11,10 @@ import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam } from '@/contexts/TeamContext';
+import { notifyActivityCompleted } from '@/lib/notifications/notifications';
+import { defaultUserPreferences } from '@/types/firestore';
 import { isActivityId, toActivitySessionSnapshot } from '@/lib/activity-snapshot';
 import { isCaptureComplete, isPredictionComplete } from '@/lib/activity-progress/steps';
 import { deleteActivityDraft } from '@/lib/db/activity-drafts';
@@ -21,9 +24,10 @@ import { hasBlockedTeamNameWords } from '@/utils/team-name-filter';
 export default function ActivityReflectionScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { teamDocId } = useTeam();
   const { getSession, markActivityCompleted } = useActivitySession();
+  const { language } = useLocalization();
   const { colors } = useAppTheme();
   const [stars, setStars] = useState(0);
   const [insights, setInsights] = useState('');
@@ -76,6 +80,15 @@ export default function ActivityReflectionScreen() {
       });
       await deleteActivityDraft(teamDocId, activityId);
       markActivityCompleted(activityId);
+      const notificationsEnabled =
+        profile?.preferences?.notificationsEnabled ?? defaultUserPreferences.notificationsEnabled;
+      if (notificationsEnabled) {
+        void notifyActivityCompleted({
+          language,
+          activityId,
+          activityTitle: cfg.title,
+        });
+      }
       router.push(`/activity/${cfg.id}/leaderboard`);
     } catch (error) {
       Alert.alert(

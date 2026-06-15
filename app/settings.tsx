@@ -1,20 +1,78 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, Linking, Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   availableLanguages,
   useLocalization,
   type AppLanguage,
 } from '@/contexts/LocalizationContext';
+import {
+  cancelAllScheduledNotifications,
+  ensureNotificationPermissions,
+} from '@/lib/notifications/notifications';
+import { updateUserPreferences } from '@/lib/firestore/users';
+import { defaultUserPreferences } from '@/types/firestore';
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { colors, isDark, mode, toggleMode } = useAppTheme();
+  const { user, profile } = useAuth();
   const { language, languageName, setLanguage, t } = useLocalization();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    defaultUserPreferences.notificationsEnabled,
+  );
+
+  useEffect(() => {
+    const saved = profile?.preferences?.notificationsEnabled;
+    if (typeof saved === 'boolean') {
+      setNotificationsEnabled(saved);
+    }
+  }, [profile?.preferences?.notificationsEnabled]);
+
+  const toggleNotifications = useCallback(
+    async (nextValue: boolean) => {
+      setNotificationsEnabled(nextValue);
+
+      if (!user) return;
+
+      if (nextValue) {
+        const granted = await ensureNotificationPermissions();
+        if (!granted) {
+          setNotificationsEnabled(false);
+          Alert.alert(t('notifications'), t('notificationsDisabledHint'), [
+            { text: t('cancel'), style: 'cancel' },
+            {
+              text: t('settings'),
+              onPress: () => {
+                if (Platform.OS === 'ios') {
+                  void Linking.openURL('app-settings:');
+                } else {
+                  void Linking.openSettings();
+                }
+              },
+            },
+          ]);
+          return;
+        }
+      } else {
+        await cancelAllScheduledNotifications();
+      }
+
+      try {
+        await updateUserPreferences(user.uid, { notificationsEnabled: nextValue });
+      } catch (error) {
+        setNotificationsEnabled(!nextValue);
+        console.error('Failed to save notification preference', error);
+      }
+    },
+    [user, t],
+  );
 
   return (
     <WireScreen>
@@ -104,6 +162,33 @@ export default function SettingsScreen() {
             })}
           </View>
         </View>
+      </View>
+
+      <Text style={styles.sectionLabel}>{t('notifications')}</Text>
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.panelBg,
+            borderColor: colors.border,
+            boxShadow: colors.shadow,
+          },
+        ]}>
+        <View style={[styles.settingIcon, { backgroundColor: colors.accentSoft }]}>
+          <MaterialIcons name="notifications" size={22} color={Wireframe.accent} />
+        </View>
+        <View style={styles.settingText}>
+          <Text style={[styles.settingTitle, { color: colors.text }]}>{t('notifications')}</Text>
+          <Text style={[styles.settingSubtitle, { color: colors.textMuted }]}>
+            {t('notificationsSubtitle')}
+          </Text>
+        </View>
+        <Switch
+          value={notificationsEnabled}
+          onValueChange={toggleNotifications}
+          trackColor={{ false: colors.border, true: colors.accentSoft }}
+          thumbColor={notificationsEnabled ? Wireframe.accent : colors.panelBg}
+        />
       </View>
 
       <Text style={styles.sectionLabel}>{t('security')}</Text>

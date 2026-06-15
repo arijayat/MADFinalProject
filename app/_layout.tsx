@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 
 import { AuthRedirect } from '@/components/AuthRedirect';
+import { NotificationHandler } from '@/components/NotificationHandler';
 import { AppThemeProvider, useAppTheme } from '@/contexts/AppThemeContext';
 import { ActivitySessionProvider } from '@/contexts/ActivitySessionContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -46,6 +47,7 @@ function RootNavigation() {
   return (
     <ThemeProvider value={appTheme}>
       <AuthRedirect />
+      <NotificationHandler />
       <Stack
         screenOptions={{
           headerShown: false,
