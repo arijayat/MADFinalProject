@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   LayoutChangeEvent,
@@ -128,6 +128,7 @@ function computeTracingMetrics(
 
 export function ReactionBoardCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { setActiveStepId } = useActivityWorkflowChrome();
   const { getSession, setTapReactionReadings, setTracingReadings } =
     useActivitySession();
@@ -189,10 +190,45 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
   useEffect(() => {
     const storedTap = session.tapReactionReadings;
     const storedTrace = session.tracingReadings;
-    if (storedTap.length === 0 && storedTrace.length === 0) return;
 
     setTapSaved(storedTap);
     setTraceSaved(storedTrace);
+
+    if (stepId === 'capture-tap-dominant') {
+      setAllDone(false);
+      setMainPhase('tap_dominant');
+      setTapAttempt(
+        Math.min(
+          storedTap.filter((r) => r.hand === 'dominant').length + 1,
+          tapAttempts,
+        ),
+      );
+      setTapUi('intro');
+      return;
+    }
+
+    if (stepId === 'capture-tap-non-dominant') {
+      setAllDone(false);
+      setMainPhase('tap_non_dominant');
+      setTapAttempt(
+        Math.min(
+          storedTap.filter((r) => r.hand === 'non_dominant').length + 1,
+          tapAttempts,
+        ),
+      );
+      setTapUi('intro');
+      return;
+    }
+
+    if (stepId === 'capture-tracing') {
+      setMainPhase('tracing');
+      setTraceAttempt(Math.min(storedTrace.length + 1, traceAttempts));
+      setTraceUi(storedTrace.length >= traceAttempts ? 'result' : 'intro');
+      setAllDone(storedTrace.length >= traceAttempts);
+      return;
+    }
+
+    if (storedTap.length === 0 && storedTrace.length === 0) return;
 
     const dominantDone =
       storedTap.filter((r) => r.hand === 'dominant').length >= tapAttempts;
@@ -227,7 +263,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
       );
       setTapUi('intro');
     }
-  }, [session.tapReactionReadings, session.tracingReadings, tapAttempts, traceAttempts]);
+  }, [session.tapReactionReadings, session.tracingReadings, stepId, tapAttempts, traceAttempts]);
 
   const clearDelayTimer = useCallback(() => {
     if (delayTimerRef.current) {
