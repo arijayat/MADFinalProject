@@ -1,9 +1,25 @@
 import type { ActivityId } from '@/constants/activities';
 import type { ActivityResultDocument } from '@/types/firestore';
 
+/** Fields `computeLeaderboardScore` reads — full Firestore docs are not required. */
+export type LeaderboardScoreInput = Partial<
+  Pick<
+    ActivityResultDocument,
+    | 'reflection'
+    | 'parachuteReadings'
+    | 'decibelReadings'
+    | 'fanAngleReadings'
+    | 'vibrationReadings'
+    | 'performanceReadings'
+    | 'tapReactionReadings'
+    | 'tracingReadings'
+    | 'breathingReadings'
+  >
+>;
+
 function activityReadingCount(
   activityId: ActivityId,
-  doc: ActivityResultDocument,
+  doc: LeaderboardScoreInput,
 ): number {
   switch (activityId) {
     case 'parachute-drop':
@@ -31,7 +47,7 @@ function activityReadingCount(
 /** 0–100 score for leaderboard ordering (higher is better). */
 export function computeLeaderboardScore(
   activityId: ActivityId,
-  doc: ActivityResultDocument,
+  doc: LeaderboardScoreInput,
 ): number {
   const stars = doc.reflection?.stars ?? 0;
   const reflectionPart = Math.min(75, stars * 15);
