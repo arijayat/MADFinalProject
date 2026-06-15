@@ -10,7 +10,7 @@ function reflection(stars: number, insights: string) {
 describe('practical activity scoring from classroom results', () => {
   it('scores a Decibel Detector session after measuring quiet room, talking, and stamping', () => {
     const result: LeaderboardScoreInput = {
-      reflection: reflection(4, 'Book drop was loudest; stamping surprised us'),
+      reflection: reflection(4, 'Stamping feet was loudest; talking was louder than quiet room'),
       decibelReadings: [
         { label: 'Quiet room', peakDb: 45 },
         { label: 'Talking', peakDb: 62 },
