@@ -95,7 +95,7 @@ export type FanAngleReading = {
   video: StoredActivityMedia | null;
 };
 
-type ActivitySession = {
+export type ActivitySession = {
   predictions: Record<string, string>;
   decibelReadings: DecibelReading[];
   vibrationReadings: VibrationReading[];

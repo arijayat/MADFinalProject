@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { FieldBlock } from '@/components/wireframe/FormFields';
 import { Panel } from '@/components/wireframe/Panel';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
@@ -44,6 +43,8 @@ export default function ActivityPredictionScreen() {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         <PrimaryButton
           label="UNLOCK SENSOR"
@@ -54,13 +55,6 @@ export default function ActivityPredictionScreen() {
           }}
         />
       }>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Prediction & Input"
-        subtitle="Enter your hypothesis and experimental variables."
-      />
-
       <View
         style={[
           styles.callout,

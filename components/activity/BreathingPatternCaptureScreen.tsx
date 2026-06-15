@@ -1,10 +1,8 @@
 import { Accelerometer, Gyroscope } from 'expo-sensors';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
@@ -14,6 +12,8 @@ import {
   type BreathingReading,
 } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import {
   analyzeBreathing,
   formatBreathingOutcome,
@@ -33,8 +33,11 @@ type Phase = 'ready' | 'recording' | 'exercise_break' | 'all_done';
 
 export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
-  const { setBreathingReadings } = useActivitySession();
+  const { setActiveStepId } = useActivityWorkflowChrome();
+  const { getSession, setBreathingReadings } = useActivitySession();
+  const session = getSession(cfg.id);
   const phases = cfg.breathingPhases ?? ['Breathing measurement'];
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [saved, setSaved] = useState<BreathingReading[]>([]);
@@ -57,6 +60,26 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
   const exerciseBreak = screenPhase === 'exercise_break';
   const allDone = screenPhase === 'all_done';
   const currentLabel = phases[phaseIndex] ?? phases[phases.length - 1];
+
+  useEffect(() => {
+    setActiveStepId(`capture-${phaseIndex}`);
+  }, [phaseIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.breathingReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < phases.length
+        ? requested
+        : Math.min(stored.length, phases.length - 1);
+    setPhaseIndex(nextIndex);
+    if (stored.length >= phases.length) {
+      screenPhaseRef.current = 'all_done';
+      setScreenPhase('all_done');
+    }
+  }, [phases.length, session.breathingReadings, stepId]);
 
   useEffect(() => {
     screenPhaseRef.current = screenPhase;
@@ -137,8 +160,10 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
       label: currentLabel,
       ...analysis,
     };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[phaseIndex] = reading;
     setSaved(nextSaved);
+    setBreathingReadings(cfg.id, nextSaved);
     samplesRef.current = [];
     latestGyroRef.current = null;
     setLiveBreathsPerMin(null);
@@ -148,7 +173,6 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
     const isLastPhase = phaseIndex + 1 >= phases.length;
     if (isLastPhase) {
-      setBreathingReadings(cfg.id, nextSaved);
       screenPhaseRef.current = 'all_done';
       setScreenPhase('all_done');
       return;
@@ -212,7 +236,7 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
   if (allDone) {
     footerLabel = 'VIEW RESULTS';
-    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+    footerAction = () => router.replace(`/activity/${cfg.id}/dashboard`);
   } else if (recording) {
     footerLabel = 'STOP EARLY';
     footerAction = finishRecording;
@@ -228,6 +252,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         exerciseBreak ? null : (
           <PrimaryButton
@@ -237,15 +263,6 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           />
         )
       }>
-      <BatteryCaptureBanner />
-
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Chest movement capture"
-        subtitle="Accelerometer and gyroscope detect breathing motion."
-      />
-
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use motion
@@ -372,8 +389,8 @@ export function BreathingPatternCaptureScreen({ cfg }: Props) {
           {saved.length > 0 ? (
             <View style={styles.savedBlock}>
               <Text style={styles.savedTitle}>Recorded</Text>
-              {saved.map((r) => (
-                <Text key={r.label} style={styles.savedRow}>
+              {saved.map((r, index) => (
+                <Text key={`${r.label}-${index}`} style={styles.savedRow}>
                   • {r.label}: {formatBreathingOutcome(r)}
                 </Text>
               ))}

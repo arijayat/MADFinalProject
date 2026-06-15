@@ -1,7 +1,7 @@
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -18,18 +18,18 @@ import { ActivityCameraPreview } from '@/components/activity/ActivityCameraPrevi
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
 import { RecordingTimerOverlay } from '@/components/activity/RecordingTimerOverlay';
 import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { useActivityVideoUpload } from '@/hooks/useActivityVideoUpload';
 import { useCameraVideoRecording } from '@/hooks/useCameraVideoRecording';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import { uploadParachuteDesignPhoto } from '@/lib/storage/parachute-design';
 import {
   formatParachuteDesignPhotoExpiry,
@@ -56,7 +56,9 @@ const REVIEW_PLAYBACK_RATE = 0.25;
 
 export function ParachuteCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
+  const { setActiveStepId } = useActivityWorkflowChrome();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
   const {
@@ -118,6 +120,22 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
 
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
+
+  useEffect(() => {
+    setActiveStepId(`capture-${actionIndex}`);
+  }, [actionIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.parachuteReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < actions.length
+        ? requested
+        : Math.min(stored.length, actions.length - 1);
+    setActionIndex(nextIndex);
+  }, [actions.length, session.parachuteReadings, stepId]);
 
   useEffect(() => {
     if (!videoUri) return;
@@ -314,8 +332,10 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       observedBounce: isLastAction ? observedBounce : null,
       video,
     };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[actionIndex] = reading;
     setSaved(nextSaved);
+    setParachuteReadings(cfg.id, nextSaved);
     setVideoUri(null);
     resetUpload();
 
@@ -328,7 +348,6 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
         setPhase('preview');
       }
     } else {
-      setParachuteReadings(cfg.id, nextSaved);
       if (observedBounce) setBounceActual(cfg.id, observedBounce);
       setPhase('preview');
     }
@@ -356,7 +375,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   let footer: ReactNode = null;
   if (allDone) {
     footer = (
-      <PrimaryButton label="VIEW RESULTS" onPress={() => router.push(`/activity/${cfg.id}/dashboard`)} />
+      <PrimaryButton label="VIEW RESULTS" onPress={() => router.replace(`/activity/${cfg.id}/dashboard`)} />
     );
   } else if (phase === 'design-upload') {
     footer = (
@@ -517,22 +536,7 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
   };
 
   return (
-    <WireScreen scroll={!showCamera} animateLayout={!showCamera} footer={footer}>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title={phase === 'design-upload' ? 'Upload revised design' : 'Video capture'}
-        subtitle={
-          phase === 'design-upload'
-            ? 'Photograph your redesigned parachute before the third drop.'
-            : phase === 'review'
-              ? 'Review your recording, then enter fall and landing times.'
-              : 'Film each drop with your phone camera.'
-        }
-      />
-
-      <BatteryCaptureBanner />
-
+    <WireScreen safeArea={false} scroll={!showCamera} animateLayout={false} footer={footer}>
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use the camera.
@@ -663,8 +667,8 @@ export function ParachuteCaptureScreen({ cfg }: Props) {
       {saved.length > 0 ? (
         <View style={styles.savedBlock}>
           <Text style={styles.savedTitle}>Recorded</Text>
-          {saved.map((r) => (
-            <Text key={r.label} style={styles.savedRow}>
+          {saved.map((r, index) => (
+            <Text key={`${r.label}-${index}`} style={styles.savedRow}>
               • {r.label}: fall {r.fallTimeS}s
               {r.contactTimeS != null ? `, contact ${r.contactTimeS}s` : ''}
               {r.observedBounce != null ? `, ${r.observedBounce}` : ''}

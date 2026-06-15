@@ -3,7 +3,6 @@ import { Image } from "expo-image";
 import { useMemo } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { ActivityRecordedVideosPanel } from "@/components/activity/ActivityRecordedVideosPanel";
 import { Panel } from "@/components/wireframe/Panel";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
@@ -973,19 +972,15 @@ export default function ActivityDashboardScreen() {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         <PrimaryButton
           label="CONTINUE TO REFLECTION"
-          onPress={() => router.push(`/activity/${cfg.id}/reflection`)}
+          onPress={() => router.replace(`/activity/${cfg.id}/reflection`)}
         />
       }
     >
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Analytical Dashboard"
-        subtitle="Compare your predictions with actual results."
-      />
       {contextLines.length > 0 ? (
         <Panel title="Your setup">
           {contextLines.map((line, lineIndex) => (

@@ -12,6 +12,8 @@ type Props = {
   scroll?: boolean;
   /** Disable Reanimated layout transitions (use on camera capture screens). */
   animateLayout?: boolean;
+  /** Use false when a parent layout already owns safe area and screen chrome. */
+  safeArea?: boolean;
 };
 
 export function WireScreen({
@@ -19,6 +21,7 @@ export function WireScreen({
   footer,
   scroll = true,
   animateLayout = true,
+  safeArea = true,
 }: Props) {
   const { colors } = useAppTheme();
   const body = scroll ? (
@@ -47,10 +50,7 @@ export function WireScreen({
     <View style={styles.flex}>{children}</View>
   );
 
-  return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: colors.screenBg }]}
-      edges={['top', 'bottom']}>
+  const content = (
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -71,6 +71,17 @@ export function WireScreen({
           ) : null}
         </View>
       </KeyboardAvoidingView>
+  );
+
+  if (!safeArea) {
+    return <View style={[styles.safe, { backgroundColor: colors.screenBg }]}>{content}</View>;
+  }
+
+  return (
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: colors.screenBg }]}
+      edges={['top', 'bottom']}>
+      {content}
     </SafeAreaView>
   );
 }

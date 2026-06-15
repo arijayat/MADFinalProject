@@ -17,6 +17,7 @@ type Props = {
   description: string;
   requirements: string[];
   completed?: boolean;
+  progressLabel?: string;
   onPress: () => void;
 };
 
@@ -27,6 +28,7 @@ export function ActivityCard({
   description,
   requirements,
   completed = false,
+  progressLabel,
   onPress,
 }: Props) {
   const { colors, isDark } = useAppTheme();
@@ -67,6 +69,11 @@ export function ActivityCard({
             <View style={[styles.completedBadge, { backgroundColor: colors.accentSoft }]}>
               <MaterialIcons name="check-circle" size={14} color={Wireframe.accent} />
               <Text style={styles.completedText}>{t('completed')}</Text>
+            </View>
+          ) : progressLabel ? (
+            <View style={[styles.completedBadge, { backgroundColor: colors.accentSoft }]}>
+              <MaterialIcons name="pending-actions" size={14} color={Wireframe.accent} />
+              <Text style={styles.completedText}>{progressLabel}</Text>
             </View>
           ) : null}
         </View>

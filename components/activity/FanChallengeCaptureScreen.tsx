@@ -1,5 +1,5 @@
 import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   useCallback,
   useEffect,
@@ -26,13 +26,13 @@ import { ActivityCameraPreview } from '@/components/activity/ActivityCameraPrevi
 import { DropVideoReview } from '@/components/activity/DropVideoReview';
 import { RecordingTimerOverlay } from '@/components/activity/RecordingTimerOverlay';
 import { ActivityVideoUploadStatus } from '@/components/activity/ActivityVideoUploadStatus';
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import {
   useActivitySession,
   type FanAngleReading,
@@ -49,10 +49,13 @@ const REVIEW_PLAYBACK_RATE = 0.25;
 
 export function FanChallengeCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
+  const { setActiveStepId } = useActivityWorkflowChrome();
   const { user } = useAuth();
   const { teamDocId } = useTeam();
-  const { setFanAngleReadings } = useActivitySession();
+  const { getSession, setFanAngleReadings } = useActivitySession();
+  const session = getSession(cfg.id);
   const {
     uploadState,
     uploadedVideo,
@@ -93,6 +96,22 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
 
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
+
+  useEffect(() => {
+    setActiveStepId(`capture-${actionIndex}`);
+  }, [actionIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.fanAngleReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < actions.length
+        ? requested
+        : Math.min(stored.length, actions.length - 1);
+    setActionIndex(nextIndex);
+  }, [actions.length, session.fanAngleReadings, stepId]);
 
   useEffect(() => {
     if (!videoUri) return;
@@ -193,8 +212,10 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
       angleDegrees: angle,
       video,
     };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[actionIndex] = reading;
     setSaved(nextSaved);
+    setFanAngleReadings(cfg.id, nextSaved);
     setVideoUri(null);
     resetUpload();
 
@@ -202,7 +223,6 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
       setActionIndex((i) => i + 1);
       setPhase('preview');
     } else {
-      setFanAngleReadings(cfg.id, nextSaved);
       setPhase('preview');
     }
   }, [
@@ -226,7 +246,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
     footer = (
       <PrimaryButton
         label="VIEW RESULTS"
-        onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+        onPress={() => router.replace(`/activity/${cfg.id}/dashboard`)}
       />
     );
   } else if (phase === 'recording') {
@@ -336,20 +356,7 @@ export function FanChallengeCaptureScreen({ cfg }: Props) {
   };
 
   return (
-    <WireScreen scroll={!showCamera} animateLayout={!showCamera} footer={footer}>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Hand Fan Challenge"
-        subtitle={
-          phase === 'review'
-            ? 'Review your recording, then measure the maximum bend angle.'
-            : 'Record how the paper bends when you fan air at it.'
-        }
-      />
-
-      <BatteryCaptureBanner />
-
+    <WireScreen safeArea={false} scroll={!showCamera} animateLayout={false} footer={footer}>
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use the camera.

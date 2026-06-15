@@ -1,10 +1,8 @@
 import { Accelerometer } from 'expo-sensors';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
@@ -14,6 +12,8 @@ import {
   type VibrationReading,
 } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import {
   formatTilt,
   formatVibration,
@@ -33,8 +33,11 @@ type Phase = 'level' | 'recording' | 'between';
 
 export function VibrationCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
-  const { setVibrationReadings } = useActivitySession();
+  const { setActiveStepId } = useActivityWorkflowChrome();
+  const { getSession, setVibrationReadings } = useActivitySession();
+  const session = getSession(cfg.id);
   const actions = cfg.vibrationDesignActions ?? ['Design test'];
   const [actionIndex, setActionIndex] = useState(0);
   const [saved, setSaved] = useState<VibrationReading[]>([]);
@@ -55,6 +58,22 @@ export function VibrationCaptureScreen({ cfg }: Props) {
 
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
+
+  useEffect(() => {
+    setActiveStepId(`capture-${actionIndex}`);
+  }, [actionIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.vibrationReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < actions.length
+        ? requested
+        : Math.min(stored.length, actions.length - 1);
+    setActionIndex(nextIndex);
+  }, [actions.length, session.vibrationReadings, stepId]);
 
   const stopSubscription = useCallback(() => {
     subscriptionRef.current?.remove();
@@ -139,8 +158,10 @@ export function VibrationCaptureScreen({ cfg }: Props) {
       peakVibrationMs2: peakVibrationRef.current ?? 0,
       startLevelDeg: startTilt ?? liveTilt ?? 0,
     };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[actionIndex] = reading;
     setSaved(nextSaved);
+    setVibrationReadings(cfg.id, nextSaved);
     setPhase('between');
     setLiveVibration(null);
 
@@ -153,8 +174,6 @@ export function VibrationCaptureScreen({ cfg }: Props) {
       setStartTilt(null);
       setPhase('level');
       startSubscription('level', null);
-    } else {
-      setVibrationReadings(cfg.id, nextSaved);
     }
   }, [
     stopSubscription,
@@ -193,7 +212,7 @@ export function VibrationCaptureScreen({ cfg }: Props) {
 
   if (allDone) {
     footerLabel = 'VIEW RESULTS';
-    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+    footerAction = () => router.replace(`/activity/${cfg.id}/dashboard`);
   } else if (phase === 'recording') {
     footerLabel = 'STOP TEST';
     footerAction = stopRecording;
@@ -205,6 +224,8 @@ export function VibrationCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         <PrimaryButton
           label={footerLabel}
@@ -212,15 +233,6 @@ export function VibrationCaptureScreen({ cfg }: Props) {
           disabled={footerDisabled}
         />
       }>
-      <BatteryCaptureBanner />
-
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Vibration & level capture"
-        subtitle="Use accelerometer and level sensor on your phone."
-      />
-
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use motion
@@ -295,8 +307,8 @@ export function VibrationCaptureScreen({ cfg }: Props) {
       {saved.length > 0 ? (
         <View style={styles.savedBlock}>
           <Text style={styles.savedTitle}>Recorded</Text>
-          {saved.map((r) => (
-            <Text key={r.label} style={styles.savedRow}>
+          {saved.map((r, index) => (
+            <Text key={`${r.label}-${index}`} style={styles.savedRow}>
               • {r.label}: tilt {formatTilt(r.peakTiltDeg)}, vibration{' '}
               {formatVibration(r.peakVibrationMs2)}
             </Text>

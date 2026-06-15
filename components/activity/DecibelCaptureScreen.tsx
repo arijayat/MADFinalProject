@@ -5,18 +5,18 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from 'expo-audio';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
 import { Wireframe } from '@/constants/wireframe-theme';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useActivitySession, type DecibelReading } from '@/contexts/ActivitySessionContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatDisplayDb, meteringToDisplayDb } from '@/utils/decibels';
 
@@ -31,8 +31,11 @@ type Props = {
 
 export function DecibelCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
-  const { setDecibelReadings } = useActivitySession();
+  const { setActiveStepId } = useActivityWorkflowChrome();
+  const { getSession, setDecibelReadings } = useActivitySession();
+  const session = getSession(cfg.id);
   const actions = cfg.decibelActions ?? ['Measurement'];
   const [actionIndex, setActionIndex] = useState(0);
   const [saved, setSaved] = useState<DecibelReading[]>([]);
@@ -47,6 +50,22 @@ export function DecibelCaptureScreen({ cfg }: Props) {
   const isRecording = recorderState.isRecording;
   const allDone = saved.length >= actions.length;
   const currentLabel = actions[actionIndex] ?? actions[actions.length - 1];
+
+  useEffect(() => {
+    setActiveStepId(`capture-${actionIndex}`);
+  }, [actionIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.decibelReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < actions.length
+        ? requested
+        : Math.min(stored.length, actions.length - 1);
+    setActionIndex(nextIndex);
+  }, [actions.length, session.decibelReadings, stepId]);
 
   useEffect(() => {
     (async () => {
@@ -111,16 +130,16 @@ export function DecibelCaptureScreen({ cfg }: Props) {
     }
     const peak = peakRef.current ?? liveDb ?? 35;
     const reading: DecibelReading = { label: currentLabel, peakDb: peak };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[actionIndex] = reading;
     setSaved(nextSaved);
+    setDecibelReadings(cfg.id, nextSaved);
 
     if (actionIndex + 1 < actions.length) {
       setActionIndex((i) => i + 1);
       setLiveDb(null);
       setPeakDb(null);
       peakRef.current = null;
-    } else {
-      setDecibelReadings(cfg.id, nextSaved);
     }
   }, [recorder, liveDb, currentLabel, saved, actionIndex, actions.length, setDecibelReadings, cfg.id]);
 
@@ -138,7 +157,7 @@ export function DecibelCaptureScreen({ cfg }: Props) {
   let footerAction: () => void = startMeasurement;
   if (allDone) {
     footerLabel = 'VIEW RESULTS';
-    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+    footerAction = () => router.replace(`/activity/${cfg.id}/dashboard`);
   } else if (isRecording) {
     footerLabel = 'STOP MEASUREMENT';
     footerAction = stopMeasurement;
@@ -146,6 +165,8 @@ export function DecibelCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         permissionGranted === false && Platform.OS !== 'web' ? (
           <PrimaryButton
@@ -159,15 +180,6 @@ export function DecibelCaptureScreen({ cfg }: Props) {
           <PrimaryButton label={footerLabel} onPress={footerAction} disabled={permissionGranted === false} />
         )
       }>
-      <BatteryCaptureBanner />
-
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Sound level capture"
-        subtitle="Use your phone microphone. Perform each action, then measure."
-      />
-
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use the microphone.
@@ -207,8 +219,8 @@ export function DecibelCaptureScreen({ cfg }: Props) {
       {saved.length > 0 ? (
         <View style={styles.savedBlock}>
           <Text style={styles.savedTitle}>Recorded</Text>
-          {saved.map((r) => (
-            <Text key={r.label} style={styles.savedRow}>
+          {saved.map((r, index) => (
+            <Text key={`${r.label}-${index}`} style={styles.savedRow}>
               • {r.label}: {formatDisplayDb(r.peakDb)}
             </Text>
           ))}

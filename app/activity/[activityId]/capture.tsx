@@ -9,7 +9,6 @@ import { HumanPerformanceCaptureScreen } from "@/components/activity/HumanPerfor
 import { BreathingPatternCaptureScreen } from "@/components/activity/BreathingPatternCaptureScreen";
 import { ReactionBoardCaptureScreen } from "@/components/activity/ReactionBoardCaptureScreen";
 import { VibrationCaptureScreen } from "@/components/activity/VibrationCaptureScreen";
-import { ScreenHeader } from "@/components/wireframe/BackNav";
 import { PrimaryButton } from "@/components/wireframe/PrimaryButton";
 import { WireScreen } from "@/components/wireframe/WireScreen";
 import { useLocalizedActivity } from "@/constants/localized-activities";
@@ -57,11 +56,13 @@ export default function ActivityCaptureScreen() {
   if (cfg.captureKind === "none") {
     return (
       <WireScreen
+        safeArea={false}
+        animateLayout={false}
         footer={
           done ? (
             <PrimaryButton
               label="VIEW RESULTS"
-              onPress={() => router.push(`/activity/${cfg.id}/dashboard`)}
+              onPress={() => router.replace(`/activity/${cfg.id}/dashboard`)}
             />
           ) : (
             <PrimaryButton
@@ -71,12 +72,6 @@ export default function ActivityCaptureScreen() {
           )
         }
       >
-        <ScreenHeader
-          backLabel="BACK"
-          onBack={() => router.back()}
-          title="No Camera Needed"
-          subtitle="Record your observations manually."
-        />
         <View
           style={[
             styles.noneWrap,
@@ -331,13 +326,7 @@ export default function ActivityCaptureScreen() {
   };
 
   return (
-    <WireScreen footer={footer ?? undefined}>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Sensor Capture"
-        subtitle="Perform the experiment and capture."
-      />
+    <WireScreen safeArea={false} animateLayout={false} footer={footer ?? undefined}>
       {viewport()}
       {done ? (
         <View style={styles.statusBlock}>

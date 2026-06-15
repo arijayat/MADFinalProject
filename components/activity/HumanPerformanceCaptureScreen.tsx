@@ -1,11 +1,9 @@
 import { Accelerometer } from 'expo-sensors';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { BatteryCaptureBanner } from '@/components/device/BatteryCaptureBanner';
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
@@ -15,6 +13,8 @@ import {
   type PerformanceReading,
 } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
+import { captureStepIndex } from '@/lib/activity-progress/steps';
 import { confirmBatteryForCapture } from '@/lib/device/battery-guard';
 import { formatVibration, vibrationMs2 } from '@/utils/vibration';
 
@@ -30,8 +30,11 @@ type ScreenPhase = 'idle' | 'recording' | 'attempt2_prompt' | 'all_done';
 
 export function HumanPerformanceCaptureScreen({ cfg }: Props) {
   const router = useRouter();
+  const { stepId } = useLocalSearchParams<{ stepId?: string }>();
   const { colors } = useAppTheme();
-  const { setPerformanceReadings } = useActivitySession();
+  const { setActiveStepId } = useActivityWorkflowChrome();
+  const { getSession, setPerformanceReadings } = useActivitySession();
+  const session = getSession(cfg.id);
   const movements = cfg.movementActions ?? ['Movement test'];
   const totalSteps = movements.length * 2;
 
@@ -62,7 +65,32 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
   const currentLabel =
     movements[movementIndex] ?? movements[movements.length - 1];
   const stepNumber = saved.length + (recording ? 1 : 0);
+  const activeStepIndex = Math.min(
+    (attempt - 1) * movements.length + movementIndex,
+    Math.max(0, totalSteps - 1),
+  );
   const hapticActive = attempt === 2;
+
+  useEffect(() => {
+    setActiveStepId(`capture-${activeStepIndex}`);
+  }, [activeStepIndex, setActiveStepId]);
+
+  useEffect(() => {
+    const stored = session.performanceReadings;
+    if (stored.length === 0) return;
+    setSaved(stored);
+    const requested = captureStepIndex(stepId);
+    const nextIndex =
+      requested != null && requested < totalSteps
+        ? requested
+        : Math.min(stored.length, totalSteps - 1);
+    setAttempt(nextIndex >= movements.length ? 2 : 1);
+    setMovementIndex(nextIndex % movements.length);
+    if (stored.length >= totalSteps) {
+      setScreenPhase('all_done');
+      screenPhaseRef.current = 'all_done';
+    }
+  }, [movements.length, session.performanceReadings, stepId, totalSteps]);
 
   useEffect(() => {
     attemptRef.current = attempt;
@@ -191,8 +219,10 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
       hapticFeedback: attempt === 2,
       attempt,
     };
-    const nextSaved = [...saved, reading];
+    const nextSaved = [...saved];
+    nextSaved[activeStepIndex] = reading;
     setSaved(nextSaved);
+    setPerformanceReadings(cfg.id, nextSaved);
 
     const finishedAttempt1 =
       attempt === 1 && movementIndex + 1 >= movements.length;
@@ -208,7 +238,6 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
     if (finishedAttempt2) {
       screenPhaseRef.current = 'all_done';
       setScreenPhase('all_done');
-      setPerformanceReadings(cfg.id, nextSaved);
       return;
     }
 
@@ -220,6 +249,7 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
     setElapsedS(0);
   }, [
     stopElapsedTimer,
+    activeStepIndex,
     elapsedS,
     currentLabel,
     attempt,
@@ -266,7 +296,7 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
 
   if (allDone) {
     footerLabel = 'VIEW RESULTS';
-    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+    footerAction = () => router.replace(`/activity/${cfg.id}/dashboard`);
     footerDisabled = false;
   } else if (showAttempt2Prompt) {
     footerLabel = 'START ATTEMPT 2 (WITH VIBRATION)';
@@ -284,7 +314,9 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
 
   return (
     <WireScreen
+      safeArea={false}
       scroll
+      animateLayout={false}
       footer={
         <PrimaryButton
           label={footerLabel}
@@ -292,15 +324,6 @@ export function HumanPerformanceCaptureScreen({ cfg }: Props) {
           disabled={footerDisabled}
         />
       }>
-      <BatteryCaptureBanner />
-
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Movement & vibration capture"
-        subtitle="Hold the phone in one hand and follow each guided movement."
-      />
-
       {Platform.OS === 'web' ? (
         <Text style={styles.warn}>
           Open this project on a physical iPhone or Android device to use the

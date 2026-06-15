@@ -9,7 +9,6 @@ import {
   View,
 } from 'react-native';
 
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { WireScreen } from '@/components/wireframe/WireScreen';
 import type { ActivityConfig } from '@/constants/activities';
@@ -19,6 +18,7 @@ import {
   type TapReactionReading,
   type TracingReading,
 } from '@/contexts/ActivitySessionContext';
+import { useActivityWorkflowChrome } from '@/contexts/ActivityWorkflowContext';
 
 type Props = {
   cfg: ActivityConfig;
@@ -128,8 +128,10 @@ function computeTracingMetrics(
 
 export function ReactionBoardCaptureScreen({ cfg }: Props) {
   const router = useRouter();
-  const { setTapReactionReadings, setTracingReadings, clearCapture } =
+  const { setActiveStepId } = useActivityWorkflowChrome();
+  const { getSession, setTapReactionReadings, setTracingReadings } =
     useActivitySession();
+  const session = getSession(cfg.id);
 
   const tapAttempts = cfg.reactionTapAttempts ?? 3;
   const traceAttempts = cfg.reactionTraceAttempts ?? 3;
@@ -164,22 +166,68 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
 
   useEffect(() => {
     mainPhaseRef.current = mainPhase;
-  }, [mainPhase]);
+    setActiveStepId(
+      mainPhase === 'tap_dominant'
+        ? 'capture-tap-dominant'
+        : mainPhase === 'tap_non_dominant'
+          ? 'capture-tap-non-dominant'
+          : 'capture-tracing',
+    );
+  }, [mainPhase, setActiveStepId]);
 
   useEffect(() => {
     traceUiRef.current = traceUi;
   }, [traceUi]);
 
   useEffect(() => {
-    clearCapture(cfg.id);
     return () => {
       if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
       if (traceIntervalRef.current) clearInterval(traceIntervalRef.current);
     };
-  }, [cfg.id, clearCapture]);
+  }, []);
 
-  const handForPhase = (): 'dominant' | 'non_dominant' =>
-    mainPhase === 'tap_dominant' ? 'dominant' : 'non_dominant';
+  useEffect(() => {
+    const storedTap = session.tapReactionReadings;
+    const storedTrace = session.tracingReadings;
+    if (storedTap.length === 0 && storedTrace.length === 0) return;
+
+    setTapSaved(storedTap);
+    setTraceSaved(storedTrace);
+
+    const dominantDone =
+      storedTap.filter((r) => r.hand === 'dominant').length >= tapAttempts;
+    const nonDominantDone =
+      storedTap.filter((r) => r.hand === 'non_dominant').length >= tapAttempts;
+    const tracingDone = storedTrace.length >= traceAttempts;
+
+    if (tracingDone) {
+      setAllDone(true);
+      setMainPhase('tracing');
+      setTraceUi('result');
+    } else if (nonDominantDone) {
+      setMainPhase('tracing');
+      setTraceAttempt(Math.min(storedTrace.length + 1, traceAttempts));
+      setTraceUi('intro');
+    } else if (dominantDone) {
+      setMainPhase('tap_non_dominant');
+      setTapAttempt(
+        Math.min(
+          storedTap.filter((r) => r.hand === 'non_dominant').length + 1,
+          tapAttempts,
+        ),
+      );
+      setTapUi('intro');
+    } else {
+      setMainPhase('tap_dominant');
+      setTapAttempt(
+        Math.min(
+          storedTap.filter((r) => r.hand === 'dominant').length + 1,
+          tapAttempts,
+        ),
+      );
+      setTapUi('intro');
+    }
+  }, [session.tapReactionReadings, session.tracingReadings, tapAttempts, traceAttempts]);
 
   const clearDelayTimer = useCallback(() => {
     if (delayTimerRef.current) {
@@ -215,7 +263,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
   }, [tapUi]);
 
   const saveTapResult = useCallback(() => {
-    const hand = handForPhase();
+    const hand = mainPhase === 'tap_dominant' ? 'dominant' : 'non_dominant';
     const reading: TapReactionReading = {
       hand,
       attempt: tapAttempt as 1 | 2 | 3,
@@ -224,6 +272,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     };
     const nextTap = [...tapSaved, reading];
     setTapSaved(nextTap);
+    setTapReactionReadings(cfg.id, nextTap);
 
     if (tapAttempt < tapAttempts) {
       setTapAttempt((a) => a + 1);
@@ -241,7 +290,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     setMainPhase('tracing');
     setTraceAttempt(1);
     setTraceUi('intro');
-    setTapReactionReadings(cfg.id, nextTap);
   }, [
     tapSaved,
     tapAttempt,
@@ -317,6 +365,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
     };
     const nextTrace = [...traceSaved, reading];
     setTraceSaved(nextTrace);
+    setTracingReadings(cfg.id, nextTrace);
 
     if (traceAttempt < traceAttempts) {
       setTraceAttempt((a) => a + 1);
@@ -324,7 +373,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
       return;
     }
 
-    setTracingReadings(cfg.id, nextTrace);
     setTapReactionReadings(cfg.id, tapSaved);
     setAllDone(true);
   }, [
@@ -404,7 +452,7 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
 
   if (allDone) {
     footerLabel = 'VIEW RESULTS';
-    footerAction = () => router.push(`/activity/${cfg.id}/dashboard`);
+    footerAction = () => router.replace(`/activity/${cfg.id}/dashboard`);
   } else if (mainPhase === 'tracing') {
     if (traceUi === 'intro') {
       footerAction = startTracing;
@@ -440,10 +488,11 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
       ? `Trial ${tapAttempt} of ${tapAttempts}`
       : `Attempt ${traceAttempt} of ${traceAttempts}`;
   const scrollEnabled = !(mainPhase === 'tracing' && traceUi === 'tracing');
-
   return (
     <WireScreen
+      safeArea={false}
       scroll={scrollEnabled}
+      animateLayout={false}
       footer={
         footerLabel ? (
           <PrimaryButton
@@ -453,13 +502,6 @@ export function ReactionBoardCaptureScreen({ cfg }: Props) {
           />
         ) : undefined
       }>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Reaction Board Challenge"
-        subtitle="Keep the phone flat. One finger per phase."
-      />
-
       <Text style={styles.phase}>{phaseTitle()}</Text>
       <Text style={styles.step}>{tapProgressLabel}</Text>
       <Text style={styles.hint}>{phaseHint()}</Text>

@@ -11,6 +11,7 @@ import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAppTheme } from '@/contexts/AppThemeContext';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { useTeam } from '@/contexts/TeamContext';
+import { hasActivityDraftProgress, nextActivityRoute } from '@/lib/activity-progress/steps';
 
 export default function HubScreen() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function HubScreen() {
   const { t } = useLocalization();
   const { activities } = useLocalizedActivities();
   const { teamName, teamId, gradeLevel } = useTeam();
-  const { isActivityCompleted } = useActivitySession();
+  const { getSession, isActivityCompleted } = useActivitySession();
   const displayTeamName = teamName.trim() || t('yourTeam');
   const displayGrade = gradeLevel.trim() || t('gradeNotSet');
 
@@ -79,14 +80,20 @@ export default function HubScreen() {
 
       {HUB_ACTIVITY_ORDER.map((id) => {
         const a = activities[id];
+        const completed = isActivityCompleted(id);
+        const session = getSession(id);
+        const hasProgress = !completed && hasActivityDraftProgress(a, session);
         return (
           <ActivityCard
             key={id}
             title={a.title}
             description={a.hubDescription}
             requirements={a.requirements}
-            completed={isActivityCompleted(id)}
-            onPress={() => router.push(`/activity/${id}/intro`)}
+            completed={completed}
+            progressLabel={hasProgress ? 'Continue' : undefined}
+            onPress={() =>
+              router.push(hasProgress ? nextActivityRoute(a, session) : `/activity/${id}/intro`)
+            }
           />
         );
       })}

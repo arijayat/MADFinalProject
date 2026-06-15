@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { ScreenHeader } from '@/components/wireframe/BackNav';
 import { PrimaryButton } from '@/components/wireframe/PrimaryButton';
 import { Panel } from '@/components/wireframe/Panel';
 import { WireScreen } from '@/components/wireframe/WireScreen';
@@ -14,6 +13,7 @@ import { useActivitySession } from '@/contexts/ActivitySessionContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeam } from '@/contexts/TeamContext';
 import { isActivityId, toActivitySessionSnapshot } from '@/lib/activity-snapshot';
+import { isCaptureComplete, isPredictionComplete } from '@/lib/activity-progress/steps';
 import { deleteActivityDraft } from '@/lib/db/activity-drafts';
 import { saveActivityResult } from '@/lib/firestore/results';
 import { hasBlockedTeamNameWords } from '@/utils/team-name-filter';
@@ -30,6 +30,11 @@ export default function ActivityReflectionScreen() {
   const [saving, setSaving] = useState(false);
 
   const cfg = useLocalizedActivity(activityId ?? "");
+  const session =
+    cfg && activityId && isActivityId(activityId) ? getSession(activityId) : null;
+  const readyToSubmit = cfg && session
+    ? isPredictionComplete(cfg, session) && isCaptureComplete(cfg, session)
+    : false;
 
   async function handleSave() {
     if (!cfg || !activityId || !isActivityId(activityId)) return;
@@ -40,6 +45,10 @@ export default function ActivityReflectionScreen() {
     }
     if (!teamDocId) {
       Alert.alert('No team', 'Register or join a team before saving activity results.');
+      return;
+    }
+    if (!readyToSubmit) {
+      Alert.alert('Activity incomplete', 'Complete the unlocked activity steps before submitting.');
       return;
     }
 
@@ -90,19 +99,20 @@ export default function ActivityReflectionScreen() {
 
   return (
     <WireScreen
+      safeArea={false}
+      animateLayout={false}
       footer={
         <PrimaryButton
           label={saving ? 'SAVING…' : 'SAVE & CONTINUE'}
-          disabled={saving}
+          disabled={saving || !readyToSubmit}
           onPress={handleSave}
         />
       }>
-      <ScreenHeader
-        backLabel="BACK"
-        onBack={() => router.back()}
-        title="Reflection & Upload"
-        subtitle="Document your findings and thoughts."
-      />
+      {!readyToSubmit ? (
+        <Text style={styles.incomplete}>
+          Complete all unlocked prediction and capture steps before submitting.
+        </Text>
+      ) : null}
       <Panel>
         <Text style={[styles.q, { color: colors.text }]}>
           How much did you enjoy this activity?
@@ -164,4 +174,9 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', gap: 8, marginTop: 12, alignItems: 'center' },
   noteText: { flex: 1, fontSize: 12, color: Wireframe.textMuted },
   spinner: { marginTop: 16 },
+  incomplete: {
+    color: Wireframe.accentYellow,
+    fontSize: 13,
+    lineHeight: 18,
+  },
 });
